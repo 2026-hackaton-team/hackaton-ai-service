@@ -4,7 +4,7 @@
 
 ## 로컬 실행
 
-1. 로컬 작업 폴더는 `C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai`이며 `develop`으로 동기화합니다. 가상환경은 동기화 폴더 밖에 만들고 `pip install -r requirements.txt 'openai>=1.75,<3'`를 실행합니다. 자세한 명령은 [README.md](README.md)를 참조하세요.
+1. 저장소 루트에서 `develop` 최신 코드를 사용합니다. 가상환경은 저장소 밖에 만들고 의존성을 설치합니다. Windows/macOS 별 실행 명령은 [README.md](README.md)를 참조하세요.
 2. 서버: `python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000`.
 3. `frontend/`에서 `pnpm install` 후 `pnpm dev` 실행.
 4. 브라우저: http://127.0.0.1:5173 ; AI 메뉴에서 가상 계정 선택.
@@ -34,7 +34,7 @@
 
 가상 계정 선택 헤더는 실제 인증이 아닙니다. 로컬 시연에서만 사용하며 외부에 서버를 공개하지 마세요. 본 통합 브랜치에 실사용 개인정보를 적재하지 마세요.
 
-## 2026-10-31 v4 실소스 추가 반영
+## 2026-10-31 v4 이식 당시 기록 (단일화 이전)
 
 - 원본: Windows 브리지 `Documents/Codex/proto_rag_llm`. GitHub `app/` 모듈 10개는 이 원본에서 이식됨
 - 원본 데이터: `data/knowledge_base.json`, `legal_rules.json`, `original_demo.json`, `person_policy_profiles.json`
@@ -49,10 +49,18 @@
 
 1. Python: `python -m unittest discover -s tests -v` 및 `python -m pytest -q`
 2. React: `cd frontend && pnpm install && pnpm test && pnpm build`
-3. 브라우저: AI 자유 상담과 v4 정책 화면 모두 열림, `/v4/api/health.policy_engine=v4`
+3. 브라우저: 마음결 AI 자유 상담만 표시되고, 독립 `/v4/` 경로는 제공되지 않음
 4. 합성 시나리오: 30,000원 예산 상한, 공직자/계약 심사 위험 보류, 비동의 직업 차단, 동명이인 확인, 공유 부고 권한 분리
 5. 실모델 키 없는 실패 시 가짜 법적 판정 금지, 프라이버시 Opt-in 강제
 
 **검증 갱신(2026-10-31):** [병합 전 최종 GitHub Actions](https://github.com/2026-hackaton-team/hackaton-ai-service/actions/runs/41158428848)에서 Python 161 PASS(경고 1개), React 테스트 및 빌드 PASS. Windows 브리지 Docker는 연결되었고 의존성 없는 이미지에서 소스 테스트 8 PASS. **Windows 기능 테스트/실브라우저 E2E/실제 모델 호출은 미검증**. 이식된 v4 원본에는 약 84개 테스트 메서드가 있었으나 통합 저장소의 155개 회귀 테스트 전체 통과와 구분한다.
 
-**기술 부채:** /v4의 원본 데모 데이터와 채팅/React 워크스페이스의 합성 자료가 아직 단일 CRUD 원천으로 합쳐지지 않았다. v4 화면은 React 네이티브 컴포넌트가 아닌 별도 프레임이다. 프로덕션 인증/법적 적법성 검증이 없다. 질문 원문 저장은 채팅 기능에 적용되며, 직무 관계 자유서술의 원문 비저장 정책과 별도로 개인정보 고지 및 서버 필터가 필요하다.
+**기술 부채:** 원본 데모 데이터와 채팅/React 워크스페이스의 합성 자료가 아직 단일 CRUD 원천으로 합쳐지지 않았다. 독립 v4 분석 화면은 제거했고 정책·추천 모듈만 재사용한다. 프로덕션 인증/법적 적법성 검증이 없다. 질문 원문 저장은 채팅 기능에 적용되며, 직무 관계 자유서술의 원문 비저장 정책과 별도로 개인정보 고지 및 서버 필터가 필요하다.
+
+## 자유 상담 단일화 후 현재 상태
+
+- React AI 화면은 하나이며, 20개 합성 시나리오를 대화 API에서 처리한다. `/v4/` 외부 마운트와 iframe을 제거했다.
+- 친밀도·최근 수령액·관계 변화는 개인화 후보 순위에 반영하고 원래 기준액과 조정 사유를 표시한다.
+- 인간관계 연구자료 6개는 RAG 설명용이며 통계적 적정 금액으로 환산하지 않는다.
+- 일반 자유 대화의 실모델 응답 품질, 프론트 전체 CRUD의 서버 단일 원천화, 사용자 직업 설정 UX, 브라우저 E2E는 별도 검증·개발 대상이다.
+- GitHub PR #15의 자동 회귀 검증과 실제 Windows 최종 시연을 구분해 보고한다.

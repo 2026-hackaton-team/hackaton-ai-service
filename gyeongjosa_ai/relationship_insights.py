@@ -84,7 +84,7 @@ def analyze_relationship_case(*, user_id: str, person_id: str, scenario_id: str)
             "사용자가 들었다고 기록한 가상 관행이며, 검증된 통계나 의무 기준은 아닙니다."
         )
     if scenario_id == "relation_close_friend":
-        messages.append("사용자가 높이 평가한 친밀도를 존중하되 금액을 자동으로 올리는 근거로 사용하지 않습니다.")
+        messages.append("현재 친밀도는 추천 후보 순위의 개인화 신호로 사용되며, 금액 인상을 강요하지 않습니다.")
 
     reference = context.get("comparison_reference_krw")
     if reference is not None:

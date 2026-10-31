@@ -32,7 +32,8 @@ def _closeness(amount, anchor):
 
 def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_type: str,
               attendance_with_meal: bool | None, budget_krw: int | None, legal_risk: bool = False,
-              kb: KnowledgeBase = KB):
+              kb: KnowledgeBase = KB, closeness_override: int | None = None,
+              special_care: bool = False, recent_received_override: int | None = None):
     if not identity_confirmed:
         return {"status": "NEEDS_IDENTITY_CONFIRMATION", "message": "동명이인일 수 있습니다. 추천 대상자를 확인해 주세요."}
     person = owned_person(user_id, person_id)
@@ -88,7 +89,50 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
             signals["received_from_person"] = _closeness(amount, received_med)
         return round(sum(weights[k] * signals[k] for k in weights), 6)
 
-    ranked = sorted(affordable, key=lambda a: (-calc(a), a))
+    baseline_ranked = sorted(affordable, key=lambda a: (-calc(a), a))
+    baseline_amount = baseline_ranked[0]
+    context = person.get("relationship_context") or {}
+    closeness = closeness_override if closeness_override is not None else context.get("closeness_score")
+    adjustments = []
+    upward = 0
+    downward = 0
+    if isinstance(closeness, int) and not isinstance(closeness, bool) and closeness == 5:
+        upward += 1
+        adjustments.append({"signal": "closeness", "direction": "up", "reason": "현재 친밀도 5/5를 고려했습니다."})
+    if paid_med and received_med and len(received) >= 2 and received_med >= paid_med * 1.5:
+        upward += 1
+        adjustments.append({"signal": "reciprocity", "direction": "up", "reason": "상대에게 받은 금액의 중앙값이 내가 낸 금액보다 높습니다."})
+    dated_received = sorted(received, key=lambda t: (own_events[t["private_event_id"]]["start_date"], t["id"]))
+    if len(dated_received) >= (2 if recent_received_override is not None else 3):
+        from statistics import median as _median
+        # 사용자 자기신고 최신 수령액은 저장된 거래를 변경하지 않고 임시 신호로 처리한다.
+        preceding_records = dated_received if recent_received_override is not None else dated_received[:-1]
+        earlier_amounts = [t["amount_krw"] for t in preceding_records if t["amount_krw"] > 0]
+        preceding = _median(earlier_amounts) if earlier_amounts else None
+        latest = recent_received_override if recent_received_override is not None else dated_received[-1]["amount_krw"]
+        if preceding and latest >= preceding * 2:
+            upward += 2 if latest >= preceding * 3 else 1
+            adjustments.append({"signal": "recent_large_gift", "direction": "up",
+                                "reason": "최근 받은 금액이 이전 수령 중앙값의 2배 이상입니다."})
+    closeness_history = context.get("closeness_history") or []
+    if (isinstance(closeness, int) and closeness <= 2 and len(closeness_history) >= 2
+            and closeness_history[0].get("score", 0) > closeness):
+        downward += 1
+        adjustments.append({"signal": "relationship_drift", "direction": "down",
+                            "reason": "사용자가 기록한 현재 친밀도가 과거보다 낮습니다."})
+    if special_care and (context.get("non_monetary_support") or (isinstance(closeness, int) and closeness >= 4)):
+        upward += 1
+        adjustments.append({"signal": "special_care", "direction": "up",
+                            "reason": "사용자가 특별히 챙기겠다는 의향을 밝혔습니다."})
+    steps = max(-2, min(2, upward - downward))
+    target = AMOUNTS[max(0, min(len(AMOUNTS) - 1, AMOUNTS.index(baseline_amount) + steps))]
+    eligible_target = min((a for a in affordable if a >= target), default=affordable[-1])
+    if target > affordable[-1]:
+        eligible_target = affordable[-1]
+    if not adjustments:
+        ranked = baseline_ranked
+    else:
+        ranked = sorted(affordable, key=lambda a: (abs(AMOUNTS.index(a) - AMOUNTS.index(eligible_target)), -calc(a), a))
     tx_ids = list(dict.fromkeys(t["id"] for t in (same_person + same_type)))
     reasons = []
     if survey:
@@ -103,9 +147,15 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         reasons.append(f"예산 {budget_krw:,}원을 초과하는 후보는 제외했습니다.")
     if not survey:
         reasons.append("해당 상황에 직접 일치하는 공개 금액 설문이 없어 개인 이력 중심으로 계산했습니다.")
+    if adjustments:
+        reasons.extend(item["reason"] for item in adjustments)
     level = "moderate" if survey else "low"
     return {"status": "RECOMMENDED", "amount_krw": ranked[0], "alternatives_krw": ranked[1:3],
-            "scores": [{"amount_krw": a, "score": calc(a)} for a in ranked],
+            "baseline_amount_krw": baseline_amount, "personalized_amount_krw": ranked[0],
+            "relationship_adjustments": adjustments,
+            "scores": [{"amount_krw": a, "score": (
+                round(1 - abs(AMOUNTS.index(a) - AMOUNTS.index(eligible_target)) / len(AMOUNTS) + calc(a) / 100, 6)
+                if adjustments else calc(a))} for a in ranked],
             "evidence_level": level, "weights_used": {k: round(v, 4) for k, v in weights.items()},
             "matched_source_id": survey["id"] if survey else None,
             "matched_transaction_ids": tx_ids,
