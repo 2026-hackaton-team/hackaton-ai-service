@@ -12,9 +12,13 @@ def collect(*, event_type: str, relationship: str, attendance_with_meal: bool | 
                         event_type=event_type, legal_risk=True, top_k=10)
     stats = kb.retrieve(p.get("statistical", f"{event_type} {relationship} 축의금 부의금 설문"),
                         event_type=event_type, relationship=relationship, top_k=10)
+    guidance = [d for d in kb.retrieve(
+        p.get("relationship", f"{relationship} 호혜성 감사 선물 친밀도"),
+        event_type=event_type, relationship=relationship, top_k=8
+    ) if d["source_type"] == "relationship_guidance"]
     selected = set(legal_assessment["source_ids"])
     if survey: selected.add(survey["id"])
-    rows = {d["id"]: dict(d) for d in (stats+legal)}
+    rows = {d["id"]: dict(d) for d in (stats+legal+guidance)}
     for doc in kb.documents:
         if doc["id"] in selected and doc["id"] not in rows:
             rows[doc["id"]] = {
@@ -27,6 +31,8 @@ def collect(*, event_type: str, relationship: str, attendance_with_meal: bool | 
             d["decision_role"] = "applied_legal"
         elif survey and d["id"] == survey["id"]:
             d["decision_role"] = "applied_statistic"
+        elif d["source_type"] == "relationship_guidance":
+            d["decision_role"] = "relationship_guidance"
         else:
             d["decision_role"] = "context_only"
         d["amount_reference_eligible"] = bool(survey and d["id"] == survey["id"])
