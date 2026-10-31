@@ -36,6 +36,7 @@ class RecommendationRequest(BaseModel):
     allow_llm_analysis: bool = False
     closeness_override: int | None = Field(default=None, ge=1, le=5)
     special_care: bool = False
+    recent_received_override: int | None = Field(default=None, ge=0, le=10000000)
 
 class OnboardingRequest(BaseModel):
     demo_user_id: str
@@ -145,7 +146,8 @@ def recommendation(req: RecommendationRequest):
                  profile_override=policy if req.scenario_id in ('default','chat_sender_public') else None,
                  profile_access=access['access'] if req.scenario_id=='default' else 'hypothetical_override',
                  relation_assessment=relation,
-                 closeness_override=req.closeness_override,special_care=req.special_care)
+                 closeness_override=req.closeness_override,special_care=req.special_care,
+                 recent_received_override=req.recent_received_override)
     result,evidence=report['result'],report['evidence']
     explanation,used,warning=explain(result,evidence,mode=req.explanation_mode)
     return {'result':result,'explanation':explanation,'llm_used':used,
