@@ -17,7 +17,7 @@ def client(tmp_path, monkeypatch):
 @pytest.mark.parametrize(("username", "expected"), [
     ("test1234", "TEST1234"),
     ("demo_seojin", "U001"),
-    ("synthetic_kim_scenario", "SCENARIO_KIM"),
+    ("kim_scenario", "SCENARIO_KIM"),
     ("new_demo", "LOCAL_NEW_DEMO"),
 ])
 def test_login_resolves_one_server_identity(client, username, expected):
@@ -27,7 +27,7 @@ def test_login_resolves_one_server_identity(client, username, expected):
     assert response.json()["user_id"] == expected
 
 
-@pytest.mark.parametrize("username", ["", "abc", "UPPERCASE", "bad-name", "x" * 21])
+@pytest.mark.parametrize("username", ["", "abc", "UPPERCASE", "bad-name", "x" * 21, "synthetic_kim_scenario"])
 def test_invalid_login_identity_is_rejected(client, username):
     """계정 ID 경계를 벗어난 문자열은 거부한다."""
     assert client.post("/api/demo/accounts/resolve", json={"username": username}).status_code == 422

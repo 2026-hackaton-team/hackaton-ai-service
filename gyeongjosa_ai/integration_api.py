@@ -190,8 +190,10 @@ class LoginIdentityInput(BaseModel):
 @router.post("/demo/accounts/resolve")
 def resolve_login_identity(account: LoginIdentityInput, service=Depends(get_service)):
     """일반 로그인 아이디를 서버의 합성 사용자 ID에 연결한다."""
+    if account.username == "kim_scenario" and "SCENARIO_KIM" in service.data.users:
+        return {"user_id": "SCENARIO_KIM"}
     for user in service.data.users.values():
-        if user.get("login_id", "").lower() == account.username:
+        if (user.get("login_id") or "").lower() == account.username:
             return {"user_id": user["id"]}
     return {"user_id": "LOCAL_" + account.username.upper()}
 
