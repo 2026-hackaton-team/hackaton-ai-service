@@ -51,7 +51,12 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
     same_person = [t for t in transactions if t["contact_person_id"] == person_id]
     paid = [t for t in same_person if t["direction"] == "paid"]
     received = [t for t in same_person if t["direction"] == "received"]
-    same_type = [t for t in transactions if t["direction"] == "paid" and own_events[t["private_event_id"]]["category"] == event_type]
+    # 관계 시연 거래는 해당 인물의 이력에만 반영해 기존 추천의 기준값을 보존한다.
+    is_relationship_demo = "relationship_context" in person
+    same_type = [t for t in transactions if t["direction"] == "paid"
+                 and own_events[t["private_event_id"]]["category"] == event_type
+                 and (t["contact_person_id"] == person_id if is_relationship_demo
+                      else not t["id"].startswith("V4T"))]
     per_type_med = _positive_median(same_type)
     paid_med = _positive_median(paid)
     received_med = _positive_median(received)
