@@ -1,6 +1,6 @@
 # 온마음 | 최종 발표 시연 운영서 (2026-10-31)
 
-> 대상: **통합 PR #3의 `feat/integrate-rag-react` 브랜치**. 기존 `main`, `develop`, Windows 단독 `proto_rag_llm` 폴더와 구분하세요. 실제 개인정보가 아닌 합성 데이터로만 시연합니다.
+> 대상: **원격 `develop`에 병합 완료된 온마음 통합 버전** ([PR #3](https://github.com/2026-hackaton-team/hackaton-ai-service/pull/3)). `main`이나 Windows 단독 `proto_rag_llm` 폴더와 구분하고, 실제 개인정보가 아닌 합성 데이터만 사용합니다.
 
 ## 발표 핵심 메시지
 **“경조사 금액만 추천하지 않습니다. 내 예산·관계 이력에 근거해 선택을 돕고, 직업·직무상 이해관계가 있으면 추천을 멈추고 확인할 사항을 알려줍니다.”**
@@ -12,7 +12,7 @@
 - 차별점 5: 친구의 친구가 공유한 부고는 공유·참석 허용 조건을 충족할 때만 노출
 
 ## 0. 데모 전 준비 — 리허설 체크리스트
-- [ ] 브랜치가 `feat/integrate-rag-react`인지 확인 (`git branch --show-current`)
+- [ ] 실제 작업 폴더 `C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai`에서 `develop`이 선택되어 있고 원격 최신 상태인지 확인 (`git status --short --branch`, `git rev-parse --short HEAD`)
 - [ ] 서버는 `127.0.0.1:8000`, React는 `127.0.0.1:5173`으로 실행
 - [ ] `http://127.0.0.1:8000/api/health` → `status: ok`
 - [ ] `http://127.0.0.1:8000/v4/api/health` → `policy_engine: v4`
@@ -23,23 +23,34 @@
 - [ ] Chrome/Edge 확대 90~100%, 알림·업데이트·민감한 창 닫기, 슬라이드/로컬 화면 백업
 - [ ] 가상 계정 선택은 인증이 아니므로 외부 공개·실데이터 입력 금지
 
-### Windows 실행 (통합 저장소 루트에서)
+### Windows 실행 (`develop` 로컬 저장소)
+
+실행 전에 미커밋 변경을 확인하고, 변경이 있다면 안전하게 보관합니다. 강제 리셋·강제 정리하지 않습니다.
 
 ```powershell
-git switch feat/integrate-rag-react
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt "openai>=1.75,<3"
-.\.venv\Scripts\python.exe -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
+Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai'
+git status --short --branch
+git fetch origin
+git switch develop
+git pull --ff-only origin develop
+
+$venv = Join-Path $env:USERPROFILE 'Documents\Codex\venvs\onmaeum-integration'
+$python = Join-Path $venv 'Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $python)) { py -3.12 -m venv $venv }
+& $python -m pip install -r requirements.txt 'openai>=1.75,<3'
+& $python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
 ```
 
 두 번째 PowerShell:
 
 ```powershell
-cd frontend
+Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai\frontend'
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+Node.js·pnpm 설치가 필요할 수 있습니다. 통합 실행은 **두 터미널이 모두 실행 중이어야 합니다.**
 
 - 발표 화면: **http://127.0.0.1:5173**
 - v4 직무 분석만 직접 열 때: **http://127.0.0.1:8000/v4/**
@@ -102,7 +113,7 @@ pnpm dev
 
 ## 5. 검증 상태·한계 (발표 중 과장 금지)
 
-- GitHub Actions 커밋 `c75d0c519633a9c8112cdd70663beae81a0ea596`: Python **155 passed, 7 subtests passed**, 비차단 경고 1건. React 테스트·빌드 job **success**.
+- 병합 전 최종 통합 HEAD의 [GitHub Actions](https://github.com/2026-hackaton-team/hackaton-ai-service/actions/runs/41158428848): Python **161 passed**, 비차단 경고 1건. React 테스트·빌드 job **success**. PR #3은 `develop`에 병합 완료됨.
 - Windows 브리지에서는 의존성 없는 제한 Docker 이미지로 소스 무결성 **8/8 PASS**, 전체 기능 테스트는 이미지의 FastAPI 의존성 부족으로 이 경로에서 미실행. GitHub CI에서 기능 테스트 수행.
 - 실제 Codyssey/OpenAI 모델 응답 품질, 발표자 Windows 브라우저 E2E, 전체 DB 일원화는 **NOT_RUN 또는 미완료**.
 - v4는 소규모 공개자료 재서술 7개와 문자 n-그램 TF-IDF 검색, 검증된 법률 근거 체크섬을 사용. 실시간 법령 검색/법률 자문 서비스가 아닙니다.
