@@ -1,0 +1,437 @@
+{
+  "metadata": {
+    "title": "김시나리오 AI 자유 상담 검증",
+    "version": 1,
+    "notice": "모든 이름과 거래는 합성 데이터. 금액 정답을 고정하지 않음."
+  },
+  "cases": [
+    {
+      "id": "KIM-01",
+      "person_id": "KIMP001",
+      "name": "김지훈",
+      "title": "가까운 친구",
+      "relation": "친구",
+      "closeness_score": 5,
+      "paid": [
+        50000,
+        50000,
+        50000
+      ],
+      "received": [
+        100000,
+        100000,
+        100000
+      ],
+      "budget_krw": 120000,
+      "question": "김지훈 결혼식에 식사하지 않고 참석할 거야. 계속 축의금을 많이 받은 것 같은데 예산은 12만원이고 이번엔 얼마 해야 할까?",
+      "focus": "reciprocity_up",
+      "group": "합성 시연",
+      "memo": "가까운 친구"
+    },
+    {
+      "id": "KIM-02",
+      "person_id": "KIMP002",
+      "name": "이서연",
+      "title": "내가 더 많이 낸 관계",
+      "relation": "친구",
+      "closeness_score": 3,
+      "paid": [
+        100000,
+        100000,
+        100000,
+        100000
+      ],
+      "received": [
+        50000,
+        50000,
+        50000,
+        50000
+      ],
+      "budget_krw": 100000,
+      "question": "이서연 결혼식에 식사하지 않을 예정이야. 나는 항상 더 많이 줬는데 예산 10만원이면 얼마가 좋을까?",
+      "focus": "reciprocity_down",
+      "group": "합성 시연",
+      "memo": "내가 더 많이 낸 관계"
+    },
+    {
+      "id": "KIM-03",
+      "person_id": "KIMP003",
+      "name": "박민준",
+      "title": "최근 큰 금액을 받은 관계",
+      "relation": "친구",
+      "closeness_score": 4,
+      "paid": [
+        50000,
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000,
+        50000,
+        200000
+      ],
+      "budget_krw": 200000,
+      "question": "박민준 결혼식에 식사하지 않을 거야. 평소 5만원씩 주고받았지만 최근 20만원을 받았어. 이번 예산은 20만원이야. 얼마가 좋을까?",
+      "focus": "recent_large",
+      "group": "합성 시연",
+      "memo": "최근 큰 금액을 받은 관계"
+    },
+    {
+      "id": "KIM-04",
+      "person_id": "KIMP004",
+      "name": "최유진",
+      "title": "반복해서 더 많이 받음",
+      "relation": "친구",
+      "closeness_score": 4,
+      "paid": [
+        30000,
+        30000,
+        30000,
+        30000
+      ],
+      "received": [
+        100000,
+        100000,
+        100000,
+        100000
+      ],
+      "budget_krw": 100000,
+      "question": "최유진 결혼식에 식사하지 않을 예정이고 예산은 10만원이야. 나는 3만원씩 냈는데 상대는 10만원씩 줬어. 얼마가 적당할까?",
+      "focus": "reciprocity_up",
+      "group": "합성 시연",
+      "memo": "반복해서 더 많이 받음"
+    },
+    {
+      "id": "KIM-05",
+      "person_id": "KIMP005",
+      "name": "정현우",
+      "title": "금액 균형과 참석 불균형",
+      "relation": "대학 친구",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        50000,
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000,
+        50000,
+        50000
+      ],
+      "budget_krw": 100000,
+      "question": "정현우 결혼식에 식사하지 않을 예정이야. 금액은 비슷하지만 나는 4번 참석했고 상대는 내 행사에 0번 왔어. 예산은 10만원인데 얼마 할까?",
+      "focus": "attendance",
+      "group": "합성 시연",
+      "memo": "금액 균형과 참석 불균형"
+    },
+    {
+      "id": "KIM-06",
+      "person_id": "KIMP006",
+      "name": "강수빈",
+      "title": "비금전적 도움을 받은 관계",
+      "relation": "오랜 친구",
+      "closeness_score": 5,
+      "paid": [
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000
+      ],
+      "budget_krw": 120000,
+      "question": "강수빈이 항상 행사에 와서 도와줬어. 이번 결혼식에 식사하지 않을 예정이고 예산은 12만원이야. 얼마가 좋을까?",
+      "focus": "support",
+      "group": "합성 시연",
+      "memo": "비금전적 도움을 받은 관계"
+    },
+    {
+      "id": "KIM-07",
+      "person_id": "KIMP007",
+      "name": "조성민",
+      "title": "매우 친하지만 금전 이력 없음",
+      "relation": "절친",
+      "closeness_score": 5,
+      "paid": [],
+      "received": [],
+      "budget_krw": 150000,
+      "question": "절친 조성민 결혼식에 식사하지 않을 예정이야. 주고받은 기록은 없고 예산 15만원이야. 얼마가 좋을까?",
+      "focus": "cold_start_close",
+      "group": "합성 시연",
+      "memo": "매우 친하지만 금전 이력 없음"
+    },
+    {
+      "id": "KIM-08",
+      "person_id": "KIMP008",
+      "name": "윤하린",
+      "title": "낮은 친밀도와 큰 수령액",
+      "relation": "지인",
+      "closeness_score": 1,
+      "paid": [
+        30000
+      ],
+      "received": [
+        200000
+      ],
+      "budget_krw": 100000,
+      "question": "윤하린과는 가깝지 않지만 큰 축의금을 받았어. 결혼식에 식사하지 않을 예정이고 예산은 10만원이야. 얼마 할까?",
+      "focus": "distance_vs_history",
+      "group": "합성 시연",
+      "memo": "낮은 친밀도와 큰 수령액"
+    },
+    {
+      "id": "KIM-09",
+      "person_id": "KIMP009",
+      "name": "장도윤",
+      "title": "예산이 과거보다 작음",
+      "relation": "직장 동료",
+      "closeness_score": 3,
+      "paid": [
+        100000,
+        100000
+      ],
+      "received": [
+        100000,
+        100000
+      ],
+      "budget_krw": 30000,
+      "question": "장도윤 장례식에 예산이 3만원뿐인데 과거엔 10만원씩 주고받았어. 이번엔 얼마가 좋을까?",
+      "focus": "budget_cap",
+      "group": "합성 시연",
+      "memo": "예산이 과거보다 작음"
+    },
+    {
+      "id": "KIM-10",
+      "person_id": "KIMP010",
+      "name": "임지아",
+      "title": "첫 거래",
+      "relation": "동아리 지인",
+      "closeness_score": 3,
+      "paid": [],
+      "received": [],
+      "budget_krw": 70000,
+      "question": "임지아의 첫 결혼식이고 이력이 없는데 식사하지 않을 예정이야. 예산은 7만원이야. 얼마 추천해?",
+      "focus": "cold_start",
+      "group": "합성 시연",
+      "memo": "첫 거래"
+    },
+    {
+      "id": "KIM-11",
+      "person_id": "KIMP011",
+      "name": "한지우",
+      "title": "안정적 거래",
+      "relation": "10년 친구",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        50000,
+        50000,
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000,
+        50000,
+        50000,
+        50000
+      ],
+      "budget_krw": 70000,
+      "question": "한지우와는 10년 동안 5만원씩 주고받았어. 결혼식에 식사하지 않을 거고 예산 7만원인데 얼마 할까?",
+      "focus": "stable",
+      "group": "합성 시연",
+      "memo": "안정적 거래"
+    },
+    {
+      "id": "KIM-12",
+      "person_id": "KIMP012",
+      "name": "오세훈",
+      "title": "최근 이상치",
+      "relation": "동호회 친구",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000,
+        200000
+      ],
+      "budget_krw": 130000,
+      "question": "오세훈이 최근 갑자기 20만원을 줬어. 과거는 5만원이었어. 이번 결혼식에 식사하지 않을 예정이고 예산은 13만원이야. 얼마가 좋을까?",
+      "focus": "outlier",
+      "group": "합성 시연",
+      "memo": "최근 이상치"
+    },
+    {
+      "id": "KIM-13",
+      "person_id": "KIMP013",
+      "name": "서예린",
+      "title": "최근 큰 지출 이후 재행사",
+      "relation": "친구",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        50000,
+        200000
+      ],
+      "received": [
+        50000,
+        50000,
+        50000
+      ],
+      "budget_krw": 70000,
+      "question": "서예린에게 얼마 전에 20만원 냈어. 이번엔 장례식이고 예산은 7만원이야. 얼마 해야 할까?",
+      "focus": "recent_paid",
+      "group": "합성 시연",
+      "memo": "최근 큰 지출 이후 재행사"
+    },
+    {
+      "id": "KIM-14",
+      "person_id": "KIMP014",
+      "name": "신태호",
+      "title": "공직자 직무 관련 의심",
+      "relation": "업무 지인",
+      "closeness_score": 2,
+      "paid": [
+        50000
+      ],
+      "received": [
+        50000
+      ],
+      "budget_krw": 100000,
+      "question": "신태호는 공직자이고 나와 계약 심사 등 직무 관련성이 의심돼. 신태호 장례식에 예산 10만원이면 얼마를 내도 될까?",
+      "focus": "legal_recipient",
+      "group": "합성 시연",
+      "memo": "공직자 직무 관련 의심"
+    },
+    {
+      "id": "KIM-15",
+      "person_id": "KIMP015",
+      "name": "배지민",
+      "title": "제공자 공직자와 업무 상대",
+      "relation": "업무 지인",
+      "closeness_score": 2,
+      "paid": [
+        50000
+      ],
+      "received": [
+        50000
+      ],
+      "budget_krw": 100000,
+      "question": "내가 공무원인데 배지민은 내 업무 평가 관련자일 수 있어. 배지민 장례식 예산은 10만원이야. 얼마가 좋을까?",
+      "focus": "legal_sender",
+      "group": "합성 시연",
+      "memo": "제공자 공직자와 업무 상대"
+    },
+    {
+      "id": "KIM-16",
+      "person_id": "KIMP016",
+      "name": "백서준",
+      "title": "축의금과 부의금 혼합",
+      "relation": "친구",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        100000,
+        50000
+      ],
+      "received": [
+        100000,
+        50000,
+        100000
+      ],
+      "budget_krw": 100000,
+      "question": "백서준은 축의금과 부의금 기록이 섞여 있어. 이번 장례식 예산은 10만원인데 얼마가 좋을까?",
+      "focus": "mixed_categories",
+      "group": "합성 시연",
+      "memo": "축의금과 부의금 혼합"
+    },
+    {
+      "id": "KIM-17",
+      "person_id": "KIMP017",
+      "name": "문지훈",
+      "title": "중복 입력 의심 및 동명이인",
+      "relation": "재무팀 동료",
+      "closeness_score": 3,
+      "paid": [
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000
+      ],
+      "budget_krw": 100000,
+      "question": "재무팀 문지훈 장례식 예산은 10만원인데 장부에 동일 금액이 중복 입력됐을지도 몰라. 얼마 할까?",
+      "focus": "duplicate_record",
+      "group": "재무팀",
+      "memo": "중복 입력 의심 및 동명이인"
+    },
+    {
+      "id": "KIM-18",
+      "person_id": "KIMP018",
+      "name": "문지훈",
+      "title": "동명이인 식별",
+      "relation": "운영팀 동료",
+      "closeness_score": 3,
+      "paid": [
+        50000
+      ],
+      "received": [
+        100000
+      ],
+      "budget_krw": 100000,
+      "question": "운영팀 문지훈 결혼식에 식사하지 않을 거야. 예산은 10만원이야. 재무팀 문지훈과 혼동하지 말고 얼마를 추천해?",
+      "focus": "same_name",
+      "group": "운영팀",
+      "memo": "동명이인 식별"
+    },
+    {
+      "id": "KIM-19",
+      "person_id": "KIMP019",
+      "name": "송민재",
+      "title": "오랜 교류 단절",
+      "relation": "오래된 친구",
+      "closeness_score": 1,
+      "paid": [
+        100000,
+        100000
+      ],
+      "received": [
+        100000,
+        100000
+      ],
+      "budget_krw": 100000,
+      "question": "송민재는 과거 친했지만 5년간 연락이 없었어. 이번 결혼식에 식사하지 않을 거고 예산은 10만원이야. 얼마가 좋을까?",
+      "focus": "relationship_drift",
+      "group": "합성 시연",
+      "memo": "오랜 교류 단절"
+    },
+    {
+      "id": "KIM-20",
+      "person_id": "KIMP020",
+      "name": "유채원",
+      "title": "친밀도 최근 상승",
+      "relation": "절친",
+      "closeness_score": 5,
+      "paid": [
+        50000,
+        50000
+      ],
+      "received": [
+        50000,
+        50000
+      ],
+      "budget_krw": 150000,
+      "question": "유채원과 최근 아주 친해졌어. 결혼식에 식사하지 않을 거고 예산 15만원인데 얼마가 좋을까?",
+      "focus": "closeness_rise",
+      "group": "합성 시연",
+      "memo": "친밀도 최근 상승"
+    }
+  ]
+}
