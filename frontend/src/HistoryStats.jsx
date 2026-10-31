@@ -21,6 +21,5 @@ export default function HistoryStats({stats}) {
       const item=stats[key]
       return <p key={key} role="note"><strong>최근 {key==='paid'?'지급':'수령'} 급증 신호:</strong> 이전 기록 중앙값 {money(item.previous_median_krw)} → 최근 {money(item.latest_krw)} ({item.recent_ratio}배)</p>
     })}
-    <small>금액이 0원인 기록은 평균에서 제외합니다. 최근 급증은 이전 양수 거래 2건 이상을 기준으로 2배 이상 증가한 경우의 비교 신호이며 통계적 이상치 판정은 아닙니다.</small>
   </section>
 }
