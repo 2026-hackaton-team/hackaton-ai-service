@@ -105,7 +105,8 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
     dated_received = sorted(received, key=lambda t: (own_events[t["private_event_id"]]["start_date"], t["id"]))
     if len(dated_received) >= 3:
         from statistics import median as _median
-        preceding = _median(t["amount_krw"] for t in dated_received[:-1] if t["amount_krw"] > 0)
+        earlier_amounts = [t["amount_krw"] for t in dated_received[:-1] if t["amount_krw"] > 0]
+        preceding = _median(earlier_amounts) if earlier_amounts else None
         latest = dated_received[-1]["amount_krw"]
         if preceding and latest >= preceding * 2:
             upward += 2 if latest >= preceding * 3 else 1
