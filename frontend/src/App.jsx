@@ -16,6 +16,7 @@ import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored } from './services/workspaceStorage.js';
 import { useServerWorkspace } from './services/serverWorkspace.js';
+import { fetchMe, getAuthToken, logoutAccount, memberWorkspace } from './services/authApi.js';
 import { setDemoAccount } from './services/demoAccount.js';
 import { TEST_USERNAME, TEST_PROFILE_ID } from './services/testAccountDemo.js';
 import { normalizePerson } from './relationships.js';
@@ -59,9 +60,12 @@ export default function App() {
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [readIds, setReadIds] = useStored(workspaceKeys.readIds, []);
   const sharedInbox = useSharedNoticeInbox();
-  const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(sharedInbox.userId);
-  const linked = Boolean(sharedInbox.userId);
-  const workspaceReady = linked && workspace.owner === sharedInbox.userId && workspace.status === 'ready';
+  // 가상 AI 프로필을 고르면 그 프로필의, 아니면 로그인한 회원 자신의 서버 기록을 쓴다.
+  const memberOwner = user?.username && getAuthToken() ? memberWorkspace(user.username) : '';
+  const workspaceOwner = sharedInbox.userId || memberOwner;
+  const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(workspaceOwner);
+  const linked = Boolean(workspaceOwner);
+  const workspaceReady = linked && workspace.owner === workspaceOwner && workspace.status === 'ready';
   const people = linked ? (workspaceReady ? workspace.snapshot.people.map(normalizePerson) : []) : localPeople;
   const events = linked ? (workspaceReady ? workspace.snapshot.events.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })) : []) : localEvents;
   const records = linked ? (workspaceReady ? workspace.snapshot.records : []) : localRecords;
@@ -106,7 +110,7 @@ export default function App() {
 
   async function saveChanges(change) {
     if (!workspaceReady) {
-      notify(linked ? '서버 기록을 불러오거나 이전한 뒤 저장할 수 있어요.' : 'AI에서 가상 계정을 선택한 뒤 서버에 기록해 주세요.');
+      notify(linked ? '서버 기록을 불러오거나 이전한 뒤 저장할 수 있어요.' : '로그인하거나 마음결 AI에서 가상 계정을 선택한 뒤 서버에 기록해 주세요.');
       return false;
     }
     try {
@@ -216,6 +220,14 @@ export default function App() {
       return false;
     }
   }
+  // 저장된 로그인 정보는 서버 세션이 살아 있을 때만 유지한다. (예전 브라우저 계정은 다시 로그인)
+  useEffect(() => {
+    if (!user) return;
+    if (!getAuthToken()) { setUser(null); return; }
+    let active = true;
+    fetchMe().then(profile => { if (active) setUser(profile); }).catch(() => { /* 서버가 꺼져 있으면 저장된 프로필을 그대로 쓴다 */ });
+    return () => { active = false; };
+  }, []);
   // 로그인 계정마다 마지막으로 고른 AI 프로필을 기억했다가 로그인하면 자동으로 선택한다.
   const profileSync = useRef({ user: '', target: null });
   useEffect(() => {
@@ -328,20 +340,20 @@ export default function App() {
       <div className="sidebar-bottom"><nav className="ai-nav-group" aria-label="AI 메뉴">{navigation.filter(item => item.id === 'ai').map(renderNavigationItem)}</nav><div className="sidebar-footer">기록으로 이어지는 우리 사이</div></div>
     </aside>
     <div className="app-content">
-      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} aria-label="메뉴 열기"><Icon name="Menu" /></button></div><div className="topbar-actions"><span className="today-label"><span />{hasUrgentFuneral ? '조용히 위로를 전할 때예요' : dark ? '차분하게 마음을 살피는 하루예요' : '마음을 챙기기 좋은 하루예요'}</span><div className="theme-control"><button className="theme-toggle" aria-label="화면 분위기 설정" aria-expanded={themeOpen} onClick={() => { setThemeOpen(!themeOpen); setAccountOpen(false); }}><Icon name={dark ? 'Moon' : 'Sun'} size={15} /><span>{themeMode === 'auto' ? '자동 분위기' : dark ? '차분한 분위기' : '따뜻한 분위기'}</span><Icon name="ChevronDown" size={12} /></button>{themeOpen && <><div className="popover-scrim" onClick={() => setThemeOpen(false)} /><div className="theme-popover"><strong>마음에 맞는 분위기</strong>{[{ value: 'auto', name: '상황에 따라 자동', icon: 'Monitor', text: '3일 이내 조사가 있으면 차분하게' }, { value: 'light', name: '따뜻한 마음', icon: 'Sun', text: '한지 아이보리와 쪽빛' }, { value: 'dark', name: '차분한 마음', icon: 'Moon', text: '깊은 먹빛으로 전하는 위로' }].map(item => <button key={item.value} onClick={() => { setThemeMode(item.value); setThemeOpen(false); }}><Icon name={item.icon} size={17} /><span>{item.name}<small>{item.text}</small></span>{themeMode === item.value && <Icon name="Check" size={16} />}</button>)}</div></>}</div><span className="topbar-divider" /><button className="notification-trigger icon-button" aria-label={`알림 ${unreadCount}개`} onClick={() => setNotificationsOpen(true)}><Icon name="Bell" size={20} />{unreadCount > 0 && <span className="notification-dot" />}</button><div className="account-control"><button className="topbar-avatar" aria-label="계정 관리" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); setThemeOpen(false); }}><Icon name="UserRound" size={17} /></button>{accountOpen && <><div className="popover-scrim" onClick={() => setAccountOpen(false)} /><div className="account-popover">{user ? <><strong>{user.name}님</strong><small>@{user.username || user.email}{user.workplace ? ` · ${user.workplace}` : ''}</small><button onClick={() => { setAccountOpen(false); setModal({ type: 'profile' }); }}><Icon name="UserRound" size={16} />정보 수정</button><button onClick={() => { setUser(null); setAccountOpen(false); notify('로그아웃했어요.'); }}><Icon name="LogOut" size={16} />로그아웃</button></> : <><strong>나의 마음 기록</strong><button onClick={() => { setAccountOpen(false); setModal({type:'login'}); }}><Icon name="LogIn" size={16} />로그인</button><button onClick={() => { setAccountOpen(false); setModal({type:'signup'}); }}><Icon name="UserPlus" size={16} />회원가입</button></>}</div></>}</div></div></header>
+      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} aria-label="메뉴 열기"><Icon name="Menu" /></button></div><div className="topbar-actions"><span className="today-label"><span />{hasUrgentFuneral ? '조용히 위로를 전할 때예요' : dark ? '차분하게 마음을 살피는 하루예요' : '마음을 챙기기 좋은 하루예요'}</span><div className="theme-control"><button className="theme-toggle" aria-label="화면 분위기 설정" aria-expanded={themeOpen} onClick={() => { setThemeOpen(!themeOpen); setAccountOpen(false); }}><Icon name={dark ? 'Moon' : 'Sun'} size={15} /><span>{themeMode === 'auto' ? '자동 분위기' : dark ? '차분한 분위기' : '따뜻한 분위기'}</span><Icon name="ChevronDown" size={12} /></button>{themeOpen && <><div className="popover-scrim" onClick={() => setThemeOpen(false)} /><div className="theme-popover"><strong>마음에 맞는 분위기</strong>{[{ value: 'auto', name: '상황에 따라 자동', icon: 'Monitor', text: '3일 이내 조사가 있으면 차분하게' }, { value: 'light', name: '따뜻한 마음', icon: 'Sun', text: '한지 아이보리와 쪽빛' }, { value: 'dark', name: '차분한 마음', icon: 'Moon', text: '깊은 먹빛으로 전하는 위로' }].map(item => <button key={item.value} onClick={() => { setThemeMode(item.value); setThemeOpen(false); }}><Icon name={item.icon} size={17} /><span>{item.name}<small>{item.text}</small></span>{themeMode === item.value && <Icon name="Check" size={16} />}</button>)}</div></>}</div><span className="topbar-divider" /><button className="notification-trigger icon-button" aria-label={`알림 ${unreadCount}개`} onClick={() => setNotificationsOpen(true)}><Icon name="Bell" size={20} />{unreadCount > 0 && <span className="notification-dot" />}</button><div className="account-control"><button className="topbar-avatar" aria-label="계정 관리" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); setThemeOpen(false); }}><Icon name="UserRound" size={17} /></button>{accountOpen && <><div className="popover-scrim" onClick={() => setAccountOpen(false)} /><div className="account-popover">{user ? <><strong>{user.name}님</strong><small>@{user.username || user.email}{user.workplace ? ` · ${user.workplace}` : ''}</small><button onClick={() => { setAccountOpen(false); setModal({ type: 'profile' }); }}><Icon name="UserRound" size={16} />정보 수정</button><button onClick={() => { logoutAccount(); setUser(null); setAccountOpen(false); notify('로그아웃했어요.'); }}><Icon name="LogOut" size={16} />로그아웃</button></> : <><strong>나의 마음 기록</strong><button onClick={() => { setAccountOpen(false); setModal({type:'login'}); }}><Icon name="LogIn" size={16} />로그인</button><button onClick={() => { setAccountOpen(false); setModal({type:'signup'}); }}><Icon name="UserPlus" size={16} />회원가입</button></>}</div></>}</div></div></header>
       <main id="main" className={`main-content ${page === 'home' ? 'home-main' : ''}`} key={page}>
         <section className="card" aria-live="polite" style={{ marginBottom: 12, padding: 12 }}>
           {!linked
-            ? <p>서버 기록을 사용하려면 마음결 AI에서 가상 계정을 선택해 주세요. 현재 인맥·장부는 기존 브라우저 백업 보기이며 새 기록은 저장되지 않습니다.</p>
-            : workspace.owner !== sharedInbox.userId || workspace.status === 'loading'
+            ? <p>서버 기록을 사용하려면 로그인하거나 마음결 AI에서 가상 계정을 선택해 주세요. 현재 인맥·장부는 기존 브라우저 백업 보기이며 새 기록은 저장되지 않습니다.</p>
+            : workspace.owner !== workspaceOwner || workspace.status === 'loading'
               ? <p>서버 인맥·일정·장부를 불러오는 중입니다.</p>
               : workspace.status === 'migration'
-              ? <><p>선택한 가상 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
+              ? <><p>현재 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
                 <button className="button button-primary" onClick={() => initializeWorkspace(true)}>기존 브라우저 기록 서버로 이전</button>
                 <button className="button button-secondary" onClick={() => initializeWorkspace(false)}>빈 서버 공간 시작</button></>
               : workspace.status === 'error'
                   ? <p role="alert">서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
-                  : <p>서버 작업공간 연결됨 · 가상 계정 {sharedInbox.userId} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.</p>}
+                  : <p>서버 작업공간 연결됨 · {sharedInbox.userId ? `가상 계정 ${sharedInbox.userId} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.` : `내 계정 @${user?.username} · 인맥·일정·장부를 서버 SQLite에 저장합니다.`}</p>}
         </section>
         {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} onOpenReceived={() => setModal({ type: 'received' })} receivedCount={newReceivedCount} />}

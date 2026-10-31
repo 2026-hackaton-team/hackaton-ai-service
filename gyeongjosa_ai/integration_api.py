@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+from .account_api import bearer_token, get_account_store
+from .account_store import WORKSPACE_PREFIX, workspace_owner
 from .dependencies import get_service
 from .data import public_legacy_candidate
 from .shared_events_store import SharedEventsStore
@@ -61,6 +63,16 @@ def _user(x_demo_user_id: str = Header(default=""), service=Depends(get_service)
     if not x_demo_user_id or x_demo_user_id not in service.data.users:
         raise HTTPException(401, "가상 계정을 먼저 선택하세요. 실제 인증 기능은 제공되지 않습니다.")
     return x_demo_user_id
+
+def _workspace_user(x_demo_user_id: str = Header(default=""), token: str = Depends(bearer_token),
+                    service=Depends(get_service), accounts=Depends(get_account_store)):
+    """가상 프로필, 또는 로그인한 회원 자신의 작업공간(ACC:아이디)만 허용한다."""
+    if x_demo_user_id.startswith(WORKSPACE_PREFIX):
+        profile = accounts.authenticate(token)
+        if profile is None or workspace_owner(profile["username"]) != x_demo_user_id:
+            raise HTTPException(401, "로그인한 계정의 기록만 사용할 수 있어요. 다시 로그인해 주세요.")
+        return x_demo_user_id
+    return _user(x_demo_user_id, service)
 
 def _conversation(db, cid, uid):
     result = db.execute("SELECT * FROM conversations WHERE id=? AND user_id=?", (cid, uid)).fetchone()
@@ -207,19 +219,19 @@ def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
     }
 
 @router.get("/workspace/personal")
-def personal_workspace(user_id: str = Depends(_user)):
+def personal_workspace(user_id: str = Depends(_workspace_user)):
     """현재 가상 계정이 서버에 저장한 인맥·일정·장부를 반환한다."""
     return load_workspace(user_id)
 
 
 @router.post("/workspace/migrations/preview")
-def workspace_migration_preview(data: WorkspaceInput, user_id: str = Depends(_user)):
+def workspace_migration_preview(data: WorkspaceInput, user_id: str = Depends(_workspace_user)):
     """로컬 기록 이전 전 참조 관계와 서버 변경 버전을 검증한다."""
     return preview_workspace(user_id, data)
 
 
 @router.put("/workspace/personal")
-def save_personal_workspace(data: WorkspaceInput, user_id: str = Depends(_user)):
+def save_personal_workspace(data: WorkspaceInput, user_id: str = Depends(_workspace_user)):
     """현재 계정의 저장 데이터만 버전 검증 후 원자적으로 교체한다."""
     return save_workspace(user_id, data)
 

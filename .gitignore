@@ -17,6 +17,7 @@ frontend/dist/
 data/demo_conversations.sqlite3*
 data/demo_workspace.sqlite3*
 data/demo_profiles.db*
+data/demo_accounts.sqlite3*
 
 # Local working notes
 /docs/LOCAL_DEMO_REVIEW.md

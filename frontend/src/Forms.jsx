@@ -4,14 +4,13 @@ import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, resolveRelation } from './relatio
 import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
 import { demoApi } from './services/demoApi.js'
-import { findAccount, normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, publicProfile, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
-import { TEST_USERNAME, matchesTestLogin } from './services/testAccountDemo.js'
+import { normalizeUsername, signupError, profileUpdateError, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
+import { TEST_USERNAME } from './services/testAccountDemo.js'
+import { loginAccount, signupAccount, updateAccount } from './services/authApi.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const CUSTOM_TYPE = '__custom'
 const CUSTOM_TYPE_SUGGESTIONS = ['환갑', '칠순', '팔순', '졸업', '집들이']
-const ACCOUNTS_KEY = 'maeum-demo-accounts-v1'
-const PBKDF2_ITERATIONS = 210000
 
 function todayInSeoul() {
   const parts = new Intl.DateTimeFormat('en', {
@@ -269,29 +268,6 @@ export function RecordForm({ people = [], events = [], onSave, onClose, initialP
   </Modal>
 }
 
-function bytesToBase64(bytes) {
-  return btoa(String.fromCharCode(...bytes))
-}
-
-function base64ToBytes(value) {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0))
-}
-
-async function hashPassword(password, salt, iterations = PBKDF2_ITERATIONS) {
-  if (!globalThis.crypto?.subtle) throw new Error('crypto-unavailable')
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, key, 256)
-  return bytesToBase64(new Uint8Array(bits))
-}
-
-function readAccounts() {
-  const stored = localStorage.getItem(ACCOUNTS_KEY)
-  if (!stored) return []
-  const accounts = JSON.parse(stored)
-  if (!Array.isArray(accounts)) throw new Error('invalid-storage')
-  return accounts
-}
-
 const emptyAuthForm = { username: '', name: '', password: '', confirmation: '', phone: '', email: '', workplace: '', organization: '', workType: '', visibility: '' }
 
 function WorkFields({ form, update, disabled }) {
@@ -304,9 +280,7 @@ function WorkFields({ form, update, disabled }) {
 }
 
 function accountErrorMessage(cause) {
-  return cause?.message === 'crypto-unavailable'
-    ? '이 브라우저에서는 계정을 저장할 수 없어요. localhost 또는 HTTPS 환경에서 다시 시도해 주세요.'
-    : '브라우저 저장소를 사용할 수 없어요. 저장 공간과 브라우저 설정을 확인해 주세요.'
+  return cause?.status ? cause.message : '서버에 연결하지 못했어요. 서버가 실행 중인지 확인해 주세요.'
 }
 
 export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
@@ -330,31 +304,7 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
     setPending(true)
     setError('')
     try {
-      const accounts = readAccounts()
-      if (signup) {
-        const error = signupError(form, accounts)
-        if (error) { setError(error); return }
-        const salt = crypto.getRandomValues(new Uint8Array(16))
-        const hash = await hashPassword(form.password, salt)
-        const account = { username: normalizeUsername(form.username), name: form.name.trim(), phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(), organization: form.organization.trim(), workType: form.workType, visibility: form.visibility, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS }
-        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
-        onSuccess(publicProfile(account))
-      } else {
-        let account = findAccount(accounts, form.username)
-        if (!account && matchesTestLogin(form.username, form.password)) {
-          const salt = crypto.getRandomValues(new Uint8Array(16))
-          account = { username: TEST_USERNAME, name: '테스트 사용자', phone: '',
-            email: 'test1234@example.invalid', workplace: '마음결 시연팀',
-            organization: '해커톤 시연', workType: '일반 회사원', visibility: '전체 공개',
-            salt: bytesToBase64(salt), hash: await hashPassword(form.password, salt),
-            iterations: PBKDF2_ITERATIONS }
-          localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
-        }
-        if (!account?.salt || !account?.hash) { setError('아이디와 비밀번호를 확인해 주세요. 처음이라면 회원가입을 해 주세요.'); return }
-        const hash = await hashPassword(form.password, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
-        if (hash !== account.hash) { setError('아이디와 비밀번호를 확인해 주세요.'); return }
-        onSuccess(publicProfile(account))
-      }
+      onSuccess(await (signup ? signupAccount(form) : loginAccount(form)))
     } catch (cause) {
       setError(accountErrorMessage(cause))
     } finally {
@@ -385,7 +335,7 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
 
 export function ProfileEditModal({ user, onClose, onSave }) {
   const [form, setForm] = useState(() => {
-    const account = (() => { try { return findAccount(readAccounts(), user?.username) } catch { return undefined } })() || user || {}
+    const account = user || {}
     return { currentPassword: '', password: '', confirmation: '', phone: account.phone || '', email: account.email || '', workplace: account.workplace || '', organization: account.organization || '', workType: account.workType || '', visibility: account.visibility || '' }
   })
   const [error, setError] = useState('')
@@ -398,20 +348,9 @@ export function ProfileEditModal({ user, onClose, onSave }) {
     setPending(true)
     setError('')
     try {
-      const accounts = readAccounts()
-      const account = findAccount(accounts, user?.username)
-      if (!account?.salt || !account?.hash) { setError('이 브라우저에 저장된 계정을 찾지 못했어요. 다시 로그인해 주세요.'); return }
-      const error = profileUpdateError(form, accounts, account.username)
+      const error = profileUpdateError(form)
       if (error) { setError(error); return }
-      const next = { ...account, phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(), organization: form.organization.trim(), workType: form.workType, visibility: form.visibility }
-      if (form.password) {
-        const current = await hashPassword(form.currentPassword, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
-        if (current !== account.hash) { setError('현재 비밀번호가 맞지 않아요.'); return }
-        const salt = crypto.getRandomValues(new Uint8Array(16))
-        Object.assign(next, { salt: bytesToBase64(salt), hash: await hashPassword(form.password, salt), iterations: PBKDF2_ITERATIONS })
-      }
-      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts.map(item => item === account ? next : item)))
-      onSave(publicProfile(next), Boolean(form.password))
+      onSave(await updateAccount(form), Boolean(form.password))
     } catch (cause) {
       setError(accountErrorMessage(cause))
     } finally {
