@@ -110,6 +110,19 @@ def test_persona_api_and_20_real_dialogues(tmp_path, monkeypatch):
                 assert reply.status_code == 200, (item["id"], reply.text)
                 result = reply.json()
                 assert result["status"] in {"answer", "need_more_info"}
+                if result["status"] == "answer":
+                    assert result["context"]["person_id"] == item["person_id"], item["id"]
+                expected_signals = {
+                    "reciprocity_up": "reciprocity",
+                    "recent_large": "recent_large_gift",
+                    "relationship_drift": "relationship_drift",
+                    "closeness_rise": "closeness",
+                }
+                if item["focus"] in expected_signals and result["status"] == "answer":
+                    signals = {row["signal"] for row in result["v4_analysis"]["relationship_adjustments"]}
+                    assert expected_signals[item["focus"]] in signals, item["id"]
+                if item["focus"] in {"legal_recipient", "legal_sender"} and result["status"] == "answer":
+                    assert result.get("suggested_amount_krw") is None, item["id"]
                 if item["focus"] not in {"legal_recipient", "legal_sender"}:
                     assert result["status"] == "answer", item["id"]
                     assert result.get("suggested_amount_krw") is not None, item["id"]
