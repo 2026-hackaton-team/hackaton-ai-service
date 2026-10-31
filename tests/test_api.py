@@ -28,7 +28,8 @@ def test_local_api_and_web_contract():
             assert 'name="mode"' not in root.text
             assert client.get("/api/health").json()["status"] == "ok"
             users = client.get("/api/users").json()["users"]
-            assert len(users) == 117
+            assert len(users) == 118
+            assert any(item["id"] == "TEST1234" for item in users)
             notices = client.get("/api/users/U001/notices").json()["notices"]
             assert {item["notice"]["id"] for item in notices} == {"N001", "N002"}
             assert all(item["notice"]["id"] != "N003" for item in notices)

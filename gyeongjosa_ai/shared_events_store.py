@@ -4,6 +4,8 @@ import json
 import sqlite3
 import uuid
 from contextlib import closing
+
+from .test_account_seed import own_shared_events
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -57,6 +59,14 @@ class SharedEventsStore:
                        (item["id"], publisher_user_id, json.dumps(item, ensure_ascii=False)))
             db.commit()
         return item
+
+    def seed_test_events(self):
+        """기존 소식을 보존하며 테스트 계정의 최초 공유 소식만 추가한다."""
+        with closing(self._connect()) as db:
+            for item in own_shared_events():
+                db.execute("INSERT OR IGNORE INTO shared_events VALUES (?, ?, ?)",
+                           (item["id"], item["publisher_user_id"], json.dumps(item, ensure_ascii=False)))
+            db.commit()
 
     def revoke(self, event_id, publisher_user_id):
         """작성자의 소식만 비공개로 바꾼다."""

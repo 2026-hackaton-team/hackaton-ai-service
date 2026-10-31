@@ -20,6 +20,8 @@ def load_data(path=None):
         from .special_fixtures import merge_special_fixtures
         dataset = merge_special_fixtures(dataset)
         dataset = merge_designated_notices(dataset)
+        from .test_account_seed import extend_test_dataset
+        dataset = extend_test_dataset(dataset)
     return DemoData(dataset)
 
 

@@ -139,7 +139,9 @@ class SharedEventRevoke(BaseModel):
 def get_shared_store():
     """별도 가상 공유 소식 저장소를 반환한다."""
     default = Path(__file__).resolve().parents[1] / "data" / "demo_shared_events.sqlite3"
-    return SharedEventsStore(os.environ.get("GYEONGJOSA_SHARED_EVENTS_DB", str(default)))
+    store = SharedEventsStore(os.environ.get("GYEONGJOSA_SHARED_EVENTS_DB", str(default)))
+    store.seed_test_events()
+    return store
 
 
 def shared_today():
