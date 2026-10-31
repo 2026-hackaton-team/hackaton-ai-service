@@ -37,7 +37,7 @@ class LegalPolicyTests(unittest.TestCase):
         r=result(scene='public_peer')['result']
         self.assertEqual(r['legal_assessment']['status'],'NO_DUTY_CEREMONY_LIMIT')
         self.assertEqual(r['amount_krw'],100000)
-        self.assertIn('GOE-PEER-QA',r['legal_assessment']['source_ids'])
+        self.assertIn('ACRC-CEREMONY-QA',r['legal_assessment']['source_ids'])
 
     def test_unknown_duty_no_actionable_amount(self):
         r=result(scene='public_unknown')['result']
@@ -54,7 +54,7 @@ class LegalPolicyTests(unittest.TestCase):
         self.assertTrue(r['policy_adjusted'])
         self.assertTrue(all(x['amount_krw']<=50000 for x in r['scores']))
         self.assertEqual(r['legal_assessment']['cash_limit_krw'],50000)
-        self.assertIn('LAW-EASY-2026',r['evidence_trace']['applied_ids'])
+        self.assertIn('ACRC-CEREMONY-QA',r['evidence_trace']['applied_ids'])
         self.assertTrue(any(d['decision_role']=='applied_legal' for d in x['evidence']))
         self.assertTrue(any(d['decision_role']=='applied_statistic' for d in x['evidence']))
 
@@ -164,7 +164,7 @@ class PlanningAndApiTests(unittest.TestCase):
 
     def test_frontend_not_contain_manual_legal_checkbox(self):
         from app.main import ROOT
-        html=(ROOT/'frontend/index.html').read_text(encoding='utf-8')
+        html=(ROOT/'v4_demo_frontend/index.html').read_text(encoding='utf-8')
         self.assertNotIn('id="legal"',html)
         self.assertIn('id="scenario"',html)
         self.assertIn('id="policyStatus"',html)
