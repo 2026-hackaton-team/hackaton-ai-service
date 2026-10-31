@@ -110,7 +110,7 @@ def test_persona_api_and_20_real_dialogues(tmp_path, monkeypatch):
                 assert reply.status_code == 200, (item["id"], reply.text)
                 result = reply.json()
                 assert result["status"] in {"answer", "need_more_info"}
-                if result["suggested_amount_krw"] is not None:
+                if result.get("suggested_amount_krw") is not None:
                     assert 0 < result["suggested_amount_krw"] <= item["budget_krw"]
                     assert result["suggested_amount_krw"] == result["v4_analysis"]["amount_krw"]
                 assert len(client.get(f"/api/conversations/{cid}", headers=headers).json()["messages"]) == 2
