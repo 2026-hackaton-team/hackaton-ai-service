@@ -111,7 +111,7 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         <Field label="장소" required full><input className="input" value={form.location} onChange={(event) => update('location', event.target.value)} placeholder={mine && type === '장례식' ? '예) 서울 마음빛 장례식장 1호실' : '예) 그린 웨딩홀 3층 그랜드홀'} maxLength={150} required /></Field>
         <Field label="일정 이름" full hint={mine ? '비워 두면 내 이름과 행사 유형으로 만들어 드려요.' : '비워 두면 이름과 행사 유형으로 만들어 드려요.'}><input className="input" value={form.title} onChange={(event) => update('title', event.target.value)} placeholder={mine ? `${myName}의 ${type || '결혼식'}` : `${selectedPerson?.name || form.personName || '김도윤'} ${type || '결혼식'}`} maxLength={80} /></Field>
         {mine && <>
-          <Field label="친구에게 알리기" full hint={!user ? '로그인하면 마음결 친구에게 일정을 보낼 수 있어요.' : form.shareScope === 'friends_of_friends' ? '보낼 친구를 고른 뒤, 내 친구와 친구인 사람들에게도 소식이 보여요.' : form.shareScope === 'friends' ? '등록 후 일정을 받을 친구를 고를 수 있어요.' : '나만 볼 수 있어요. 나중에 일정 상세에서 보낼 수도 있어요.'}>
+          <Field label="친구에게 알리기" full hint={!user ? '로그인하면 마음결 친구에게 일정을 보낼 수 있어요.' : form.shareScope === 'friends_of_friends' ? '등록하면 친구의 친구에게 자동으로 알립니다. 직접 친구에게 보내려면 일정 상세에서 선택하세요.' : form.shareScope === 'friends' ? '등록 후 일정을 받을 친구를 고를 수 있어요.' : '나만 볼 수 있어요. 나중에 일정 상세에서 보낼 수도 있어요.'}>
             <select className="input" value={form.shareScope} onChange={(event) => update('shareScope', event.target.value)} disabled={!user}>
               <option value="private">나만 보기</option><option value="friends">친구에게 보내기</option><option value="friends_of_friends">친구의 친구까지 알리기</option>
             </select>
@@ -126,7 +126,7 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         </Field>
       </div>
       <FormError message={error} />
-      <FormActions onClose={onClose}><Icon name={mine && form.shareScope !== 'private' ? 'Send' : 'Plus'} size={17} />{mine && form.shareScope !== 'private' ? '등록하고 친구 고르기' : '일정 등록하기'}</FormActions>
+      <FormActions onClose={onClose}><Icon name={mine && form.shareScope !== 'private' ? 'Send' : 'Plus'} size={17} />{mine && form.shareScope === 'friends' ? '등록하고 친구 고르기' : mine && form.shareScope === 'friends_of_friends' ? '등록하고 친구의 친구에게 알리기' : '일정 등록하기'}</FormActions>
     </form>
   </Modal>
 }
