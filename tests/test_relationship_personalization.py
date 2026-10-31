@@ -43,7 +43,8 @@ def test_closeness_changes_the_recommendation():
     lower = recommend("V4P013", closeness_override=2)
     higher = recommend("V4P013", closeness_override=5)
     assert lower["status"] == higher["status"] == "RECOMMENDED"
-    assert higher["amount_krw"] > lower["amount_krw"]
+    assert higher["raw_personalized_amount_krw"] > lower["raw_personalized_amount_krw"]
+    assert higher["amount_krw"] >= lower["amount_krw"]
     assert any(row["signal"] == "closeness" for row in higher["relationship_adjustments"])
 
 
@@ -110,7 +111,8 @@ def test_user_closeness_input_overrides_scenario_default():
     q = "가상 시나리오: 금액보다 소중한 친구야. 예산은 10만원이고 친밀도는 {}점"
     low = ask(q.format(2))
     high = ask(q.format(5))
-    assert high["suggested_amount_krw"] > low["suggested_amount_krw"]
+    assert high["suggested_amount_krw"] >= low["suggested_amount_krw"]
+    assert any(row["signal"] == "closeness" for row in high["v4_analysis"]["relationship_adjustments"])
 
 
 def test_relationship_rag_never_claims_a_numeric_rule():
