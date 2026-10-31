@@ -47,3 +47,23 @@ test('API 오류와 누락된 응답은 실패로, 완료 건만 집계한다',(
   )
   assert.deepEqual(counts,{PASS:1,REVIEW:1,FAIL:1})
 })
+
+test('실거래가 있는데 평균/중앙값 통계가 빠지면 재검토한다',()=>{
+  const result={...valid,evidence:[...valid.evidence,{kind:'개인 거래',id:'TX1'}]}
+  const checked=evaluateScenario(item,{result})
+  assert.equal(checked.status,'REVIEW')
+  assert.equal(checked.reasons.some(reason=>reason.includes('평균')),true)
+})
+
+test('최근 큰 수령과 최근 큰 지급의 급증 신호를 별도로 검사한다',()=>{
+  const base={...valid,
+    history_stats:{paid:{recent_spike:false},received:{recent_spike:false}},
+  }
+  const received=evaluateScenario({...item,focus:'outlier'},{result:base})
+  assert.equal(received.status,'REVIEW')
+  assert.equal(received.reasons.some(reason=>reason.includes('급증')),true)
+  const paid=evaluateScenario({...item,focus:'recent_paid'},{result:{
+    ...base,history_stats:{paid:{recent_spike:true},received:{recent_spike:false}},
+  }})
+  assert.equal(paid.status,'PASS')
+})
