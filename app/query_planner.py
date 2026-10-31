@@ -8,6 +8,7 @@ def plan(event_type: str, relationship: str, attendance_with_meal: bool | None,
     queries = {
         "legal": "청탁금지법 공직자등 직무 관련 부조 경조사비 예외 5만원",
         "statistical": f"{event_type} {relationship} 축의금 부의금 설문 적정 금액" + (" 참석 식사" if attendance_with_meal else ""),
+        "relationship": f"{relationship} 인간관계 호혜성 감사 선물 부담 친밀도",
     }
     # LLM은 추가 검색어 제안만 허용. 공식 법률 검색은 항상 고정한다.
     if mode == "offline" or not os.getenv("OPENAI_API_KEY"):
