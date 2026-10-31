@@ -30,3 +30,18 @@
 .home-page>.home-ai{margin-top:28px}
 @media(max-width:550px){.home-page>.home-ai{margin-top:22px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* AI 상담의 역할별 말풍선과 답변 본문을 명확히 구분한다. */
+.ai-page .ai-conversation .ai-user-message{margin:18px 0 20px}
+.ai-page .ai-conversation .ai-user-bubble{max-width:78%;padding:12px 16px;background:var(--primary-soft);border:1px solid var(--border);border-radius:16px 16px 4px 16px;color:var(--text);font-size:15px;line-height:1.75;overflow-wrap:anywhere}
+.ai-page .ai-conversation .ai-user-bubble>p{margin:0}
+.ai-page .ai-conversation .ai-assistant-message .ai-answer-bubble{flex:0 1 800px;background:var(--surface-soft);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:16px 20px}
+:root .app main .ai-page .ai-conversation .ai-answer-bubble>p{font-size:15px;line-height:1.8;color:var(--text);margin:0 0 12px;overflow-wrap:anywhere;word-break:keep-all}
+:root .app main .ai-page .ai-conversation .ai-answer-bubble>p.ai-recommended-amount{font-size:18px;font-weight:700;color:var(--primary)}
+.ai-page .ai-conversation .ai-analysis-details>summary{font-size:13px;line-height:1.6;color:var(--text)}
+@media(max-width:760px){
+  .ai-page .ai-conversation .ai-user-bubble{max-width:90%;padding:11px 13px;font-size:14px}
+  .ai-page .ai-conversation .ai-assistant-message .ai-answer-bubble{padding:13px 14px}
+  :root .app main .ai-page .ai-conversation .ai-answer-bubble>p{font-size:14px;line-height:1.75}
+  :root .app main .ai-page .ai-conversation .ai-answer-bubble>p.ai-recommended-amount{font-size:17px}
+}
