@@ -55,11 +55,11 @@ def users():
             for u in DEMO_USERS.values()]
 
 @app.get('/api/demo/people')
-def people(user_id: str = Query(min_length=1)):
+def people(user_id: str = Query(min_length=1), include_special: bool = False):
     if user_id not in DEMO_USERS: raise HTTPException(404,'데모 계정이 없습니다.')
     return [{'id':p['id'],'name':p['name'],'relationship':p['relationship'],
              'affiliation':p['fictional_affiliation']} for p in DEMO['people']
-             if p['owner_user_id']==user_id]
+             if p['owner_user_id']==user_id and (include_special or not p['id'].startswith('V4P'))]
 
 @app.get('/api/demo/scenarios')
 def scenarios(person_id: str = Query(min_length=1)):
