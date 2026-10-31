@@ -5,9 +5,11 @@ from functools import lru_cache
 from .ai import ModelGateway
 from .data import load_data
 from .service import ChatService
+from .scenario_lab import ensure_scenario_workspace, with_scenario_user
 
 
 @lru_cache(maxsize=1)
 def get_service():
     """고정된 가상 데이터와 모델 연결을 준비한다."""
-    return ChatService(load_data(), ModelGateway())
+    ensure_scenario_workspace()
+    return ChatService(with_scenario_user(load_data()), ModelGateway())

@@ -178,6 +178,15 @@ def chat_scenarios(user_id: str = Depends(_user)):
     ]}
 
 
+@router.get("/demo/kim-scenarios")
+def kim_scenarios(user_id: str = Depends(_user)):
+    """전용 합성 계정에서만 20개 실제 상담 검증 질문을 공개한다."""
+    from .scenario_lab import USER_ID, catalog
+    if user_id != USER_ID:
+        raise HTTPException(403, "김시나리오 계정에서만 사용할 수 있습니다.")
+    return catalog()
+
+
 @router.get("/workspace")
 def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
     return {
