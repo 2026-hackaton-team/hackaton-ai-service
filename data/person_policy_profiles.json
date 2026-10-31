@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31-v2",
+  "version": "2026-10-31-v3",
   "notice": "모든 직업·직무관계는 원본 JSON 밖에서 추가한 합성 시연 데이터이며 실제 인물 신분의 근거가 아니다.",
   "profiles": {
     "P001": {
@@ -94,6 +94,30 @@
         "conflict": "high",
         "provenance": "synthetic_scenario",
         "description": "가상 계약 심사 담당자, 예외 미성립"
+      }
+    },
+    "chat_public_exception": {
+      "label": "채팅 가정: 직무 관련 부조 예외 성립",
+      "person_id": "P004",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "yes",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자등·직무관련·부조 예외 성립 가정"
+      }
+    },
+    "chat_public_procurement": {
+      "label": "채팅 가정: 계약 심사 이해관계·예외 미성립",
+      "person_id": "P005",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "no",
+        "conflict": "high",
+        "provenance": "synthetic_scenario",
+        "description": "가상 계약심사 이해관계·예외 미성립"
       }
     }
   }
