@@ -98,6 +98,13 @@ export function upsertShare(state, { owner, ownerName, event, scope = 'friends',
   return { ...state, shares: existing ? state.shares.map(item => item === existing ? next : item) : [...state.shares, next] };
 }
 
+export function publishFriendOfFriendEvent(state, user, event, message = '') {
+  return upsertShare(state, {
+    owner: user.username, ownerName: user.name, event,
+    scope: 'friends_of_friends', message,
+  });
+}
+
 export function updateSharedEvent(state, owner, event) {
   const existing = shareForEvent(state, owner, event.id);
   if (!existing) return state;
