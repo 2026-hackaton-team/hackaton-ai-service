@@ -203,3 +203,44 @@ def test_budget_followup_via_conversation_api_without_llm(monkeypatch):
                 assert saved["state"]["budget_krw"] == 1000000
         finally:
             app.dependency_overrides.pop(get_service, None)
+
+
+@pytest.mark.parametrize(("reply", "expected"), [
+    ("100만", 1000000), ("100만원", 1000000), ("100만이요", 1000000),
+    ("100,000", 100000), ("99999", 99999), ("0", 0),
+])
+def test_scenario_budget_reply_without_regular_expressions(reply, expected):
+    """가상 시나리오 후속 예산은 정규식 없이 동일한 원화 금액으로 읽는다."""
+    from gyeongjosa_ai.v4_chat import _amount
+    assert _amount(reply, followup=True) == expected
+    assert _amount(reply, followup=False) is None
+
+
+@pytest.mark.parametrize(("question", "expected"), [
+    ("예산은 3만원, 지난번에는 10만원을 받았어", 30000),
+    ("지난번 받은 20만원, 최대 7만원까지만 가능해", 70000),
+    ("최근 20만원을 받았어", None),
+])
+def test_scenario_budget_does_not_use_recorded_amount(question, expected):
+    """가상 시연의 과거 수령액을 최대 예산으로 오해하지 않는다."""
+    from gyeongjosa_ai.v4_chat import _amount
+    assert _amount(question, followup=False) == expected
+
+
+def test_scenario_cash_and_wreath_keep_separate_values():
+    """조의금과 조화의 두 금액을 혼합하지 않는다."""
+    from gyeongjosa_ai.v4_chat import _gift_amount
+    text = "조의금 5만원, 조화 3만원"
+    assert _gift_amount(text, ("조의금", "현금")) == 50000
+    assert _gift_amount(text, ("조화", "화환")) == 30000
+
+
+def test_scenario_module_has_no_regular_expression_import_or_calls():
+    """가상 시나리오 전용 모듈에서 정규식 의존성을 완전히 제거한다."""
+    import ast
+    from gyeongjosa_ai import v4_chat
+    tree = ast.parse(Path(v4_chat.__file__).read_text(encoding="utf-8"))
+    assert not any(isinstance(node, ast.Import) and
+                   any(alias.name == "re" for alias in node.names)
+                   or isinstance(node, ast.ImportFrom) and node.module == "re"
+                   for node in ast.walk(tree))
