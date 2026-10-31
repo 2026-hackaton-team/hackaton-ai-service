@@ -14,6 +14,10 @@ export function extractAILead(message) {
   return text.startsWith('AI 해석: ') ? '' : text
 }
 
-export function visibleAIMessage(message, amount) {
-  return amount == null ? String(message||'') : extractAILead(message)
+export function visibleAIMessage(message, analysis) {
+  if (!analysis) return String(message||'')
+  const lead=extractAILead(message)
+  if (!extractAIInterpretation(message)) return lead
+  if (['POTENTIALLY_PROHIBITED', 'NEEDS_EXPERT_REVIEW'].includes(analysis.status)) return lead
+  return ''
 }
