@@ -85,7 +85,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
           <div className="ai-suggestion-chips">{QUICK_QUESTIONS.map(item=><button type="button" key={item} disabled={!userId||busy} onClick={()=>send(item)}>{item}</button>)}</div>
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
-          <div className={m.role==='user'?'':'ai-assistant-content'}>
+          <div className={m.role==='user'?'ai-user-bubble':'ai-assistant-content ai-answer-bubble'}>
             {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&
               <p className="ai-recommended-amount">{m.result.v4_analysis.status==='NEEDS_FACTS'?'법률 확인 전 비교 참고액':'추천 참고액'}: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>}
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&
@@ -114,7 +114,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
             {m.result?.intent!=='history'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
             {m.result?.budget_analysis&&<BudgetComparison result={m.result}/>}
             {Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<div>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</div>}
-            </details>}}
+            </details>}
           </div>
         </div>)}
         {options.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:8,padding:12}}>
@@ -122,7 +122,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
             item.reply?null:{field:latest.pending_field,value:item.id||item.value})}>{item.label||item.name||item.title||item.id}</button>)}
           {latest.allow_unknown&&<button className="button" disabled={busy} onClick={()=>send('잘 모르겠어요')}>잘 모르겠어요</button>}
         </div>}
-        {busy&&<><div className="ai-user-message"><p style={{whiteSpace:'pre-wrap'}}>{pendingQuestion}</p></div>
+        {busy&&<><div className="ai-user-message"><div className="ai-user-bubble"><p style={{whiteSpace:'pre-wrap'}}>{pendingQuestion}</p></div></div>
           <div className="ai-waiting" role="status" aria-live="polite"><Icon name="Sparkles" size={16}/> 답변 생성 중이에요. 잠시 후 결과가 표시됩니다.</div></>}
         <div ref={bottom}/>
       </div>
