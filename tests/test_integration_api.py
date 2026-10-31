@@ -136,29 +136,36 @@ def test_conversation_api_recalculates_budget_after_no_cash_candidate(
             assert first["pending_field"] == "person_id"
             second = send("해든기획팀 김도윤", 2)
             assert second["pending_field"] == "budget_krw"
-            low = send("999", 3)
+            low = send("1000", 3)
             assert low["status"] == "answer"
-            assert low["budget_analysis"]["budget_krw"] == 999
+            assert low["context"]["budget_krw"] == 1000
+            assert low["budget_analysis"]["budget_krw"] == 1000
             assert low["suggested_amount_krw"] is None
             assert "위로" in low["message"]
-            revised = send("10000", 4)
+            direct_high = send("100000", 4)
+            assert direct_high["status"] == "answer"
+            assert direct_high["context"]["budget_krw"] == 100000
+            assert direct_high["budget_analysis"]["budget_krw"] == 100000
+            assert "1만원 미만" not in direct_high["message"]
+            assert direct_high["suggested_amount_krw"] is None or direct_high["suggested_amount_krw"] <= 100000
+            revised = send("10000", 5)
             assert revised["status"] == "answer"
             assert revised["context"]["budget_krw"] == 10000
             assert revised["budget_analysis"]["budget_krw"] == 10000
             assert revised["suggested_amount_krw"] is None or revised["suggested_amount_krw"] <= 10000
-            intermediate = send("99999", 5)
+            intermediate = send("99999", 6)
             assert intermediate["status"] == "answer"
             assert intermediate["context"]["budget_krw"] == 99999
             assert intermediate["budget_analysis"]["budget_krw"] == 99999
             assert intermediate["suggested_amount_krw"] is None or intermediate["suggested_amount_krw"] <= 99999
-            high = send("100000", 6)
+            high = send("100000", 7)
             assert high["status"] == "answer"
             assert high["context"]["budget_krw"] == 100000
             assert high["budget_analysis"]["budget_krw"] == 100000
             assert "예산 100,000원" in high["message"]
             assert high["suggested_amount_krw"] is None or high["suggested_amount_krw"] <= 100000
             assert "위로" in high["message"]
-            assert gateway.classify_calls == 3
+            assert gateway.classify_calls == 2
             saved = client.get(f"/api/conversations/{cid}", headers=headers)
             assert saved.status_code == 200
             assert saved.json()["state"]["budget_krw"] == 100000
