@@ -104,7 +104,7 @@ def test_intent_fallback_does_not_replace_answer_generation_model(tmp_path, monk
     gateway = ClassificationGateway()
     service = ChatService(data_for_chat(load_data(), "U001"), gateway)
     result = service.chat_auto({
-        "user_id": "U001", "question": "친구A 결혼식이고 예산은 10만원이에요",
+        "user_id": "U001", "question": "친구A 결혼식에 참석해서 식사해요. 예산은 10만원이에요",
         "context": {"person_id": "p1"},
     })
     assert result["status"] == "answer"
