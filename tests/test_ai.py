@@ -162,3 +162,14 @@ def test_model_request_timeout_for_demo():
     """긴 모델 대기를 줄이되 호출자가 명시한 제한시간은 보존한다."""
     assert ModelGateway(api_key="test").timeout == 25
     assert ModelGateway(api_key="test", timeout=42).timeout == 42
+
+
+def test_internal_field_names_never_pass_response_validation():
+    """생성형 답변에 내부 자료 필드가 나오면 외부 노출 전에 차단한다."""
+    context = {"mode": "history", "history": {"transactions": []}}
+    for key in ("subject_relation", "suggested_amount_krw", "person_id"):
+        payload = json.dumps({"answer": f"내부 정보 {key}를 확인하세요.",
+                              "evidence_ids": [], "suggested_amount_krw": None},
+                             ensure_ascii=False)
+        with pytest.raises(ValueError, match="내부 필드"):
+            parse_response(payload, context, set())
