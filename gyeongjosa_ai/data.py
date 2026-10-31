@@ -38,7 +38,7 @@ class DemoData:
         """계정 선택에 필요한 가상 사용자 정보만 반환한다."""
         return [
             {"id": user["id"], "name": user["name"], "affiliation": user["fictional_affiliation"]}
-            for user in self.dataset["users"]
+            for user in self.dataset["users"] if not user["id"].startswith("V4U")
         ]
 
     def people(self, user_id):
