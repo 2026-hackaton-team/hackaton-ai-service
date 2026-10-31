@@ -67,7 +67,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn("store=False", module)
 
     def test_original_frontend_has_v4_fields(self):
-        script = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+        script = (ROOT / "v4_demo_frontend" / "app.js").read_text(encoding="utf-8")
         for field in ("myDutyRole", "relationship_text", "facts_confirmed",
                       "allow_llm_analysis", "relationship_analysis"):
             with self.subTest(field=field):
