@@ -128,9 +128,9 @@ export default function App() {
   }
 
   async function updatePerson(id, patch) {
-    if (await saveChanges(state => ({ people: state.people.map(person => person.id === id ? { ...person, ...patch } : person) }))) {
-      notify('관계 기록을 서버에 저장했어요.');
-    }
+    const ok = await saveChanges(state => ({ people: state.people.map(person => person.id === id ? { ...person, ...patch } : person) }));
+    if (ok) notify('관계 기록을 서버에 저장했어요.');
+    return ok;
   }
 
   async function updateEvent(id, patch) {
