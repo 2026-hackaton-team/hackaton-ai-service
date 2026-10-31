@@ -25,9 +25,12 @@ test('금액 분석 카드가 있어도 서버의 앞부분 설명을 보존한�
   assert.equal(extractAILead('예산을 알려 주세요.'),'예산을 알려 주세요.')
 })
 
-test('현금 추천액이 없을 때도 현금·선물 상담 답변이 누락되지 않는다',()=>{
+test('금액 보류에도 생성된 상담을 별도로 표시하고 계산 설명을 반복하지 않는다',()=>{
   const message='예산 1,111원에는 현금 후보가 없습니다.\n\nAI 해석: 현금 대신 카드와 작은 선물을 고려해 보세요.'
   assert.equal(visibleAIMessage(message,null),message)
   assert.equal(visibleAIMessage(message,undefined),message)
-  assert.equal(visibleAIMessage(message,50000),'예산 1,111원에는 현금 후보가 없습니다.')
+  assert.equal(visibleAIMessage(message,{amount_krw:50000,status:'NEEDS_FACTS'}),'')
+  assert.equal(visibleAIMessage(message,{amount_krw:null,status:'NO_AFFORDABLE_CANDIDATE'}),'')
+  assert.equal(visibleAIMessage(message,{amount_krw:null,status:'POTENTIALLY_PROHIBITED'}),'예산 1,111원에는 현금 후보가 없습니다.')
+  assert.equal(visibleAIMessage('금액 보류 사유입니다.',{amount_krw:null,status:'NO_AFFORDABLE_CANDIDATE'}),'금액 보류 사유입니다.')
 })
