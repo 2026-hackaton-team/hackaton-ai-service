@@ -85,10 +85,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'ai-user-bubble':'ai-assistant-content ai-answer-bubble'}>
-            {(m.role==='user'||visibleAIMessage(m.body,m.result?.v4_analysis?.amount_krw))&&<p style={{whiteSpace:'pre-wrap'}}>{m.role==='user'?m.body:visibleAIMessage(m.body,m.result?.v4_analysis?.amount_krw)}</p>}
-            {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&extractAIInterpretation(m.body)&&
+            {(m.role==='user'||visibleAIMessage(m.body,m.result?.v4_analysis))&&<p style={{whiteSpace:'pre-wrap'}}>{m.role==='user'?m.body:visibleAIMessage(m.body,m.result?.v4_analysis)}</p>}
+            {m.role==='assistant'&&m.result?.v4_analysis&&extractAIInterpretation(m.body)&&
               <section className="ai-result-card" aria-label="AI 해석">
-                <p className="ai-interpretation">{extractAIInterpretation(m.body)}</p>
+                <p className="ai-interpretation">{extractAIInterpretation(m.body).replace(/^AI 해석:\s*/, '')}</p>
               </section>}
             {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&
               <section className="ai-result-card" aria-label="추천 참고 금액">
@@ -99,6 +99,11 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
                 <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>
               </section>}
             {m.role==='assistant'&&m.result?.budget_analysis&&<BudgetComparison result={m.result} compact/>}
+            {m.role==='assistant'&&m.result?.status==='answer'&&m.result?.context?.requested_aspects?.includes('funeral_etiquette')&&
+              <section className="ai-result-card" aria-label="조문 예절 안내">
+                <strong>조문 예절</strong>
+                <p>방문 전 빈소와 조문 가능 시간을 확인하세요. 단정한 복장으로 현장 안내에 따라 분향 또는 헌화하고, 상주에게 짧게 인사하며 위로를 전하면 됩니다. 종교와 장례식장에 따라 순서가 다를 수 있으니 현장 안내를 우선하세요.</p>
+              </section>}
           </div>
         </div>)}
         {options.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:8,padding:12}}>
