@@ -1,0 +1,232 @@
+{
+  "version": "2026-10-31-v2-auto-policy",
+  "notice": "공개 원문에서 사람이 확인한 핵심 사실을 짧게 재서술한 시연 지식베이스. 조사 원자료나 완전한 분포가 아니며 적정 금액의 정답도 아니다.",
+  "documents": [
+    {
+      "id": "INC-2025-05",
+      "publisher": "인크루트",
+      "source_type": "survey",
+      "published_at": "2025-05-26",
+      "sample_size": 844,
+      "title": "직장 동료 결혼식 참석·식사 시 적정 축의금 설문",
+      "url": "https://news.incruit.com/news/newsview.asp?newsno=437265",
+      "event_types": [
+        "결혼"
+      ],
+      "relationship_tag": "직장 동료",
+      "attendance_condition": "attend_with_meal",
+      "can_anchor_amount": true,
+      "keywords": [
+        "결혼",
+        "결혼식",
+        "축의금",
+        "직장동료",
+        "동료",
+        "참석",
+        "식사",
+        "친밀도"
+      ],
+      "text": "2025년 인크루트는 직장인 844명에게 직장 동료의 결혼식에 참석하고 식사할 때 적정하다고 생각하는 축의금을 조사했다. 공개된 응답 중 10만 원 61.8%, 5만 원 32.8%가 제시되었다. 이는 실제 송금 데이터가 아닌 응답자 인식이며 전체 분포가 아니다. 직장 동료·결혼·참석 및 식사 조건에서만 액수 후보의 직접 근거로 사용한다.",
+      "facts": [
+        {
+          "metric": "perceived_amount_share",
+          "amount_krw": 100000,
+          "pct": 61.8
+        },
+        {
+          "metric": "perceived_amount_share",
+          "amount_krw": 50000,
+          "pct": 32.8
+        }
+      ]
+    },
+    {
+      "id": "NH-2026-05",
+      "publisher": "NH농협은행 (연합뉴스 보도)",
+      "source_type": "aggregate_transfer",
+      "published_at": "2026-05-14",
+      "sample_size": 5330000,
+      "title": "2023~2025년 축의금 계좌이체 집계",
+      "url": "https://www.yna.co.kr/view/AKR20260513161300002",
+      "event_types": [
+        "결혼"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "unknown",
+      "can_anchor_amount": false,
+      "keywords": [
+        "축의금",
+        "송금",
+        "이체",
+        "평균",
+        "2025",
+        "결혼"
+      ],
+      "text": "NH농협은행이 2023~2025년 축의금 이체 약 533만 건을 분석한 자료의 언론 보도. 2025년 평균 이체액은 11만 7천 원이며 금액별 비중은 5만 원 42.3%, 10만 원 39.7%, 20만 원 7.5%다. 계좌이체 거래 집계로 관계별·참석 여부별 적정 금액이 아니므로 개인 추천의 직접적인 정답이나 가중치로 쓰지 않는다.",
+      "facts": [
+        {
+          "metric": "mean_transfer_krw",
+          "year": 2025,
+          "value": 117000
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2025,
+          "amount_krw": 50000,
+          "pct": 42.3
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2025,
+          "amount_krw": 100000,
+          "pct": 39.7
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2025,
+          "amount_krw": 200000,
+          "pct": 7.5
+        }
+      ]
+    },
+    {
+      "id": "HRC-2025-09",
+      "publisher": "한국리서치",
+      "source_type": "survey",
+      "published_at": "2025-09-09",
+      "sample_size": 1000,
+      "title": "경조사 인식과 경제적 부담 조사",
+      "url": "https://hrcopinion.co.kr/archives/33969",
+      "event_types": [
+        "결혼",
+        "장례",
+        "백일",
+        "돌",
+        "생일",
+        "환갑",
+        "칠순",
+        "팔순"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "keywords": [
+        "경조사",
+        "부의금",
+        "축의금",
+        "부담",
+        "예산",
+        "참석",
+        "결혼",
+        "장례"
+      ],
+      "text": "2025년 6월 27~30일 전국 만 18세 이상 남녀 1,000명을 조사했다. 최근 1년간 경조사 경험은 평균 6.6회, 경조사 관련 연간 총 지출은 평균 56만 원, 경제적 부담을 느낀 응답은 65%였다. 연간 56만 원은 행사 한 번의 적정 부조금이 아니다. 개인 예산을 존중하는 설명의 보조 근거로만 사용한다.",
+      "facts": [
+        {
+          "metric": "annual_event_count",
+          "value": 6.6
+        },
+        {
+          "metric": "annual_total_spend_krw",
+          "value": 560000
+        },
+        {
+          "metric": "burden_share_pct",
+          "value": 65
+        }
+      ]
+    },
+    {
+      "id": "ACRC-LEGAL",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": null,
+      "sample_size": null,
+      "title": "청탁금지법 금품등 수수 금지 안내",
+      "url": "https://www.acrc.go.kr/menu.es?mid=a10101060300",
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "relationship_tag": "법 적용 검토",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "keywords": [
+        "청탁금지법",
+        "공직자",
+        "공무원",
+        "직무관련",
+        "법령",
+        "축의금",
+        "조의금"
+      ],
+      "text": "공직자 등과의 관계 및 직무 관련성 등에 따라 청탁금지법의 금품 수수 제한이 적용될 수 있다. 일반 민간인 모든 경조사에 동일한 법적 한도가 적용되는 것은 아니다. 조건이 불명확할 때는 금액 추천을 보류하고 관련 규정의 별도 확인을 요청한다. 이 자료는 법률 자문을 대체하지 않는다.",
+      "facts": [],
+      "verified": true
+    },
+    {
+      "id": "ACRC-CEREMONY-QA",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": "2026-03-18",
+      "title": "직무관련성 및 축·조의금 관련 공식 질의응답",
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=130&list_no=103664&mid=a10502120000&nPage=5&tag=",
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "verified": true,
+      "keywords": [
+        "청탁금지법",
+        "공직자등",
+        "직무관련성",
+        "부조",
+        "예외",
+        "축의금",
+        "조의금",
+        "5만원",
+        "화환",
+        "조화"
+      ],
+      "text": "국민권익위원회 2026-03-18 공식 질의응답: 공직자등은 직무 관련 금품등 수수가 원칙적으로 금지되지만 청탁금지법상 예외가 인정될 수 있다. 사교·의례·부조 목적 예외가 개별 사실관계에서 인정되는 경우 축의금·조의금 현금은 5만 원, 화환·조화는 10만 원 가액 범위가 적용될 수 있다. 직무 관련성은 업무 내용, 사적 친분, 금액, 수수 경위와 시기 등을 종합 판단한다. 해당 경조사비 가액 기준을 초과하는 금액을 사회상규 일반 예외로 우회하여 허용하기는 어렵다. 금액만으로 적법성을 확정할 수 없다.",
+      "facts": [
+        {
+          "metric": "conditional_cash_limit_krw",
+          "value": 50000,
+          "applies_if": "public_official_and_duty_related_and_exception_confirmed"
+        }
+      ]
+    },
+    {
+      "id": "ACRC-JOB-RELATION-QA",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": "2025-04-02",
+      "title": "경조사비·화환 동시 지급 시 청탁금지법 적용 조건",
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=130&list_no=87703&mid=a10503040000&nPage=1045&tag=",
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "verified": true,
+      "keywords": [
+        "청탁금지법",
+        "경조사비",
+        "화환",
+        "조화",
+        "현금",
+        "직무관련성",
+        "부조",
+        "합산"
+      ],
+      "text": "국민권익위원회 2025년 공식 질의응답: 직무관련성이 있으면 금품등 수수는 원칙적으로 금지되나, 사교·의례·부조 목적이 인정되면 한도 내 경조사비 제공이 예외적으로 허용될 수 있다. 축의금·조의금 현금 5만 원, 이를 대신하는 화환·조화 10만 원 가액 범위가 있으며 동시에 제공하면 합산 10만 원 이하, 각각의 가액 제한도 준수해야 한다. 개별 사실관계 확인 없이 적법성을 단정할 수 없다.",
+      "facts": []
+    }
+  ]
+}
