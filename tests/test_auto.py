@@ -564,10 +564,10 @@ def test_current_closeness_from_llm_precedes_old_first_match():
 
 
 @pytest.mark.parametrize(("amount", "expected"), [
-    (200000, 200000), (900000, None),
+    (200000, 200000), (900000, 200000),
 ])
 def test_model_received_amount_must_appear_in_question(amount, expected):
-    """모델이 만든 숫자를 장부와 개인화 추천에 주입하지 않는다."""
+    """모델의 허구 숫자를 버리고 명시된 20만원의 기존 추출만 유지한다."""
     gateway = SemanticGateway(recent_received_amount_krw=amount)
     result = ChatService(load_data(), gateway).chat_auto({
         "user_id": "U001",
