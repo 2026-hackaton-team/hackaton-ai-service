@@ -185,6 +185,12 @@ def _test_seed(db):
                    (row["revision"] + 1, changed))
 
 
+def _invalidate_recommendation_cache():
+    """관계·회원 변경 뒤 다음 AI 요청이 최신 SQLite 자료를 읽게 한다."""
+    from .dependencies import get_service
+    get_service.cache_clear()
+
+
 class Credentials(BaseModel):
     username: str
     password: str
@@ -267,6 +273,7 @@ def signup(values: Signup, response: Response):
         db.execute("INSERT INTO accounts VALUES (?,?,?,?)",
                    (username, json.dumps(profile, ensure_ascii=False), salt, _hash(values.password, salt)))
         _create_session(db, response, username)
+        _invalidate_recommendation_cache()
         return {"profile": profile, "userId": _identity(username)}
 
 
@@ -283,6 +290,7 @@ def login(values: Credentials, response: Response):
         ):
             raise HTTPException(401, "아이디와 비밀번호를 확인해 주세요.")
         _create_session(db, response, username)
+        _invalidate_recommendation_cache()
         return {"profile": _public(account), "userId": _identity(username)}
 
 
@@ -317,6 +325,7 @@ def update_profile(values: ProfileUpdate, maeum_session: str | None = Cookie(def
             raise HTTPException(409, "다른 계정이 사용하는 이메일입니다.")
         db.execute("UPDATE accounts SET profile=? WHERE username=?",
                    (json.dumps(profile, ensure_ascii=False), account["username"]))
+        _invalidate_recommendation_cache()
         return {"profile": profile}
 
 
@@ -342,6 +351,7 @@ def update_social(values: SocialUpdate, maeum_session: str | None = Cookie(defau
         db.execute("UPDATE social_state SET revision=?, payload=? WHERE id=1",
                    (current+1, json.dumps(payload, ensure_ascii=False)))
         members = [_public(account) for account in db.execute("SELECT profile FROM accounts")]
+        _invalidate_recommendation_cache()
         return {"revision": current+1, "social": payload, "members": members}
 
 
