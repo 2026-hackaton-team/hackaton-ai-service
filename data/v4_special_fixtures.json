@@ -1,0 +1,275 @@
+{
+  "metadata": {
+    "version": "2026-10-31-special-v1",
+    "notice": "기존 원본을 변경하지 않는 여섯 명의 합성 인물 및 시연용 행사",
+    "reference_date": "2026-10-31"
+  },
+  "users": [
+    {
+      "id": "V4U001",
+      "name": "서연정",
+      "login_id": "special_synthetic_001",
+      "demo_account": false,
+      "fictional_affiliation": "가상 새빛초등학교",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    },
+    {
+      "id": "V4U002",
+      "name": "정태오",
+      "login_id": "special_synthetic_002",
+      "demo_account": false,
+      "fictional_affiliation": "가상 미래산업",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    },
+    {
+      "id": "V4U003",
+      "name": "윤하나",
+      "login_id": "special_synthetic_003",
+      "demo_account": false,
+      "fictional_affiliation": "정보 비공개",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    },
+    {
+      "id": "V4U004",
+      "name": "오민서",
+      "login_id": "special_synthetic_004",
+      "demo_account": false,
+      "fictional_affiliation": "가상 공공기관",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    },
+    {
+      "id": "V4U005",
+      "name": "강유준",
+      "login_id": "special_synthetic_005",
+      "demo_account": false,
+      "fictional_affiliation": "가상 시청",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    },
+    {
+      "id": "V4U006",
+      "name": "조하람",
+      "login_id": "special_synthetic_006",
+      "demo_account": false,
+      "fictional_affiliation": "가상 구청",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "결혼",
+        "돌"
+      ]
+    }
+  ],
+  "friendships": [
+    {
+      "id": "V4F001",
+      "user_a_id": "U001",
+      "user_b_id": "V4U001",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "V4F002",
+      "user_a_id": "U001",
+      "user_b_id": "V4U002",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "V4F003",
+      "user_a_id": "U001",
+      "user_b_id": "V4U003",
+      "status": "accepted",
+      "allow_connection_for_recommendation": false
+    },
+    {
+      "id": "V4F004",
+      "user_a_id": "U001",
+      "user_b_id": "V4U004",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "V4F005",
+      "user_a_id": "U001",
+      "user_b_id": "V4U005",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "V4F006",
+      "user_a_id": "U001",
+      "user_b_id": "V4U006",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    }
+  ],
+  "people": [
+    {
+      "id": "V4P001",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U001",
+      "name": "서연정",
+      "relationship": "현직 담임교사",
+      "fictional_affiliation": "가상 새빛초등학교"
+    },
+    {
+      "id": "V4P002",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U002",
+      "name": "정태오",
+      "relationship": "업무 관련 거래처 담당자",
+      "fictional_affiliation": "가상 미래산업"
+    },
+    {
+      "id": "V4P003",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U003",
+      "name": "윤하나",
+      "relationship": "직업 미공개 지인",
+      "fictional_affiliation": "정보 비공개"
+    },
+    {
+      "id": "V4P004",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U004",
+      "name": "오민서",
+      "relationship": "직무 관련 공직자",
+      "fictional_affiliation": "가상 공공기관"
+    },
+    {
+      "id": "V4P005",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U005",
+      "name": "강유준",
+      "relationship": "직무 관련 공직자",
+      "fictional_affiliation": "가상 시청"
+    },
+    {
+      "id": "V4P006",
+      "owner_user_id": "U001",
+      "linked_user_id": "V4U006",
+      "name": "조하람",
+      "relationship": "과거 계약 업체 담당자",
+      "fictional_affiliation": "가상 구청"
+    }
+  ],
+  "private_events": [
+    {
+      "id": "V4E001",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P001",
+      "category": "결혼",
+      "title": "담임교사 결혼식",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "V4E002",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P002",
+      "category": "장례",
+      "title": "거래처 직원 부친상",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "V4E003",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P003",
+      "category": "장례",
+      "title": "비공개 지인 가족 장례",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "V4E004",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P004",
+      "category": "장례",
+      "title": "공직자 관련 장례",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "V4E005",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P005",
+      "category": "돌",
+      "title": "공직자 자녀 돌잔치",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "V4E006",
+      "owner_user_id": "U001",
+      "contact_person_id": "V4P006",
+      "category": "장례",
+      "title": "계약 종료 업체 직원 부친상",
+      "subject_relation": "지인",
+      "start_date": "2026-11-05",
+      "end_date": "2026-11-05",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    }
+  ],
+  "transactions": [],
+  "shared_notices": []
+}
