@@ -35,8 +35,8 @@ def chat(question, context=None):
 
 
 def test_ten_scenarios_have_distinct_synthetic_person_mapping():
-    assert len(SCENARIOS) == 10
-    assert {key for key in SCENARIOS if key not in ("general", "public_exception", "procurement")} == {
+    assert len(SCENARIOS) == 20
+    assert {key for key in SCENARIOS if not key.startswith("relation_") and key not in ("general", "public_exception", "procurement")} == {
         "teacher_parent", "sender_public", "private_occupation", "cash_and_wreath",
         "public_dol", "duplicate_mourner", "ended_contract",
     }
@@ -45,7 +45,7 @@ def test_ten_scenarios_have_distinct_synthetic_person_mapping():
     assert expected <= {person["id"] for person in dataset.people("U001")}
     for person_id in expected:
         assert not any(person["id"] == person_id for person in dataset.people("U002"))
-    assert len({s["person_id"] for s in SCENARIOS.values()}) == 9
+    assert len({s["person_id"] for s in SCENARIOS.values()}) == 19
 
 
 def test_original_datasets_remain_unchanged_and_new_links_are_valid():
@@ -53,8 +53,8 @@ def test_original_datasets_remain_unchanged_and_new_links_are_valid():
     untouched = copy.deepcopy(original)
     combined = merge_special_fixtures(original)
     assert original == untouched
-    for key, n in (("users", 6), ("people", 6), ("friendships", 6),
-                   ("private_events", 6), ("transactions", 0), ("shared_notices", 0)):
+    for key, n in (("users", 16), ("people", 16), ("friendships", 16),
+                   ("private_events", 79), ("transactions", 63), ("shared_notices", 0)):
         assert len(combined[key]) == len(original[key]) + n
         assert len({entry["id"] for entry in combined[key]}) == len(combined[key])
     assert all(person["owner_user_id"] == "U001" for person in combined["people"] if person["id"].startswith("V4P"))
@@ -129,7 +129,7 @@ def test_api_lists_ten_only_for_designated_demo_account():
     with TestClient(app) as client:
         rows = client.get("/api/demo/v4-scenarios", headers={"X-Demo-User-Id": "U001"})
         assert rows.status_code == 200
-        assert len(rows.json()["items"]) == 10
+        assert len(rows.json()["items"]) == 20
         other = client.get("/api/demo/v4-scenarios", headers={"X-Demo-User-Id": "U002"})
         assert other.json()["items"] == []
 
