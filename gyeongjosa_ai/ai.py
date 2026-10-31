@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 PRIMARY_MODEL = "claude-opus-4-8"
 FALLBACK_MODEL = "gpt-5.4-mini"
+INTENT_PRIMARY_MODEL = FALLBACK_MODEL
+INTENT_FALLBACK_MODEL = "gemini-3.1-flash-lite"
 PRIMARY_TIMEOUT_SECONDS = 20
 FALLBACK_TIMEOUT_SECONDS = 10
 TOTAL_TIMEOUT_SECONDS = 30
@@ -90,7 +92,7 @@ def _new_model_budget(timeout):
     """요청 전체 30초와 모델별 20초·10초 한도를 생성한다."""
     return {
         "deadline": time.monotonic() + min(timeout, TOTAL_TIMEOUT_SECONDS),
-        "spent": {PRIMARY_MODEL: 0.0, FALLBACK_MODEL: 0.0},
+        "spent": {},
     }
 
 
@@ -201,7 +203,7 @@ def parse_intent(content, people_ids, notice_ids):
 
 
 class ModelGateway:
-    """Opus를 우선 호출하고 실패하면 GPT로 전환한다."""
+    """분류는 GPT·Gemini, 답변은 Opus·GPT 순서로 호출한다."""
 
     def __init__(self, api_key=None, base_url=None, transport=None, timeout=TOTAL_TIMEOUT_SECONDS):
         load_dotenv(ROOT / ".env", override=False)
@@ -257,17 +259,19 @@ class ModelGateway:
             raise ModelUnavailable("질문 의도 검증에 실패했습니다.") from exc
         return {**parsed, "model": model}
 
-    def _run_models(self, models, attempt, error_message):
-        """모델별 사용 시간과 상담 전체 남은 시간을 함께 제한한다."""
+    def _run_models(self, models, attempt, error_message, *, limits=None, stage="generate"):
+        """작업별 모델 시간과 상담 전체 남은 시간을 함께 제한한다."""
         budget = _MODEL_REQUEST_BUDGET.get()
         if budget is None:
             budget = _new_model_budget(self.timeout)
-        limits = {PRIMARY_MODEL: PRIMARY_TIMEOUT_SECONDS, FALLBACK_MODEL: FALLBACK_TIMEOUT_SECONDS}
+        if limits is None:
+            limits = {PRIMARY_MODEL: PRIMARY_TIMEOUT_SECONDS, FALLBACK_MODEL: FALLBACK_TIMEOUT_SECONDS}
         for model in models:
             started = time.monotonic()
+            spent_key = (stage, model)
             remaining = min(
                 budget["deadline"] - started,
-                limits[model] - budget["spent"][model],
+                limits[model] - budget["spent"].get(spent_key, 0.0),
             )
             if remaining <= 0:
                 continue
@@ -279,17 +283,20 @@ class ModelGateway:
             except ModelUnavailable:
                 continue
             finally:
-                budget["spent"][model] += time.monotonic() - started
+                budget["spent"][spent_key] = budget["spent"].get(spent_key, 0.0) + time.monotonic() - started
         raise ModelUnavailable(error_message)
 
     def classify(self, context, people_ids, notice_ids):
-        """주 모델 20초·보조 모델 10초 범위에서 의도를 분류한다."""
+        """GPT mini를 우선 사용하고 Gemini로 의도 분류를 재시도한다."""
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
         return self._run_models(
-            (PRIMARY_MODEL, FALLBACK_MODEL),
+            (INTENT_PRIMARY_MODEL, INTENT_FALLBACK_MODEL),
             lambda model, timeout: self.classify_for_model(context, people_ids, notice_ids, model, timeout=timeout),
             "두 AI 모델의 질문 분류를 확인하지 못했습니다. 기록 조회는 계속 이용할 수 있습니다.",
+            limits={INTENT_PRIMARY_MODEL: PRIMARY_TIMEOUT_SECONDS,
+                    INTENT_FALLBACK_MODEL: FALLBACK_TIMEOUT_SECONDS},
+            stage="classify",
         )
 
     def generate(self, context, allowed_ids, preferred_model=None):
@@ -320,4 +327,5 @@ class ModelGateway:
             (PRIMARY_MODEL, FALLBACK_MODEL),
             attempt,
             "가상 사례의 실제 AI 해석을 확인하지 못했습니다.",
+            stage="scenario",
         )

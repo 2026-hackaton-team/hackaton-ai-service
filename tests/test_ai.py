@@ -6,7 +6,8 @@ import httpx
 import pytest
 
 from gyeongjosa_ai.ai import (
-    FALLBACK_MODEL, PRIMARY_MODEL, ModelGateway, ModelUnavailable,
+    FALLBACK_MODEL, INTENT_FALLBACK_MODEL, INTENT_PRIMARY_MODEL,
+    PRIMARY_MODEL, ModelGateway, ModelUnavailable,
     model_request_budget, parse_intent, parse_response,
 )
 
@@ -56,14 +57,14 @@ def test_classifier_falls_back_when_primary_returns_unowned_person():
     def handler(request):
         payload = json.loads(request.content)
         requests.append(payload["model"])
-        person_id = "P999" if payload["model"] == "claude-opus-4-8" else "P001"
+        person_id = "P999" if payload["model"] == INTENT_PRIMARY_MODEL else "P001"
         content = json.dumps({"intent": "history", "person_id": person_id, "notice_id": None, "event_type": None})
         return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
 
     gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
     result = gateway.classify({"question": "가상 지인의 이력"}, {"P001"}, set())
-    assert result["person_id"] == "P001" and result["model"] == "gpt-5.4-mini"
-    assert requests == ["claude-opus-4-8", "gpt-5.4-mini"]
+    assert result["person_id"] == "P001" and result["model"] == INTENT_FALLBACK_MODEL
+    assert requests == [INTENT_PRIMARY_MODEL, INTENT_FALLBACK_MODEL]
 
 
 def test_fallback_classification_keeps_fallback_for_answer():
@@ -218,7 +219,7 @@ def test_primary_and_fallback_have_separate_limits():
 
 
 def test_classification_and_generation_share_total_budget(monkeypatch):
-    """한 상담의 질문 분류와 답변 생성이 제한시간을 다시 받지 않는다."""
+    """의도 분류와 답변 생성은 모델 구성이 달라도 30초 예산을 공유한다."""
     from gyeongjosa_ai import ai
 
     clock = [0.0]
@@ -228,13 +229,16 @@ def test_classification_and_generation_share_total_budget(monkeypatch):
     class ClockedGateway(ModelGateway):
         def classify_for_model(self, context, people_ids, notice_ids, model, timeout=None):
             calls.append(("classify", model, timeout))
-            clock[0] += 19
+            clock[0] += 12
             return {"intent": "amount", "person_id": None, "notice_id": None,
                     "event_type": "결혼", "model": model}
 
         def generate_for_model(self, context, allowed_ids, model, timeout=None):
             calls.append(("generate", model, timeout))
-            clock[0] += 2 if model == PRIMARY_MODEL else 1
+            if model == PRIMARY_MODEL:
+                clock[0] += 10
+                raise ModelUnavailable("답변 주 모델 실패")
+            clock[0] += 7
             return {"model": model, "answer": "확인", "evidence_ids": []}
 
     class Conversation:
@@ -246,10 +250,54 @@ def test_classification_and_generation_share_total_budget(monkeypatch):
             return self.gateway.generate({}, set())
 
     assert Conversation().run()["model"] == FALLBACK_MODEL
-    assert calls[0] == ("classify", PRIMARY_MODEL, 20)
-    assert calls[1] == ("generate", PRIMARY_MODEL, 1)
-    assert calls[2] == ("generate", FALLBACK_MODEL, 9)
-    assert clock[0] == 22
+    assert calls == [
+        ("classify", INTENT_PRIMARY_MODEL, 20),
+        ("generate", PRIMARY_MODEL, 18),
+        ("generate", FALLBACK_MODEL, 8),
+    ]
+    assert clock[0] == 29
+
+
+def test_intent_primary_is_mini_and_fallback_is_gemini():
+    """의도 분류만 두 경량 모델을 사용하고 최종 답변 순서는 유지한다."""
+    assert INTENT_PRIMARY_MODEL == "gpt-5.4-mini"
+    assert INTENT_FALLBACK_MODEL == "gemini-3.1-flash-lite"
+    assert PRIMARY_MODEL == "claude-opus-4-8"
+    assert FALLBACK_MODEL == "gpt-5.4-mini"
+
+
+def test_intent_models_use_20_and_10_second_limits():
+    """분류 모델 순서와 시간 한도가 맞고 두 모델 실패는 오류가 된다."""
+    calls = []
+
+    class RecordingGateway(ModelGateway):
+        def classify_for_model(self, context, people_ids, notice_ids, model, timeout=None):
+            calls.append((model, timeout))
+            if model == INTENT_PRIMARY_MODEL:
+                raise ModelUnavailable("첫 분류 실패")
+            return {"intent": "amount", "person_id": None, "notice_id": None,
+                    "event_type": "결혼", "model": model}
+
+    result = RecordingGateway(api_key="test").classify({}, set(), set())
+    assert result["model"] == INTENT_FALLBACK_MODEL
+    assert [model for model, _ in calls] == [INTENT_PRIMARY_MODEL, INTENT_FALLBACK_MODEL]
+    assert 0 < calls[0][1] <= 20
+    assert 0 < calls[1][1] <= 10
+
+
+def test_intent_failure_keeps_generation_routing_unchanged():
+    """분류용 Gemini는 응답 생성 후보가 아니다."""
+    requested = []
+
+    def handler(request):
+        payload = json.loads(request.content)
+        requested.append(payload["model"])
+        return httpx.Response(200, json=response())
+
+    gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
+    generated = gateway.generate({"mode": "history"}, set())
+    assert generated["model"] == PRIMARY_MODEL
+    assert requested == [PRIMARY_MODEL]
 
 
 def test_fallback_alone_still_uses_ten_seconds():

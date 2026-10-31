@@ -585,7 +585,7 @@ class ChatService:
             return {**result, "intent": intent, "classification_model": classified["model"], "context": context}
         context["intent"] = intent
         context.pop("pending_field", None)
-        request_for_chat = {**context, "user_id": user_id, "question": question, "mode": intent, "_preferred_model": classified["model"]}
+        request_for_chat = {**context, "user_id": user_id, "question": question, "mode": intent}
         result = self.chat(request_for_chat)
         if result.get("pending_field"):
             context["pending_field"] = result["pending_field"]
