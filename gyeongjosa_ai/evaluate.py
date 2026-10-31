@@ -15,7 +15,7 @@ from .service import ChatService
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORY = ROOT / "evaluation"
 BUDGET_PATH = DIRECTORY / "budget.json"
-MAX_TOTAL = 62
+MAX_TOTAL = 500
 PREVIOUS_RESERVED = 5
 
 
@@ -56,11 +56,11 @@ class EvaluationGateway(ModelGateway):
         self.budget = budget
         self.last_error = None
 
-    def _request(self, context, system_prompt, model):
+    def _request(self, context, system_prompt, model, timeout=None):
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
         self.budget.claim()
-        return super()._request(context, system_prompt, model)
+        return super()._request(context, system_prompt, model, timeout=timeout)
 
     def classify(self, context, people_ids, notice_ids):
         try:
