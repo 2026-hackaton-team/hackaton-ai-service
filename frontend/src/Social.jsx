@@ -214,7 +214,6 @@ export function ReceivedScheduleDialog({ initialTab = 'friend', onClose }) {
         { id: 'mutual', label: `함께 아는 사람 소식${fresh(groups.mutual) ? ` ${fresh(groups.mutual)}` : ''}`, icon: 'UsersRound' },
       ]} />
       <p className="social-received-intro">{tab === 'friend' ? '친구나 가족이 나에게 직접 보낸 경조사예요. 내가 중요하게 기록한 사람의 소식이 먼저 보여요.' : '친구의 친구가 "친구의 친구까지" 알린 소식이에요. 장례 소식은 유족이 공유에 동의한 경우에만 보여요.'}</p>
-      {tab === 'mutual' && sharedInbox.users.length > 0 && <label className="social-profile-select">소식을 받을 프로필<select className="input" value={sharedInbox.userId} onChange={e => sharedInbox.selectUser(e.target.value)}><option value="">프로필 선택</option>{sharedInbox.users.map(item => <option key={item.id} value={item.id}>{item.name} · {item.affiliation || item.id}</option>)}</select></label>}
       {tab === 'mutual' && sharedInbox.status === 'loading' && <p className="notice-status" role="status">소식을 불러오고 있어요.</p>}
       {items.length ? <div className="social-received-list">{items.map(item => <ReceivedCard key={item.key} item={item} />)}</div>
         : <div className="feature-empty"><EmptyState icon={tab === 'friend' ? 'Mail' : 'UsersRound'} title={tab === 'friend' ? '아직 친구가 보낸 일정이 없어요' : '함께 아는 사람의 소식이 없어요'} description={!user && tab === 'friend' ? '로그인하면 친구가 보낸 일정을 확인할 수 있어요.' : '새 소식이 도착하면 이곳과 알림함에 표시돼요.'} />
