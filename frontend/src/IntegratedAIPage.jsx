@@ -21,6 +21,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
   const [messages,setMessages]=useState([])
   const [question,setQuestion]=useState('')
   const [busy,setBusy]=useState(false)
+  const [pendingQuestion,setPendingQuestion]=useState('')
   const [error,setError]=useState('')
   const controller=useRef(null)
   const bottom=useRef(null)
@@ -29,7 +30,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
   useEffect(()=>()=>controller.current?.abort(),[])
   useEffect(()=>{
     controller.current?.abort()
-    setMessages([]);setCid('');setScenarioExamples([]);setError('')
+    setMessages([]);setCid('');setScenarioExamples([]);setError('');setPendingQuestion('')
     if(!userId)return
     const ac=new AbortController()
     demoApi('/demo/v4-scenarios',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setScenarioExamples(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
@@ -40,7 +41,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
   async function send(text, selection=null){
     const prompt=String(text||'').trim()
     if(!prompt||!userId||busy)return
-    setBusy(true);setError('')
+    setBusy(true);setPendingQuestion(prompt);setError('')
     const ac=new AbortController();controller.current=ac
     try {
       let current=cid
@@ -57,7 +58,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
       setMessages(prev=>[...prev,{role:'user',body:prompt},{role:'assistant',body:response.message,result:response}])
       setQuestion('')
     } catch(e){if(e.name!=='AbortError'&&activeUser.current===userId)setError(friendlyError(e))}
-    finally{setBusy(false);controller.current=null}
+    finally{setBusy(false);setPendingQuestion('');controller.current=null}
   }
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
@@ -69,7 +70,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
-        {scenarioExamples.length>0&&!messages.length&&<div aria-label="분석 예시 선택" style={{padding:12}}>
+        {scenarioExamples.length>0&&!messages.length&&!busy&&<div aria-label="분석 예시 선택" style={{padding:12}}>
           {[{category:'safety',title:'법률·직무 10개'},{category:'relationship',title:'감정·관계 10개'}].map(group=>
             <details key={group.category} open={group.category==='relationship'}>
               <summary>{group.title}</summary>
@@ -79,14 +80,19 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
               </div>
             </details>)}
         </div>}
-        {scenarioExamples.length===0&&!messages.length&&<div className="ai-quick-questions" aria-label="예시 질문">
+        {scenarioExamples.length===0&&!messages.length&&!busy&&<div className="ai-quick-questions" aria-label="예시 질문">
           {!userId&&<p className="ai-quick-hint">로그인하면 내 서버 기록을 바탕으로 답해 드려요.</p>}
-          <div className="ai-suggestion-chips">{QUICK_QUESTIONS.map(item=><button type="button" key={item} disabled={busy} onClick={()=>userId?send(item):setQuestion(item)}>{item}</button>)}</div>
+          <div className="ai-suggestion-chips">{QUICK_QUESTIONS.map(item=><button type="button" key={item} disabled={!userId||busy} onClick={()=>send(item)}>{item}</button>)}</div>
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'':'ai-assistant-content'}>
+            {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&
+              <p className="ai-recommended-amount">{m.result.v4_analysis.status==='NEEDS_FACTS'?'법률 확인 전 비교 참고액':'추천 참고액'}: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>}
+            {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&
+              <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>}
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
-            {m.role==='assistant'&&m.result?.v4_analysis&&<div className="ai-evidence">
+            {m.role==='assistant'&&(m.result?.v4_analysis||m.result?.history_stats||m.result?.budget_analysis||m.result?.evidence?.length>0)&&<details className="ai-analysis-details"><summary>추천 계산·통계·근거 자세히 보기</summary>
+            {m.result?.v4_analysis&&<div className="ai-evidence">
               <p><strong>개인화·법률 분석: {m.result.v4_analysis.status}</strong></p>
               <p>{aiAnalysisStatusLabel(m.result.v4_analysis.ai_status, m.result.model)}</p>
               {m.result.v4_analysis.status==='RELATIONSHIP_INSIGHT'
@@ -103,10 +109,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
               <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
             </div>}
-            {m.role==='assistant'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
-            {m.role==='assistant'&&m.result?.budget_analysis&&<BudgetComparison result={m.result}/>}
-            {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&<p><strong>참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</strong></p>}
-            {m.role==='assistant'&&Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<details><summary>근거 보기</summary>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</details>}
+            {m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
+            {m.result?.budget_analysis&&<BudgetComparison result={m.result}/>}
+            {Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<div>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</div>}
+            </details>}}
           </div>
         </div>)}
         {options.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:8,padding:12}}>
@@ -114,15 +120,18 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
             item.reply?null:{field:latest.pending_field,value:item.id||item.value})}>{item.label||item.name||item.title||item.id}</button>)}
           {latest.allow_unknown&&<button className="button" disabled={busy} onClick={()=>send('잘 모르겠어요')}>잘 모르겠어요</button>}
         </div>}
+        {busy&&<><div className="ai-user-message"><p style={{whiteSpace:'pre-wrap'}}>{pendingQuestion}</p></div>
+          <div className="ai-waiting" role="status" aria-live="polite"><Icon name="Sparkles" size={16}/> 답변 생성 중이에요. 잠시 후 결과가 표시됩니다.</div></>}
         <div ref={bottom}/>
       </div>
       {error&&<div role="alert" className="ai-request-error">{error}<button type="button" className="text-button" onClick={()=>setError('')}>닫기</button></div>}
       <div className="ai-composer-wrap"><form className="ai-composer" onSubmit={e=>{e.preventDefault();send(question)}}>
         <Icon name="Sparkles" size={18}/><input aria-label="마음결 AI 질문" value={question} onChange={e=>setQuestion(e.target.value)}
-          placeholder="예: 친구 결혼식인데 예산은 3만원이야" maxLength={2000}/>
+          disabled={!userId||busy} placeholder={userId?'예: 친구 결혼식인데 예산은 3만원이야':'로그인 후 AI 상담을 이용할 수 있어요'} maxLength={2000}/>
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
-      </form><p className="ai-disclaimer">선택한 프로필 기준의 참고 답변이에요. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
+      </form>{!userId&&<p className="ai-login-hint" role="status">상단 계정 메뉴에서 로그인하면 AI 상담을 시작할 수 있어요.</p>}
+      <p className="ai-disclaimer">선택한 프로필 기준의 참고 답변이에요. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
     </section>
   </div>
 }
