@@ -262,6 +262,7 @@ class ChatService:
                         f"낸 금액 {history['paid_total_krw']:,}원, 예산 {budget:,}원을 확인했습니다.")
         model = None
         cited_ids = []
+        ai_status = "not_requested"
         if amount is not None:
             compact_history = {
                 "person_id": person["id"], "events": [],
@@ -288,20 +289,24 @@ class ChatService:
                 ],
                 "allowed_evidence_ids": [item["id"] for item in evidence],
             }
-            try:
-                preferred = request.get("_preferred_model")
-                if preferred:
-                    answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]),
-                                                   preferred_model=preferred)
-                else:
-                    answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]))
-                model = answer.get("model")
-                cited_ids = answer.get("evidence_ids", [])
-                # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
-                if not history["transactions"]:
-                    message += " " + answer["answer"]
-            except ModelUnavailable:
-                message += " 추가 AI 설명 없이 검증된 계산 결과만 표시합니다."
+            if not getattr(self.gateway, "api_key", True):
+                ai_status = "not_configured"
+            else:
+                try:
+                    preferred = request.get("_preferred_model")
+                    if preferred:
+                        answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]),
+                                                       preferred_model=preferred)
+                    else:
+                        answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]))
+                    model = answer.get("model")
+                    cited_ids = answer.get("evidence_ids", [])
+                    ai_status = "generated"
+                    # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
+                    message += "\n\nAI 해석: " + answer["answer"]
+                except ModelUnavailable:
+                    ai_status = "unavailable"
+                    message += " 추가 AI 설명 없이 검증된 계산 결과만 표시합니다."
 
         return {
             "status": "answer", "message": message.strip(), "model": model,
@@ -317,7 +322,7 @@ class ChatService:
             "recommendation_basis": result.get("recommendation_basis"),
             "evidence_level": result.get("evidence_level"),
             "v4_analysis": {
-                "status": status, "legal_assessment": legal,
+                "status": status, "ai_status": ai_status, "legal_assessment": legal,
                 "amount_krw": amount, "baseline_amount_krw": result.get("baseline_amount_krw"),
                 "relationship_adjustments": result.get("relationship_adjustments", []),
                 "reference_only": provisional,
