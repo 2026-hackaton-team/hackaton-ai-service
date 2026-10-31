@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {Icon} from './ui.jsx'
-import ScenarioLab from './ScenarioLab.jsx'
 import HistoryStats from './HistoryStats.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
 import { aiAnalysisStatusLabel } from './aiAnalysisStatus.js'
@@ -64,7 +63,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
     <div className="page-heading"><div><h1>마음결 AI</h1></div></div>
-    {userId==='SCENARIO_KIM'&&<ScenarioLab userId={userId} onQuestion={setQuestion}/>}
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
         <button className="button" type="button" disabled={!userId||busy} onClick={newConversation}>새 대화</button>

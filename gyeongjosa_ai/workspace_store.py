@@ -112,6 +112,11 @@ def _connect():
                 user_id TEXT PRIMARY KEY,
                 revision INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS workspace_seeds (
+                user_id TEXT NOT NULL,
+                seed_key TEXT NOT NULL,
+                PRIMARY KEY (user_id, seed_key)
+            );
             CREATE TABLE IF NOT EXISTS workspace_people (
                 user_id TEXT NOT NULL,
                 id TEXT NOT NULL,
@@ -189,27 +194,52 @@ def save_workspace(user_id: str, snapshot: WorkspaceInput):
         current_revision = version["revision"] if version else 0
         if current_revision != snapshot.revision:
             raise HTTPException(409, "서버 데이터가 변경됐습니다. 다시 불러오세요.")
-        for table in ("workspace_records", "workspace_events", "workspace_people"):
-            db.execute(f"DELETE FROM {table} WHERE user_id=?", (user_id,))
-        for person in snapshot.people:
-            db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
-                       (user_id, person.id, person.model_dump_json()))
-        if any(event.personId == "" for event in snapshot.events):
-            db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
-                       (user_id, SELF_PERSON_ID, json.dumps({"id": SELF_PERSON_ID, "name": "본인 행사"}, ensure_ascii=False)))
-        for event in snapshot.events:
-            db.execute("INSERT INTO workspace_events VALUES (?,?,?,?)",
-                       (user_id, event.id, event.personId or SELF_PERSON_ID, event.model_dump_json()))
-        for record in snapshot.records:
-            db.execute("INSERT INTO workspace_records VALUES (?,?,?,?,?,?,?)",
-                       (user_id, record.id, record.personId, record.eventId or None,
-                        record.direction, record.amount, record.model_dump_json()))
-        next_revision = current_revision + 1
-        db.execute("INSERT INTO workspace_versions(user_id,revision) VALUES (?,?) "
-                   "ON CONFLICT(user_id) DO UPDATE SET revision=excluded.revision",
-                   (user_id, next_revision))
+        _write_workspace(db, user_id, snapshot)
         db.commit()
-    return {"schemaVersion": 2, "revision": next_revision, "initialized": True,
+    return {"schemaVersion": 2, "revision": snapshot.revision + 1, "initialized": True,
             "people": [person.model_dump(mode="json") for person in snapshot.people],
             "events": [event.model_dump(mode="json") for event in snapshot.events],
             "records": [record.model_dump(mode="json") for record in snapshot.records]}
+
+
+def _write_workspace(db, user_id, snapshot):
+    """저장과 시드 추가가 같은 트랜잭션 저장 규칙을 사용한다."""
+    for table in ("workspace_records", "workspace_events", "workspace_people"):
+        db.execute(f"DELETE FROM {table} WHERE user_id=?", (user_id,))
+    for person in snapshot.people:
+        db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
+                   (user_id, person.id, person.model_dump_json()))
+    if any(event.personId == "" for event in snapshot.events):
+        db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
+                   (user_id, SELF_PERSON_ID, json.dumps({"id": SELF_PERSON_ID, "name": "본인 행사"}, ensure_ascii=False)))
+    for event in snapshot.events:
+        db.execute("INSERT INTO workspace_events VALUES (?,?,?,?)",
+                   (user_id, event.id, event.personId or SELF_PERSON_ID, event.model_dump_json()))
+    for record in snapshot.records:
+        db.execute("INSERT INTO workspace_records VALUES (?,?,?,?,?,?,?)",
+                   (user_id, record.id, record.personId, record.eventId or None,
+                    record.direction, record.amount, record.model_dump_json()))
+    db.execute("INSERT INTO workspace_versions(user_id,revision) VALUES (?,?) "
+               "ON CONFLICT(user_id) DO UPDATE SET revision=excluded.revision",
+               (user_id, snapshot.revision + 1))
+
+
+def seed_workspace_once(user_id: str, seed_key: str, seed: WorkspaceInput):
+    """기존 ID와 수정값을 보존하며 시드와 적용 표시를 한 번에 저장한다."""
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        applied = db.execute("SELECT 1 FROM workspace_seeds WHERE user_id=? AND seed_key=?",
+                             (user_id, seed_key)).fetchone()
+        if not applied:
+            version = db.execute("SELECT revision FROM workspace_versions WHERE user_id=?", (user_id,)).fetchone()
+            merged = {"revision": version["revision"] if version else 0}
+            for key in ("people", "events", "records"):
+                existing = [json.loads(row["payload"]) for row in db.execute(
+                    f"SELECT payload FROM workspace_{key} WHERE user_id=? ORDER BY rowid", (user_id,))]
+                existing = [row for row in existing if row["id"] != SELF_PERSON_ID]
+                ids = {row["id"] for row in existing}
+                merged[key] = existing + [row.model_dump(mode="json") for row in getattr(seed, key) if row.id not in ids]
+            _write_workspace(db, user_id, WorkspaceInput.model_validate(merged))
+            db.execute("INSERT INTO workspace_seeds VALUES (?,?)", (user_id, seed_key))
+        db.commit()
+    return load_workspace(user_id)

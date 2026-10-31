@@ -49,6 +49,13 @@ def interpret_budget_reply(text):
     return None
 
 
+def parse_meal_attendance(text):
+    """식사 여부가 명시된 문장에서 조사와 부정 표현을 함께 읽는다."""
+    if not re.search(r"식사|뷔페|밥", text):
+        return None
+    return not bool(re.search(r"식사\s*(?:는|를|도)?\s*(?:안|하지|못)|안\s*(?:먹|할)|불참", text))
+
+
 def question_result(message, field, options=None):
     """사용자가 추가 정보를 제공할 수 있는 응답을 만든다."""
     return {"status": "need_more_info", "message": message, "pending_field": field, "options": options or []}
@@ -161,8 +168,8 @@ class ChatService:
         question = request["question"]
         user_id = request["user_id"]
         attendance = request.get("attendance_with_meal")
-        if attendance is None and re.search(r"식사|뷔페|밥", question):
-            attendance = not bool(re.search(r"식사\s*(?:안|하지)|안\s*(?:먹|할)", question))
+        if attendance is None:
+            attendance = parse_meal_attendance(question)
         risk = bool(re.search(r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임|교사|인허가", question))
         access = profile_for_recipient(
             store=STORE, data=self.data.dataset, viewer_id=user_id, person_id=person["id"]
@@ -212,13 +219,18 @@ class ChatService:
         legal = result.get("legal_assessment") or {}
         evidence = [{"id": person["id"], "kind": "지인",
                      "text": f"{person['name']} · {person['relationship']}"}]
+        events_by_id = {event["id"]: event for event in history["events"]}
         for transaction in history["transactions"]:
             direction = "받음" if transaction["direction"] == "received" else "냄"
+            category = events_by_id.get(transaction["private_event_id"], {}).get("category", "종류 미기록")
             evidence.append({
                 "id": transaction["id"], "kind": "개인 거래",
-                "text": f"{direction} · {transaction['amount_krw']:,}원 · 행사 {transaction['private_event_id']}",
+                "text": f"{direction} · {transaction['amount_krw']:,}원 · {category} · 행사 {transaction['private_event_id']}",
                 "decision_role": "personal_history",
             })
+        for event in history["events"]:
+            evidence.append({"id": event["id"], "kind": "개인 행사",
+                             "text": f"{event['start_date']} · {event['category']} · {event['title']}"})
         for source in report["evidence"]:
             evidence.append({
                 "id": source["id"], "kind": "공개 근거", "text": source["excerpt"],
@@ -267,7 +279,11 @@ class ChatService:
         ai_status = "not_requested"
         if amount is not None:
             compact_history = {
-                "person_id": person["id"], "events": [],
+                "person_id": person["id"], "events": [
+                    {key: event.get(key) for key in (
+                        "id", "contact_person_id", "category", "start_date", "actual_attendance", "subject_relation"
+                    )} for event in history["events"]
+                ],
                 "transactions": [{
                     "id": row["id"], "event_id": row["private_event_id"],
                     "direction": row["direction"], "amount_krw": row["amount_krw"],
@@ -277,6 +293,7 @@ class ChatService:
             context = {
                 "mode": "amount", "question": question, "person": person_option(person),
                 "history": compact_history, "event_type": event_type, "budget_krw": budget,
+                "attendance_with_meal": attendance,
                 "recommendation": {
                     "amount_krw": amount, "reference_only": provisional,
                     "recommendation_basis": result.get("recommendation_basis"),
@@ -365,6 +382,9 @@ class ChatService:
             return v4_result
         keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field", "relationship_closeness", "relationship_special_care", "recent_received_override"}
         context = {key: value for key, value in raw_context.items() if key in keys}
+        meal_attendance = parse_meal_attendance(question)
+        if meal_attendance is not None:
+            context["attendance_with_meal"] = meal_attendance
         people = self.data.people(user_id)
         people_ids = {person["id"] for person in people}
         notices = self.data.recommendations(user_id)
@@ -437,7 +457,7 @@ class ChatService:
         intent = classified["intent"]
         pending = context.get("pending_field")
         if pending == "attendance_with_meal":
-            if re.search(r"식사\s*(?:안|하지)|안\s*(?:먹|할)|불참", question):
+            if meal_attendance is False or "불참" in question:
                 context["attendance_with_meal"] = False
             elif re.search(r"식사|먹|참석|네|예", question):
                 context["attendance_with_meal"] = True
@@ -519,6 +539,9 @@ class ChatService:
             )
             if claimed <= 10000000:
                 context["recent_received_override"] = claimed
+        event_type = classified.get("event_type")
+        if event_type and (event_type in question or event_type == "장례" and any(word in question for word in ("부고", "조문", "상주"))):
+            context["event_type"] = event_type
         previous_person_id = context.get("person_id")
         mentioned = [person for person in people if person["name"] in question]
         narrowed = [person for person in mentioned if person["fictional_affiliation"] and person["fictional_affiliation"] in question or person["relationship"] in question]
@@ -554,10 +577,6 @@ class ChatService:
             result = question_result("어떤 부고를 확인할지 선택해 주세요.", "notice_id", options)
             context.update({"intent": intent, "pending_field": "notice_id"})
             return {**result, "intent": intent, "classification_model": classified["model"], "context": context}
-        event_type = classified.get("event_type")
-        if event_type and (event_type in question or event_type == "장례" and any(word in question for word in ("부고", "조문", "상주"))):
-            context["event_type"] = event_type
-
         context["intent"] = intent
         context.pop("pending_field", None)
         request_for_chat = {**context, "user_id": user_id, "question": question, "mode": intent, "_preferred_model": classified["model"]}
@@ -617,7 +636,8 @@ class ChatService:
             return error_result("예산은 0 이상의 정수 금액으로 입력해 주세요.")
 
         if mode == "history" and history and not history["events"]:
-            return {"status": "answer", "message": "선택한 지인과의 경조사 이력이 기록되어 있지 않습니다.", "model": None, "evidence": []}
+            return {"status": "answer", "message": "선택한 지인과의 경조사 이력이 기록되어 있지 않습니다.", "model": None, "evidence": [],
+                    "history_stats": summarize_transactions(history)}
         if mode == "amount" and (request.get("budget_state") == "difficult" or budget == 0):
             prefix = "입력하신 최대 예산은 0원입니다." if budget == 0 else "지금은 지출이 어려운 상황이군요."
             return {"status": "answer", "message": prefix + " 무리해서 금액을 정할 필요는 없습니다. 원하시면 위로 문구를 함께 생각해 볼게요.", "model": None, "evidence": [], "suggested_amount_krw": None}
@@ -716,6 +736,7 @@ class ChatService:
             "status": "answer", "message": message, "model": answer["model"],
             "evidence": evidence, "cited_ids": answer["evidence_ids"],
             "suggested_amount_krw": answer.get("suggested_amount_krw"),
+            **({"history_stats": summarize_transactions(history)} if mode == "history" and history else {}),
             "requires_identity_confirmation": bool(candidate and mode == "notice"),
             "identity_candidates": [{**person_option(match["person"]), "affiliation_match": match["affiliation_match"]} for match in matching_people],
         }

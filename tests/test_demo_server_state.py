@@ -60,14 +60,15 @@ def test_signup_and_preferences_survive_new_session(client):
     assert prefs["readIds"] == ["notice-1", "notice-2"]
 
 
-def test_new_and_test_accounts_start_empty(client):
-    """test1234와 새 계정 모두 친구·공유·인맥·일정·장부 없이 시작한다."""
+def test_demo_is_seeded_but_new_accounts_start_empty(client):
+    """시연 계정에만 상담 기록을 넣고 새 회원과 친구·공유 상태는 비워 둔다."""
     assert client.post("/api/auth/login", json={"username": "test1234", "password": "test1234"}).status_code == 200
     social = client.get("/api/account/social").json()
     assert social["social"] == {"friendships": [], "shares": [], "receipts": {}}
     assert [member["username"] for member in social["members"]] == ["test1234"]
     workspace = client.get("/api/workspace/personal", headers={"X-Demo-User-Id": "TEST1234"}).json()
-    assert workspace["people"] == workspace["events"] == workspace["records"] == []
+    assert len(workspace["people"]) == 22
+    assert len(workspace["records"]) == 100
     user_id = _signup(client, "blank_user").json()["userId"]
     mine = client.get("/api/workspace/personal", headers={"X-Demo-User-Id": user_id}).json()
     assert mine["initialized"] is False

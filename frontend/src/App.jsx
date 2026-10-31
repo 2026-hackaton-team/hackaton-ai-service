@@ -391,7 +391,7 @@ export default function App() {
         {user && workspace.owner === serverUserId && workspace.status === 'error' && <section className="card" role="alert" style={{ marginBottom: 12, padding: 12 }}>
           <p>서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
         </section>}
-        {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
+        {page === 'home' && <HomePage userId={serverUserId} people={people} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} onOpenReceived={() => setModal({ type: 'received' })} receivedCount={newReceivedCount} />}
         {page === 'people' && <PeoplePage key={peopleTab.nonce} initialTab={peopleTab.tab} people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}
         {page === 'ledger' && <LedgerPage people={people} events={events} records={records} onAddRecord={() => setModal({ type: 'record' })} onEditRecord={id => setModal({type:'record', recordId:id})} onDeleteRecord={deleteRecord} onImportRecords={importRecords} notify={notify} />}
@@ -416,13 +416,13 @@ export default function App() {
   </div></SocialContext.Provider>;
 }
 
-function HomePage({ people, events, records, upcoming, today, onAddEvent, onOpenEvent, navigate, notify }) {
+function HomePage({ userId, people, upcoming, today, onAddEvent, onOpenEvent, navigate }) {
   const [filter, setFilter] = useState('전체');
   const visible = upcoming.filter(event => filter === '전체' || (filter === '조사' ? event.type === '장례식' : event.type !== '장례식')).slice(0, 2);
   return <div className={`home-page ${filter === '조사' ? 'mood-somber' : ''}`}>
     <div className="page-heading"><div><span className="eyebrow"><span className="tiny-dot" />{fullDate(today)}</span><h1>챙길 마음을, 한눈에.</h1><p>일정부터 인연, 주고받은 마음까지 함께 기억해요.</p></div><div className="page-heading-actions"><button className="button button-primary" onClick={onAddEvent}><Icon name="Plus" size={17} />일정 등록</button></div></div>
     <div className="home-overview"><section className="card upcoming-card"><div className="section-heading"><h2>다가오는 소중한 날<span className="count-badge">{upcoming.length}</span></h2><button className="text-button" onClick={() => navigate('schedule')}>전체 보기<Icon name="ChevronRight" size={14} /></button></div><div className="upcoming-filters">{['전체', '경사', '조사'].map(item => <button className={`filter-chip ${filter === item ? 'active' : ''}`} key={item} onClick={() => setFilter(item)}>{item}</button>)}<span><i className="legend-dot" />{filter === '조사' ? '조용히, 정중하게 마음을 전해요' : '잊지 않도록 함께 챙겨요'}</span></div><div className="event-list">{visible.length ? visible.map(event => <EventRow key={event.id} event={event} person={people.find(person => person.id === event.personId)} today={today} onClick={() => onOpenEvent(event)} />) : <EmptyState icon="CalendarCheck" title={filter === '조사' ? '예정된 조사가 없어요' : '다가오는 일정이 없어요'} description="소중한 사람의 특별한 날을 등록해 보세요." />}</div></section>
-    <AIPage people={people} events={events} records={records} today={today} notify={notify} embedded /></div>
+    <AIPage key={userId || 'signed-out'} userId={userId} embedded /></div>
   </div>;
 }
 
