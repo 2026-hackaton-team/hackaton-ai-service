@@ -17,6 +17,8 @@ from .dependencies import get_service
 from .data import public_legacy_candidate
 from .shared_events_store import SharedEventsStore
 from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
+from .service import ChatService
+from .workspace_adapter import data_for_chat
 
 router = APIRouter(prefix="/api")
 _DB = Path(os.environ.get("GYEONGJOSA_DEMO_DB", str(Path(__file__).resolve().parents[1] / "data" / "demo_conversations.sqlite3")))
@@ -300,6 +302,12 @@ def delete_conversation(conversation_id: str, user_id: str = Depends(_user)):
 
 @router.post("/conversations/{conversation_id}/messages")
 def send_message(conversation_id: str, data: MessageInput, user_id: str = Depends(_user), service=Depends(get_service)):
+    # 가상 시연을 제외한 실제 자유 상담만 계정별 SQLite 데이터 스냅샷을 사용한다.
+    if load_workspace(user_id)["initialized"] and not (
+        data.selection and data.selection.get("field", "").startswith("v4_")
+        or "가상 시나리오" in data.text
+    ):
+        service = ChatService(data_for_chat(service.data, user_id), service.gateway)
     # Guard the read -> AI -> write sequence against concurrent turns.
     with _LOCK, _connect() as db:
         row = _conversation(db, conversation_id, user_id)

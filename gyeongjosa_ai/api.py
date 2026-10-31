@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from .data import REFERENCE_DATE, public_legacy_candidate
 from .dependencies import get_service
 from .service import ChatService
+from .workspace_adapter import data_for_chat
+from .workspace_store import load_workspace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +77,8 @@ def dashboard(user_id: str, service: ChatService = Depends(get_service)):
 @app.post("/api/chat")
 def chat(request: ChatRequest, service: ChatService = Depends(get_service)):
     """기능 선택 없이 자연어 질문을 처리한다."""
+    if load_workspace(request.user_id)["initialized"] and "가상 시나리오" not in request.question:
+        service = ChatService(data_for_chat(service.data, request.user_id), service.gateway)
     return service.chat_auto(request.model_dump())
 
 from .integration_api import router as integration_router

@@ -148,6 +148,9 @@ def try_v4_chat(user_id: str, text: str, old_context: dict, gateway=None) -> dic
     if current not in SCENARIOS:
         current = None
     marker = any(word in text for word in DEMO_MARKERS)
+    # 자연어 직무·계약 질문을 가상 고정 시나리오로 강제로 전환하지 않는다.
+    if current is None and not marker:
+        return None
     candidate = _detected(text)
     if current and candidate and candidate != current:
         if not marker:

@@ -12,9 +12,13 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
         scenario_id:str='default', kb=None, explanation_mode:str='auto',
         profile_override:dict|None=None, profile_access:str|None=None,
         relation_assessment:dict|None=None, closeness_override:int|None=None,
-        special_care:bool=False, recent_received_override:int|None=None)->dict:
+        special_care:bool=False, recent_received_override:int|None=None,
+        dataset:dict|None=None)->dict:
     if kb is None: kb=KB
-    person=owned_person(user_id,person_id)
+    source = dataset
+    person = (next((p for p in source['people'] if p['id'] == person_id
+                    and p['owner_user_id'] == user_id), None)
+              if source is not None else owned_person(user_id,person_id))
     if person is None:
         return {'result':{'status':'FORBIDDEN_OR_NOT_FOUND','message':'접근 가능한 인물 기록이 없습니다.'},'evidence':[]}
     if not identity_confirmed:
@@ -31,7 +35,8 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
                    event_type=event_type,attendance_with_meal=attendance_with_meal,
                    budget_krw=budget_krw,legal_risk=False,kb=kb,
                    closeness_override=closeness_override,special_care=special_care,
-                   recent_received_override=recent_received_override)
+                   recent_received_override=recent_received_override,
+                   dataset=dataset)
     initial = base.get('amount_krw')
     status=legal['status']
     if base['status']=='RECOMMENDED':
@@ -53,6 +58,13 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
             # 일반 개인화 참고액은 행동 추천액과 구분한다. 법적 결과 미확정이면 송금액 반환 금지.
             base={'status':status,'message':legal['reason'],'reference_only_amount_krw':initial,
                   'missing_questions':legal['missing_questions'],
+                  'recommendation_basis':base.get('recommendation_basis'),
+                  'evidence_level':base.get('evidence_level'),
+                  'matched_source_id':base.get('matched_source_id'),
+                  'matched_transaction_ids':base.get('matched_transaction_ids',[]),
+                  'baseline_amount_krw':base.get('baseline_amount_krw'),
+                  'relationship_adjustments':base.get('relationship_adjustments',[]),
+                  'reasons':base.get('reasons',[]),
                   'disclaimer':'참고액은 법적 송금 가능 금액이 아닙니다.'}
         else:
             base['reasons'].append('등록된 합성 인물·업무 관계에서 직무 관련 경조사 한도 적용이 확인되지 않아 일반 추천을 유지했습니다.')

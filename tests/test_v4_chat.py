@@ -71,12 +71,10 @@ def test_procurement_risk_never_becomes_payment_advice():
     assert "보류" in result["message"]
 
 
-def test_unmarked_work_context_requires_fictional_confirmation():
-    pending = chat("저는 심사하는 거래처의 부친상에 가고 싶어요.")
-    assert pending["status"] == "need_more_info"
-    assert pending["pending_field"] == "v4_scenario"
-    assert pending["options"][0]["id"] == "procurement"
-    assert pending["context"].get("v4_scenario") is None
+def test_unmarked_work_context_is_not_forced_into_fictional_scenario():
+    from gyeongjosa_ai.v4_chat import try_v4_chat
+
+    assert try_v4_chat("U001", "저는 심사하는 거래처의 부친상에 가고 싶어요.", {}) is None
 
 
 def test_scenario_change_does_not_reuse_other_person_budget():
@@ -111,10 +109,15 @@ def test_v4_scenario_choice_is_conversation_scoped_and_validated(monkeypatch):
             cid = client.post("/api/conversations", headers=headers).json()["id"]
             endpoint = f"/api/conversations/{cid}/messages"
             first = client.post(endpoint, headers=headers, json={
-                "requestId": "request-one", "text": "직장 동료 결혼식 예산은 3만원",
+                "requestId": "request-one", "text": "가상 시나리오: 직장 동료 결혼식 예산은 3만원",
             })
             assert first.status_code == 200, first.text
-            assert first.json()["pending_field"] == "v4_scenario"
+            assert first.json()["pending_field"] == "v4_attendance"
+            changed = client.post(endpoint, headers=headers, json={
+                "requestId": "request-switch", "text": "이번엔 계약 심사 거래처의 부친상이야",
+            })
+            assert changed.status_code == 200, changed.text
+            assert changed.json()["pending_field"] == "v4_scenario"
             invalid = client.post(endpoint, headers=headers, json={
                 "requestId": "request-two", "text": "가상 시나리오",
                 "selection": {"field": "v4_scenario", "value": "public_procurement"},

@@ -61,9 +61,8 @@ def test_amount_requires_budget_and_respects_context(service):
     result = service.chat({**base, "question": "최대 8만 원이야"})
     assert result["status"] == "answer"
     assert result["suggested_amount_krw"] == 50000
-    context, _ = service.gateway.calls[-1]
-    assert context["budget_krw"] == 80000
-    assert [(t["direction"], t["amount_krw"]) for t in context["history"]["transactions"]] == [("received", 100000), ("paid", 50000)]
+    assert result["v4_analysis"]["legal_assessment"]
+    assert {item["id"] for item in result["evidence"] if item["kind"] == "개인 거래"} == {"T001", "T002"}
 
 
 def test_empty_history_and_missing_availability_are_questions(service):
@@ -175,7 +174,8 @@ def test_cold_start_budget_limit_and_legal_hint(service):
     assert "예산" in small["message"]
     risky = service.chat({**base, "question": "공무원 계약 관계인 경우 장례 예산 8만 원", "budget_krw": 80000})
     assert risky["suggested_amount_krw"] is None
-    assert "법률 확인 전 일반 참고액은 50,000원" in risky["message"]
+    assert "보류" in risky["message"]
+    assert "50,000원" not in risky["message"]
 
 
 def test_cold_start_wedding_requires_meal_context(service):
