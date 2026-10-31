@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import HTTPException
-
-from .test_account_seed import TEST_USER_ID, test_workspace
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 
@@ -168,13 +166,6 @@ def load_workspace(user_id: str):
             ).fetchall()
             result[key] = [json.loads(row["payload"]) for row in rows
                            if key != "people" or json.loads(row["payload"])["id"] != SELF_PERSON_ID]
-    if not result["initialized"] and user_id == TEST_USER_ID:
-        try:
-            save_workspace(user_id, WorkspaceInput(**test_workspace()))
-        except HTTPException as error:
-            if error.status_code != 409:
-                raise
-        return load_workspace(user_id)
     return result
 
 

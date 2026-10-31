@@ -17,7 +17,7 @@ import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored } from './services/workspaceStorage.js';
 import { useServerWorkspace } from './services/serverWorkspace.js';
 import { setDemoAccount } from './services/demoAccount.js';
-import { seedTestSocial, TEST_USERNAME, TEST_PROFILE_ID } from './services/testAccountDemo.js';
+import { TEST_USERNAME, TEST_PROFILE_ID } from './services/testAccountDemo.js';
 import { normalizePerson } from './relationships.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 
@@ -360,7 +360,6 @@ export default function App() {
     {modal?.type === 'profile' && user && <ProfileEditModal user={user} onClose={() => setModal(null)} onSave={(profile, passwordChanged) => { setUser(profile); setModal(null); notify(passwordChanged ? '비밀번호와 내 정보를 저장했어요.' : '내 정보를 저장했어요.'); }} />}
     {(modal?.type === 'login' || modal?.type === 'signup') && <AuthModal key={modal.type} mode={modal.type} onClose={() => setModal(null)} onSwitch={type => setModal({ type })} onSuccess={profile => {
         if (profile.username === TEST_USERNAME) {
-          seedTestSocial();
           writeStored(PROFILE_LINKS_KEY, { ...readStored(PROFILE_LINKS_KEY, {}), [TEST_USERNAME]: TEST_PROFILE_ID });
           setDemoAccount(TEST_PROFILE_ID);
         }
