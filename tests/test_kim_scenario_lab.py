@@ -8,7 +8,7 @@ from gyeongjosa_ai.dependencies import get_service
 from gyeongjosa_ai.scenario_lab import (
     USER_ID, cases, catalog, ensure_scenario_workspace, scenario_workspace, with_scenario_user,
 )
-from gyeongjosa_ai.service import ChatService
+from gyeongjosa_ai.service import ChatService, summarize_transactions
 from gyeongjosa_ai.workspace_adapter import data_for_chat
 from gyeongjosa_ai.workspace_store import WorkspaceInput, load_workspace, save_workspace
 from gyeongjosa_ai import integration_api
@@ -80,6 +80,59 @@ def test_persona_records_are_used_by_normal_recommendation_engine(tmp_path, monk
     assert result["recommendation_basis"] in {"history", "survey", "heuristic"}
     assert "기록상 받은 금액" in result["message"]
     assert sum(item["kind"] == "개인 거래" for item in result["evidence"]) == 6
+    assert result["history_stats"]["paid"]["average_krw"] == 50000
+    assert result["history_stats"]["received"]["average_krw"] == 100000
+
+
+
+def test_history_stats_show_averages_and_latest_spikes(tmp_path, monkeypatch):
+    """실제 장부에서 평균·중앙값·과거 대비 최근 급증을 각각 계산한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    ensure_scenario_workspace()
+    data = data_for_chat(with_scenario_user(load_data()), USER_ID)
+
+    recent = cases()[2]
+    stats = summarize_transactions(data.history(USER_ID, recent["person_id"]))
+    assert stats["paid"]["count"] == 3
+    assert stats["paid"]["average_krw"] == 50000
+    assert stats["received"]["count"] == 4
+    assert stats["received"]["average_krw"] == 87500
+    assert stats["received"]["median_krw"] == 50000
+    assert stats["received"]["previous_median_krw"] == 50000
+    assert stats["received"]["latest_krw"] == 200000
+    assert stats["received"]["recent_ratio"] == 4
+    assert stats["received"]["recent_spike"] is True
+
+    recent_paid = cases()[12]
+    paid = summarize_transactions(data.history(USER_ID, recent_paid["person_id"]))
+    assert paid["paid"]["average_krw"] == 100000
+    assert paid["paid"]["recent_spike"] is True
+    assert paid["received"]["recent_spike"] is False
+
+
+def test_history_stats_missing_and_zero_values():
+    """거래가 없거나 양수 거래가 부족한 경우 평균·급증을 지어내지 않는다."""
+    empty = summarize_transactions({"events": [], "transactions": []})
+    for direction in ("paid", "received"):
+        assert empty[direction]["count"] == 0
+        assert empty[direction]["average_krw"] is None
+        assert empty[direction]["recent_spike"] is False
+
+    records = [
+        {"id": "T1", "direction": "received", "amount_krw": 0, "private_event_id": "E1"},
+        {"id": "T2", "direction": "received", "amount_krw": 200000, "private_event_id": "E2"},
+    ]
+    sparse = summarize_transactions({
+        "events": [
+            {"id": "E1", "start_date": "2025-01-01"},
+            {"id": "E2", "start_date": "2026-01-01"},
+        ],
+        "transactions": records,
+    })
+    assert sparse["received"]["count"] == 1
+    assert sparse["received"]["average_krw"] == 200000
+    assert sparse["received"]["previous_median_krw"] is None
+    assert sparse["received"]["recent_spike"] is False
 
 
 def test_persona_api_and_20_real_dialogues(tmp_path, monkeypatch):
@@ -112,6 +165,9 @@ def test_persona_api_and_20_real_dialogues(tmp_path, monkeypatch):
                 assert result["status"] in {"answer", "need_more_info"}
                 if result["status"] == "answer":
                     assert result["context"]["person_id"] == item["person_id"], item["id"]
+                    assert "history_stats" in result
+                    assert "paid" in result["history_stats"]
+                    assert "received" in result["history_stats"]
                 expected_signals = {
                     "reciprocity_up": "reciprocity",
                     "recent_large": "recent_large_gift",
