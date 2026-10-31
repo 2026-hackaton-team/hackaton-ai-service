@@ -47,7 +47,7 @@
       "published_at": "2026-05-14",
       "sample_size": 5330000,
       "title": "2023~2025년 축의금 계좌이체 집계",
-      "url": "https://www.yna.co.kr/view/AKR20260513161300002",
+      "url": "https://www.newsis.com/view/NISX20260514_0003629021",
       "event_types": [
         "결혼"
       ],
@@ -62,7 +62,7 @@
         "2025",
         "결혼"
       ],
-      "text": "NH농협은행이 2023~2025년 축의금 이체 약 533만 건을 분석한 자료의 언론 보도. 2025년 평균 이체액은 11만 7천 원이며 금액별 비중은 5만 원 42.3%, 10만 원 39.7%, 20만 원 7.5%다. 계좌이체 거래 집계로 관계별·참석 여부별 적정 금액이 아니므로 개인 추천의 직접적인 정답이나 가중치로 쓰지 않는다.",
+      "text": "NH농협은행은 2023~2025년 115만 명의 축의금 계좌이체 약 533만 건을 분석했다. 이체 평균은 2023년 11만 원, 2024년 11만4천 원, 2025년 11만7천 원이다. 2025년의 5만 원 42.3%, 10만 원 39.7%, 20만 원 7.5%는 실제 이체 분포다. 연령·지역 집계는 수령자와의 친밀도나 참석·식사 여부가 통제되지 않아 적정 축의금으로 간주할 수 없다.",
       "facts": [
         {
           "metric": "mean_transfer_krw",
@@ -86,8 +86,73 @@
           "year": 2025,
           "amount_krw": 200000,
           "pct": 7.5
+        },
+        {
+          "metric": "mean_transfer_krw",
+          "year": 2023,
+          "value": 110000
+        },
+        {
+          "metric": "mean_transfer_krw",
+          "year": 2024,
+          "value": 114000
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2023,
+          "amount_krw": 50000,
+          "pct": 46.5
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2023,
+          "amount_krw": 100000,
+          "pct": 36.1
+        },
+        {
+          "metric": "transfer_share",
+          "year": 2023,
+          "amount_krw": 200000,
+          "pct": 6.1
+        },
+        {
+          "metric": "age_group_mean_transfer_krw",
+          "period": "2023-2025",
+          "age_group": "20-30",
+          "value": 138000
+        },
+        {
+          "metric": "age_group_mean_transfer_krw",
+          "period": "2023-2025",
+          "age_group": "40-50",
+          "value": 107000
+        },
+        {
+          "metric": "age_group_mean_transfer_krw",
+          "period": "2023-2025",
+          "age_group": "60+",
+          "value": 118000
+        },
+        {
+          "metric": "region_mean_transfer_krw",
+          "period": "2023-2025",
+          "region": "서울",
+          "value": 134000
+        },
+        {
+          "metric": "region_mean_transfer_krw",
+          "period": "2023-2025",
+          "region": "부산",
+          "value": 128000
+        },
+        {
+          "metric": "region_mean_transfer_krw",
+          "period": "2023-2025",
+          "region": "광주",
+          "value": 124000
         }
-      ]
+      ],
+      "observed_period": "2023-01~2025-12"
     },
     {
       "id": "HRC-2025-09",
@@ -502,6 +567,157 @@
       "attendance_condition": "any",
       "can_anchor_amount": false,
       "facts": []
+    },
+    {
+      "id": "GAYEON-2026-08",
+      "publisher": "가연 (서울신문 보도)",
+      "source_type": "survey",
+      "published_at": "2026-08-27",
+      "observed_period": "2026-08-04~2026-08-11",
+      "sample_size": 1008,
+      "title": "2026년 결혼 여부별 친구 결혼식 축의금 인식 설문",
+      "url": "https://www.seoul.co.kr/news/economy/2026/08/27/20260827500128",
+      "event_types": [
+        "결혼"
+      ],
+      "relationship_tag": "친구",
+      "attendance_condition": "attend_with_meal",
+      "can_anchor_amount": false,
+      "keywords": [
+        "2026년",
+        "축의금",
+        "친구",
+        "미혼",
+        "기혼",
+        "결혼식",
+        "친밀도",
+        "과거 축의금",
+        "동행"
+      ],
+      "text": "가연은 25~39세 미혼 506명과 기혼 502명에게 친구 결혼식에 직접 참석할 때의 적정 축의금을 조사했다. 응답 평균은 미혼 13만 원, 기혼 29만 원이며, 친구 관계·결혼 여부·동반자 유무에 따라 차이가 있다. 이 수치는 실제 송금 평균이나 모든 하객의 기준이 아니다. 현재 추천 API는 이용자의 혼인 여부·동반 참석 조건을 구조적으로 확인하지 않으므로 추천 금액의 직접 기준으로 사용하지 않는다.",
+      "facts": [
+        {
+          "metric": "perceived_amount_mean_krw",
+          "marital_status": "unmarried",
+          "age": "25-39",
+          "value": 130000,
+          "sample_size": 506
+        },
+        {
+          "metric": "perceived_amount_mean_krw",
+          "marital_status": "married",
+          "age": "25-39",
+          "value": 290000,
+          "sample_size": 502
+        },
+        {
+          "metric": "decision_factor_share_pct",
+          "marital_status": "unmarried",
+          "factor": "closeness",
+          "value": 76.7
+        },
+        {
+          "metric": "decision_factor_share_pct",
+          "marital_status": "married",
+          "factor": "closeness",
+          "value": 70.7
+        },
+        {
+          "metric": "decision_factor_share_pct",
+          "marital_status": "married",
+          "factor": "past_received_amount",
+          "value": 60.6
+        },
+        {
+          "metric": "decision_factor_share_pct",
+          "marital_status": "married",
+          "factor": "companions",
+          "value": 39.2
+        }
+      ]
+    },
+    {
+      "id": "KCA-WEDDING-2026",
+      "publisher": "한국소비자원 참가격",
+      "source_type": "service_price",
+      "published_at": null,
+      "observed_period": "2026-10 조회 시점",
+      "sample_size": null,
+      "title": "지역별 결혼식장 식대 중간가격",
+      "url": "https://www.price.go.kr/tprice/portal/wedding/areaStatistic.do",
+      "event_types": [
+        "결혼"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "attend_with_meal",
+      "can_anchor_amount": false,
+      "keywords": [
+        "결혼식",
+        "식대",
+        "예식장",
+        "1인당",
+        "지역",
+        "서울",
+        "한국소비자원",
+        "가격"
+      ],
+      "text": "한국소비자원 참가격의 결혼서비스 통계는 예식장 1인당 식대 중간가격을 전국·서울 등 지역별로 제공한다. 조회 시 표시된 전국 약 6만 원, 서울 약 8만 원은 계약 사례의 가격이며 시점에 따라 갱신된다. 결혼식 식대는 주최자 비용의 맥락일 뿐 하객이 내야 할 축의금의 하한이나 적정액이 아니다.",
+      "facts": [
+        {
+          "metric": "meal_cost_median_krw",
+          "region": "전국",
+          "value": 60000,
+          "unit": "1인"
+        },
+        {
+          "metric": "meal_cost_median_krw",
+          "region": "서울",
+          "value": 80000,
+          "unit": "1인"
+        }
+      ]
+    },
+    {
+      "id": "CPI-KR-2026-09",
+      "publisher": "국가데이터처",
+      "source_type": "inflation_statistic",
+      "published_at": "2026-10-02",
+      "observed_period": "2026-09",
+      "sample_size": null,
+      "title": "2026년 9월 전국 소비자물가지수와 과거 금액 비교",
+      "url": "https://www.mods.go.kr/cpi/",
+      "event_types": [
+        "결혼",
+        "장례",
+        "백일",
+        "돌",
+        "생일",
+        "환갑",
+        "칠순",
+        "팔순"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "keywords": [
+        "소비자물가지수",
+        "물가",
+        "CPI",
+        "인플레이션",
+        "2026년",
+        "과거",
+        "현재 가치",
+        "구매력"
+      ],
+      "text": "2026년 9월 소비자물가지수는 120.43(2020년=100)이다. 금액의 현재 구매력 비교는 당시 CPI와 기준월 CPI의 비율로 계산한다. 월별 CPI가 없으면 공식 연평균을 대체 지수로 사용하고 근사치임을 표시한다. 과거 거래 원본과 법정 금액 기준은 변경하지 않는다. CPI가 오른다고 적정 경조사비가 동일한 비율로 오른다는 뜻은 아니다.",
+      "facts": [
+        {
+          "metric": "headline_cpi",
+          "period": "2026-09",
+          "value": 120.43,
+          "base_year": 2020
+        }
+      ]
     }
   ]
 }
