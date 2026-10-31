@@ -177,7 +177,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             state["relationship_closeness"] = int(closeness_match.group(1))
         if re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", text):
             state["relationship_special_care"] = True
-        recent = re.search(r"(?:최근|지난번)[^\\n]{0,35}?(\\d[\\d,]*)\\s*(만\\s*원?|원)(?:을|이나)?\\s*받", text)
+        recent = re.search(r"(?:최근|지난번)[^\n]{0,35}?(\d[\d,]*)\s*(만\s*원?|원)(?:을|이나)?\s*받", text)
         if recent:
             claimed = int(recent.group(1).replace(",", "")) * (10000 if recent.group(2).startswith("만") else 1)
             if claimed <= 10000000:
