@@ -1,6 +1,7 @@
 """계정별 근거, 추가 질문과 모델 응답을 조합하는 대화 서비스."""
 
 import re
+from statistics import median
 
 from .ai import ModelUnavailable
 
@@ -83,6 +84,36 @@ def notice_summary(candidate):
         f"장소 {notice.get('venue') or '미기록'} · 주소 {notice.get('address') or '미기록'} · "
         f"빈소 {notice.get('room') or '미기록'} · 조문 시간 {notice.get('visiting_hours') or '미기록'}."
     )
+
+
+def summarize_transactions(history):
+    """선택한 지인의 실거래 금액을 양방향으로 요약하고 최근 급증 신호를 계산한다."""
+    event_dates = {event["id"]: event["start_date"] for event in history["events"]}
+    summary = {}
+    for direction in ("paid", "received"):
+        records = sorted(
+            (transaction for transaction in history["transactions"]
+             if transaction["direction"] == direction and transaction["amount_krw"] > 0),
+            key=lambda transaction: (
+                event_dates.get(transaction["private_event_id"], ""), transaction["id"]
+            ),
+        )
+        amounts = [record["amount_krw"] for record in records]
+        earlier = amounts[:-1]
+        earlier_median = median(earlier) if len(earlier) >= 2 else None
+        latest = amounts[-1] if amounts else None
+        increase_ratio = round(latest / earlier_median, 2) if earlier_median else None
+        summary[direction] = {
+            "count": len(amounts),
+            "total_krw": sum(amounts),
+            "average_krw": round(sum(amounts) / len(amounts)) if amounts else None,
+            "median_krw": median(amounts) if amounts else None,
+            "latest_krw": latest,
+            "previous_median_krw": earlier_median,
+            "recent_spike": bool(earlier_median and latest >= 2 * earlier_median),
+            "recent_ratio": increase_ratio,
+        }
+    return summary
 
 
 def find_person(data, user_id, question, person_id, candidate=None):
@@ -275,6 +306,7 @@ class ChatService:
         return {
             "status": "answer", "message": message.strip(), "model": model,
             "evidence": evidence, "cited_ids": cited_ids,
+            "history_stats": summarize_transactions(history),
             "suggested_amount_krw": amount,
             "recommendation_basis": result.get("recommendation_basis"),
             "evidence_level": result.get("evidence_level"),
