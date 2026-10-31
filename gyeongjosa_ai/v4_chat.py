@@ -99,7 +99,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             )
         current = None
         old_context = {}
-    if current and candidate is None and not TOPIC.search(text):
+    if current and candidate is None and not TOPIC.search(text) and old_context.get("pending_field") != "v4_person":
         return None
     if not current and not candidate:
         return None
@@ -176,7 +176,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
     person_id = state.get("v4_person") if current == "duplicate_mourner" else scenario["person_id"]
     event_type = state.get("event_type") or scenario["event_type"]
     attendance = state.get("v4_attendance") == "yes" if current == "general" else None
-    if event_type == "결혼" and attendance is None:
+    if event_type == "결혼" and attendance is None and current in ("general", "public_exception"):
         return _question(
             "결혼식에서 식사할 예정인지 알려 주세요.", state, "v4_attendance",
             [{"id": "yes", "label": "식사함"}, {"id": "no", "label": "식사하지 않음"}],
