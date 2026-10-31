@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 
 SELF_PERSON_ID = "__workspace_self__"
@@ -25,7 +25,7 @@ class PersonInput(BaseModel):
     relation: str = Field(default="기타", max_length=80)
     group: str = Field(default="", max_length=100)
     importance: str = Field(default="보통", max_length=30)
-    closeness_score: int | None = Field(default=None, ge=1, le=5)
+    closeness_score: StrictInt | None = Field(default=None, ge=1, le=5)
     lastMet: str = ""
     memo: str = Field(default="", max_length=2000)
     interactions: list[dict] = Field(default_factory=list, max_length=300)
