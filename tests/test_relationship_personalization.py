@@ -115,6 +115,18 @@ def test_legal_risk_still_blocks_transfer():
     assert result["suggested_amount_krw"] is None
 
 
+
+def test_claimed_recent_receipt_changes_amount_without_writing_history():
+    """자기신고 수령액은 별도 출처로 표시하고 이번 계산에만 반영한다."""
+    template = "가상 시나리오: 금액보다 소중한 친구야. 최근에 {}만원을 받았어. 예산은 10만원"
+    ordinary = ask(template.format(3))
+    larger = ask(template.format(20))
+    assert ordinary["status"] == larger["status"] == "answer"
+    assert larger["suggested_amount_krw"] > ordinary["suggested_amount_krw"]
+    assert larger["context"]["recent_received_override"] == 200000
+    assert any(row["kind"] == "사용자 자기신고 수령액" for row in larger["evidence"])
+    assert larger["v4_analysis"]["relationship_insights"]["received_average_krw"] == 30000
+
 def test_invalid_closeness_is_rejected():
     """친밀도 범위 밖 입력은 정책 API에서 거부한다."""
     payload = {
