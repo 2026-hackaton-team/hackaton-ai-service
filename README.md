@@ -12,20 +12,28 @@
 2. **마음결 v4 직무·법적 위험 분석** — 사용자 직업·담당 업무 + 동의된 상대 직업 범주 + 자유서술 관계 단서를 결합합니다. RAG 근거/조건/예산으로 추천·추가 질문·송금 보류를 구분합니다. **오프라인 설명만**으로 결정적 데모가 가능합니다.
 3. **공유된 부고 추천** — 친구 또는 친구의 친구 관계에서 명시적으로 공유·참석 허용된 장례 소식만 보입니다. 같은 이름이라는 이유만으로 지인과 자동 결합하지 않습니다.
 
-## 1. 실행 (Windows 로컬)
+## 1. 처음부터 설치·실행 (Windows / macOS)
 
-**조건:** Python 3.12, Node.js, Corepack, **`develop` 브랜치 소스**. 명령어는 별도 안내가 없다면 **이 저장소 루트**에서 실행합니다. 프론트엔드의 패키지 관리자 버전은 `frontend/package.json`에 선언된 `pnpm@11.25.0`을 사용합니다. 기존 `proto_rag_llm` 단독 v4 폴더는 통합 작업 폴더가 아닙니다. Python 가상환경은 저장소 밖에 둡니다.
+**사전 준비:** [Git](https://git-scm.com/downloads), **Python 3.12**, **Node.js 22 이상**, **Corepack**, 인터넷 연결이 필요합니다. `frontend/package.json`에 지정된 패키지 관리자는 **pnpm@11.25.0**입니다. Node.js 20 이하는 pnpm 11을 실행할 수 없습니다. Windows는 **PowerShell**, macOS는 **터미널(zsh 또는 bash)** 기준입니다. 기존 `proto_rag_llm` 단독 v4 폴더가 아닌 **이 GitHub 저장소**를 사용하세요. Python 가상환경은 저장소 밖에 만듭니다.
 
-**주의:** 로컬에 커밋하지 않은 작업이 있다면 먼저 보관하세요. `git status --short`에서 변경이 보이는 상태로 강제 리셋·정리하지 않습니다.
+### 1-1. 저장소 클론 (Windows·macOS 공통)
 
-**터미널 1 — 실제 로컬 저장소 루트:**
+원하는 작업 폴더에서 터미널을 열고 아래 순서대로 실행합니다.
+
+```sh
+git clone --branch develop https://github.com/2026-hackaton-team/hackaton-ai-service.git
+cd hackaton-ai-service
+git status --short --branch
+```
+
+현재 통합 시연 코드는 **`develop` 브랜치**에 있습니다. 처음 클론했다면 `git fetch`/`git pull`을 별도로 실행할 필요가 없습니다. **이미 클론한 저장소**에서는 루트에서 `git status --short --branch`로 변경사항을 확인한 후 `git switch develop` 및 `git pull --ff-only origin develop`을 사용하세요. 로컬 수정이 있다면 강제 초기화하거나 덮어쓰지 말고 먼저 보관하세요.
+
+### 1-2. 백엔드 실행 — Windows (PowerShell, 터미널 1)
+
+복제한 **저장소 루트**에서 실행합니다. Windows용 Python Launcher가 포함된 Python 3.12가 필요합니다.
 
 ```powershell
-git status --short --branch   # 로컬 변경사항 확인. 있다면 먼저 보관
-git fetch origin
-git switch develop
-git pull --ff-only origin develop
-
+py -3.12 --version
 $venv = Join-Path $env:USERPROFILE 'Documents\Codex\venvs\maeum-gyeol-integration'
 $python = Join-Path $venv 'Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python)) { py -3.12 -m venv $venv }
@@ -33,12 +41,26 @@ if (-not (Test-Path -LiteralPath $python)) { py -3.12 -m venv $venv }
 & $python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
 ```
 
-기존 `develop`에 로컬 변경이나 분기 이력이 있다면 위 명령의 `switch`/`pull`이 거부될 수 있습니다. **강제 덮어쓰지 말고 변경사항과 충돌을 먼저 해결**하세요.
+### 1-3. 백엔드 실행 — macOS (터미널 1)
 
-**터미널 2 — 같은 로컬 저장소의 `frontend/` 폴더:**
+Windows 단계 **대신** 아래 명령을 실행합니다. `python3.12` 명령이 없다면 먼저 [Python 3.12](https://www.python.org/downloads/)를 설치하세요. 가상환경은 Windows와 마찬가지로 저장소 밖의 사용자 문서 폴더에 둡니다.
 
-```powershell
-Set-Location .\frontend
+```bash
+python3.12 --version
+venv="$HOME/Documents/Codex/venvs/maeum-gyeol-integration"
+python3.12 -m venv "$venv"
+"$venv/bin/python" -m pip install -r requirements.txt 'openai>=1.75,<3'
+"$venv/bin/python" -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
+```
+
+백엔드가 실행 중인 **터미널 1은 그대로 열어 둡니다.** AI 자유 상담에서 실제 Codyssey 모델을 호출하려면 서버 실행 **전에** 운영체제에 맞게 `CODYSSEY_API_KEY`를 설정해야 합니다. Windows PowerShell은 `$env:CODYSSEY_API_KEY = '본인_키'`, macOS 터미널은 `export CODYSSEY_API_KEY='본인_키'` 형식입니다. 외부 관계 분석은 별도 `OPENAI_API_KEY`와 명시 동의가 필요합니다. **오프라인 v4 시연은 키 없이 가능**하며, 키를 GitHub·화면·로그에 노출하지 마세요.
+
+### 1-4. 프런트엔드 실행 — Windows·macOS 공통 (터미널 2)
+
+**새 터미널**을 열어 복제한 저장소 루트로 이동한 다음 아래 명령을 실행합니다. Windows PowerShell과 macOS 터미널 모두 동일합니다.
+
+```sh
+cd frontend
 node --version
 corepack --version
 corepack pnpm --version
@@ -46,9 +68,13 @@ corepack pnpm install --frozen-lockfile
 corepack pnpm dev
 ```
 
-별도 `pnpm` 전역 설치나 `corepack enable`은 필요하지 않습니다. Windows에서 `corepack enable` 실행 시 Node.js 설치 폴더의 `yarn` 파일에 `EPERM`이 발생할 수 있으므로, 관리자 권한으로 재실행하기보다 위처럼 `corepack pnpm`을 사용하세요. `pnpm` 명령이 인식되지 않는 오류도 같은 방법으로 피할 수 있습니다. `corepack pnpm --version`부터 실패한다면 Node.js·Corepack 버전과 네트워크 접근 여부를 확인하세요. 서버와 프론트엔드는 **서로 다른 터미널에서 함께 실행**합니다.
+`corepack enable`이나 별도 전역 pnpm 설치는 필요하지 않습니다. 특히 Windows에서 `corepack enable` 실행 시 Node.js 설치 폴더에 대한 `EPERM` 권한 오류가 날 수 있으므로 **`corepack pnpm`** 명령을 사용하세요. `corepack` 명령 자체가 없다면 [Corepack 설치 안내](https://github.com/nodejs/corepack#how-to-install)에 따라 설치하세요. Node.js 25 이상에는 Corepack이 기본 포함되지 않을 수 있습니다. 버전 다운로드에는 네트워크 연결이 필요합니다.
 
-브라우저 **http://127.0.0.1:5173** → **마음결 AI** 메뉴 → `AI 자유 상담` 또는 `v4 직무·법적 위험 분석` 선택.
+`dev:demo`는 별도 프런트 모의 백엔드를 실행하므로 **통합 시연에는 사용하지 않습니다.** 백엔드(8000)와 프런트엔드(5173)는 **서로 다른 터미널에서 동시에 실행**해야 합니다. 이미 포트를 사용 중인 서버가 있다면 해당 서버를 정상 종료하세요.
+
+### 1-5. 브라우저 접속 및 확인 (공통)
+
+브라우저에서 **http://127.0.0.1:5173** 접속 → **마음결 AI** → `AI 자유 상담` 또는 `v4 직무·법적 위험 분석` 선택.
 
 | 경로 | 목적 |
 |---|---|
@@ -57,10 +83,6 @@ corepack pnpm dev
 | `http://127.0.0.1:8000/v4/` | v4 원본 분석 UI 직접 접근 |
 | `http://127.0.0.1:8000/v4/api/docs` | v4 API 문서 |
 | `http://127.0.0.1:5173` | 최종 통합 React UI |
-
-**주의:** `dev:demo`는 별도의 프론트 모의 백엔드를 실행합니다. 통합 시연에는 `corepack pnpm dev`만 사용하세요. 이미 8000 포트를 쓰는 다른 서버가 있으면 먼저 해당 서버를 정상 종료하세요.
-
-Codyssey 모델이 필요한 경우 **서버 프로세스의 `CODYSSEY_API_KEY`** 설정이 필요합니다. v4의 선택형 외부 관계 분석은 별도 `OPENAI_API_KEY`와 명시 동의가 있어야 호출합니다. 두 키는 목적과 API가 다릅니다. 키를 GitHub·화면·로그에 노출하지 마세요. **v4 오프라인 시연에는 키가 필요 없습니다.**
 
 ### AI 자유 상담에서 v4 가상 시연하기
 
