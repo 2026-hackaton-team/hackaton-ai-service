@@ -82,6 +82,9 @@ def test_persona_records_are_used_by_normal_recommendation_engine(tmp_path, monk
     assert sum(item["kind"] == "개인 거래" for item in result["evidence"]) == 6
     assert result["history_stats"]["paid"]["average_krw"] == 50000
     assert result["history_stats"]["received"]["average_krw"] == 100000
+    assert result["budget_analysis"]["budget_krw"] == 120000
+    assert result["budget_analysis"]["unrestricted_amount_krw"] == 100000
+    assert result["budget_analysis"]["budget_limited"] is False
 
 
 
@@ -168,6 +171,13 @@ def test_persona_api_and_20_real_dialogues(tmp_path, monkeypatch):
                     assert "history_stats" in result
                     assert "paid" in result["history_stats"]
                     assert "received" in result["history_stats"]
+                    assert "budget_analysis" in result
+                    assert result["budget_analysis"]["budget_krw"] == item["budget_krw"]
+                    if result.get("suggested_amount_krw") is None:
+                        assert result["budget_analysis"]["unrestricted_amount_krw"] is None
+                    else:
+                        assert result["budget_analysis"]["unrestricted_amount_krw"] is not None
+                        assert type(result["budget_analysis"]["budget_limited"]) is bool
                 expected_signals = {
                     "reciprocity_up": "reciprocity",
                     "recent_large": "recent_large_gift",
