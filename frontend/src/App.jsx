@@ -292,7 +292,9 @@ export default function App() {
   }
   async function addLinkedPerson({ name, relation, linkedUsername }) {
     const created = { id: crypto.randomUUID(), name, relation: relation || '친구', group: '마음결 친구', importance: '보통', lastMet: '', memo: '', interactions: [], linkedUsername };
-    if (await saveChanges(state => ({ people: [...state.people, created] }))) notify(`${name}님을 서버 인맥에 추가했어요.`);
+    const ok = await saveChanges(state => ({ people: [...state.people, created] }));
+    if (ok) notify(`${name}님을 서버 인맥에 추가했어요.`);
+    return ok;
   }
   const socialValue = {
     user, social, members, mutate, notify, receivedItems, sharedInbox, addToCalendar, hideItem,
@@ -329,13 +331,13 @@ export default function App() {
         <section className="card" aria-live="polite" style={{ marginBottom: 12, padding: 12 }}>
           {!linked
             ? <p>서버 기록을 사용하려면 마음결 AI에서 가상 계정을 선택해 주세요. 현재 인맥·장부는 기존 브라우저 백업 보기이며 새 기록은 저장되지 않습니다.</p>
-            : workspace.status === 'migration'
+            : workspace.owner !== sharedInbox.userId || workspace.status === 'loading'
+              ? <p>서버 인맥·일정·장부를 불러오는 중입니다.</p>
+              : workspace.status === 'migration'
               ? <><p>선택한 가상 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
                 <button className="button button-primary" onClick={() => initializeWorkspace(true)}>기존 브라우저 기록 서버로 이전</button>
                 <button className="button button-secondary" onClick={() => initializeWorkspace(false)}>빈 서버 공간 시작</button></>
-              : workspace.status === 'loading'
-                ? <p>서버 인맥·일정·장부를 불러오는 중입니다.</p>
-                : workspace.status === 'error'
+              : workspace.status === 'error'
                   ? <p role="alert">서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
                   : <p>서버 작업공간 연결됨 · 가상 계정 {sharedInbox.userId} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.</p>}
         </section>
