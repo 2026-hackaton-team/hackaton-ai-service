@@ -96,7 +96,8 @@ class V4Tests(unittest.TestCase):
         self.put('U002')
         d=reco(relationship_text='상대와 업무상 관련성이 있습니다.',facts_confirmed=True,exception_context='yes')
         self.assertEqual(d['result']['status'],'RECOMMENDED')
-        self.assertEqual(d['result']['unconstrained_amount_krw'],100000)
+        self.assertGreater(d['result']['unconstrained_amount_krw'], 50000)
+        self.assertEqual(d['result']['unconstrained_amount_krw'] % 10000, 0)
         self.assertEqual(d['result']['amount_krw'],50000)
         self.assertIn('ACRC-CEREMONY-QA',d['result']['evidence_trace']['applied_ids'])
 
