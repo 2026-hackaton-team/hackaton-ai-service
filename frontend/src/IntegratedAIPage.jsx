@@ -5,7 +5,6 @@ import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/d
 export { demoApi } from './services/demoApi.js'
 const stored=()=>getDemoAccount()
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
-  const [view,setView]=useState('chat')
   const [users,setUsers]=useState([])
   const [scenarioExamples,setScenarioExamples]=useState([])
   const [userId,setUserId]=useState(stored)
@@ -57,8 +56,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
-    <div style={{display:'flex',gap:12,marginBottom:16}}><button type='button' className='button' aria-pressed={view==='chat'} onClick={()=>setView('chat')}>AI 자유 상담</button><button type='button' className='button' aria-pressed={view==='risk'} onClick={()=>setView('risk')}>v4 직무·법적 위험 분석</button></div>
-    {view==='risk' ? <section className='card' aria-label='마음결 v4 직무분석' style={{padding:0,overflow:'hidden'}}><iframe title='마음결 v4 양방향 직무관계 분석 및 RAG 추천' src='/v4/' style={{display:'block',border:0,width:'100%',height:'1300px'}}/></section> : <>
     <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
@@ -86,7 +83,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
           <div className={m.role==='user'?'':'ai-assistant-content'}>
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
             {m.role==='assistant'&&m.result?.v4_analysis&&<div className="ai-evidence">
-              <p><strong>v4 분석: {m.result.v4_analysis.status}</strong></p>
+              <p><strong>개인화·법률 분석: {m.result.v4_analysis.status}</strong></p>
               {m.result.v4_analysis.status==='RELATIONSHIP_INSIGHT'
                 ? <p>관계 이력을 분석했습니다. 금액은 예산을 확인한 뒤 추천할 수 있습니다.</p>
                 : m.result.v4_analysis.amount_krw!=null
@@ -94,12 +91,15 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
                   : <p>송금 추천 금액: 보류</p>}
               {m.result.v4_analysis.relationship_insights?.closeness_score!=null&&
                 <p>사용자가 기록한 친밀도: {m.result.v4_analysis.relationship_insights.closeness_score}/5</p>}
+              {m.result.v4_analysis.baseline_amount_krw!=null&&m.result.v4_analysis.amount_krw!=null&&m.result.v4_analysis.baseline_amount_krw!==m.result.v4_analysis.amount_krw&&
+                <p>기존 기록 기준: {m.result.v4_analysis.baseline_amount_krw.toLocaleString('ko-KR')}원 → 관계 반영: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>}
+              {m.result.v4_analysis.relationship_adjustments?.map((item,j)=><p key={j}>조정 근거: {item.reason}</p>)}
               {m.result.v4_analysis.legal_assessment?.reason&&<p>{m.result.v4_analysis.legal_assessment.reason}</p>}
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
               <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
             </div>}
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&<p><strong>참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</strong></p>}
-            {m.role==='assistant'&&Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<details><summary>근거 보기</summary>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}</p>)}</details>}
+            {m.role==='assistant'&&Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<details><summary>근거 보기</summary>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</details>}
           </div>
         </div>)}
         {options.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:8,padding:12}}>
@@ -116,6 +116,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
       </form><p className="ai-disclaimer">가상 계정을 사용하는 로컬 시연입니다. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
-    </section></>}
+    </section>
   </div>
 }
