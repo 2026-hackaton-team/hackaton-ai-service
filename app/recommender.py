@@ -10,7 +10,9 @@ from statistics import median
 from .knowledge import KB, KnowledgeBase
 
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "original_demo.json"
-DEMO = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+from gyeongjosa_ai.special_fixtures import merge_special_fixtures
+
+DEMO = merge_special_fixtures(json.loads(DATA_FILE.read_text(encoding="utf-8")))
 AMOUNTS = (30000, 50000, 70000, 100000, 150000, 200000)
 RAW_WEIGHTS = {"matched_survey": 0.55, "same_type_paid": 0.20, "paid_to_person": 0.15, "received_from_person": 0.10}
 
