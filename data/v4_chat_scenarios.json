@@ -1,0 +1,146 @@
+{
+  "version": "2026-10-31-v1",
+  "notice": "모든 인물·직업·관계는 합성 시연용이며 실제 사람이나 법적 사실 확인 결과가 아니다.",
+  "scenarios": [
+    {
+      "id": "general",
+      "name": "직장 동료 결혼식",
+      "person_id": "P001",
+      "scenario_id": "default",
+      "event_type": "결혼",
+      "keywords": [
+        "직장 동료 결혼식",
+        "동료 김도윤 결혼식"
+      ],
+      "example_question": "가상 시나리오: 직장 동료 김도윤 결혼식에 참석해서 식사해요. 예산은 3만원이에요"
+    },
+    {
+      "id": "public_exception",
+      "name": "공직자 부조 예외 성립 가정",
+      "person_id": "P004",
+      "scenario_id": "chat_public_exception",
+      "event_type": "장례",
+      "keywords": [
+        "공직자 부조 예외",
+        "부조 예외 성립"
+      ],
+      "example_question": "가상 시나리오: 공직자 부조 예외 성립 가정, 장례식 예산은 10만원이에요"
+    },
+    {
+      "id": "procurement",
+      "name": "계약·심사 이해관계 가정",
+      "person_id": "P005",
+      "scenario_id": "chat_public_procurement",
+      "event_type": "장례",
+      "keywords": [
+        "계약 심사 거래처",
+        "심사하는 거래처",
+        "계약 심사 중",
+        "계약 심사 이해관계"
+      ],
+      "example_question": "가상 시나리오: 계약 심사 거래처 부친상, 예산은 3만원이에요"
+    },
+    {
+      "id": "teacher_parent",
+      "name": "현직 담임교사 축의금",
+      "person_id": "V4P001",
+      "scenario_id": "default",
+      "event_type": "결혼",
+      "keywords": [
+        "담임선생님",
+        "담임 선생님",
+        "담임교사",
+        "학부모가 담임"
+      ],
+      "example_question": "가상 시나리오: 우리 아이 담임선생님 결혼식에 축의금 3만원 드려도 될까요?"
+    },
+    {
+      "id": "sender_public",
+      "name": "공무원 제공자와 민간 거래처",
+      "person_id": "V4P002",
+      "scenario_id": "chat_sender_public",
+      "event_type": "장례",
+      "keywords": [
+        "제가 담당하는 업체",
+        "제가 담당하는 거래처",
+        "구청 계약 담당자",
+        "공무원 제공자",
+        "제가 심사하는 업체"
+      ],
+      "example_question": "가상 시나리오: 저는 구청 계약 담당자이고 담당 업체 직원의 부친상입니다. 예산은 3만원이에요"
+    },
+    {
+      "id": "private_occupation",
+      "name": "상대방 직업 비공개",
+      "person_id": "V4P003",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "상대가 직업 비공개",
+        "직업을 공개하지",
+        "직업정보 비공개",
+        "직업을 비공개",
+        "공무원인 것 같은데"
+      ],
+      "example_question": "가상 시나리오: 상대가 직업을 비공개로 했는데 공무원인 것 같아요. 부의금은 3만원이에요"
+    },
+    {
+      "id": "cash_and_wreath",
+      "name": "현금과 조화 복합 제공",
+      "person_id": "V4P004",
+      "scenario_id": "chat_cash_and_wreath",
+      "event_type": "장례",
+      "keywords": [
+        "조의금과 조화",
+        "조의금 5만원에 조화",
+        "현금과 조화",
+        "조의금 5만원과 조화",
+        "조의금 3만원과 조화"
+      ],
+      "example_question": "가상 시나리오: 직무 관련 공직자에게 조의금 5만원과 조화 10만원을 함께 보내도 될까요?"
+    },
+    {
+      "id": "public_dol",
+      "name": "직무 관련 공직자 자녀 돌잔치",
+      "person_id": "V4P005",
+      "scenario_id": "default",
+      "event_type": "돌",
+      "keywords": [
+        "공직자 자녀 돌잔치",
+        "공무원 아이 돌잔치",
+        "직무 관련 공무원의 아이 돌잔치",
+        "공직자 돌잔치"
+      ],
+      "example_question": "가상 시나리오: 직무 관련 공무원의 아이 돌잔치에도 경조사비 5만원 기준이 적용되나요?"
+    },
+    {
+      "id": "duplicate_mourner",
+      "name": "동명이인 상주 확인",
+      "person_id": "P001",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "김도윤 부친상",
+        "김도윤의 부친상",
+        "동명이인 상주",
+        "회사 동료 김도윤이 맞"
+      ],
+      "example_question": "가상 시나리오: 김도윤의 부친상인데 우리 회사 동료 김도윤이 맞나요? 예산은 3만원이에요"
+    },
+    {
+      "id": "ended_contract",
+      "name": "계약 종료 후 직무 관련성",
+      "person_id": "V4P006",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "계약은 6개월 전에 끝",
+        "계약이 6개월 전에 끝",
+        "계약이 종료된 거래처",
+        "과거에 계약을 심사",
+        "계약 종료된 업체"
+      ],
+      "example_question": "가상 시나리오: 6개월 전에 계약이 끝난 업체 직원의 부친상인데 3만원을 보내도 될까요?"
+    }
+  ]
+}
