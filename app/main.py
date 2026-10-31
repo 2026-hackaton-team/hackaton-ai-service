@@ -109,10 +109,15 @@ def recommendation(req: RecommendationRequest):
         'description':'상대방의 직업 정보가 추천 목적으로 제공되지 않았습니다.'
     })
     sender_profile = STORE.get(req.demo_user_id)
+    if req.scenario_id == 'chat_sender_public':
+        # 이 시연에만 제공자가 계약 업무를 담당하는 공무원이라고 가정한다.
+        sender_profile = {'occupation':'civil_servant', 'institution':'government', 'duty_role':'procurement'}
     relation = analyze(sender=sender_profile, recipient=policy,
         relationship_text=req.relationship_text,duty_context=req.duty_context,
         exception_context=req.exception_context,facts_confirmed=req.facts_confirmed,
         allow_llm_analysis=req.allow_llm_analysis)
+    if req.scenario_id == 'chat_sender_public':
+        policy['sender_ethics_risk'] = relation['sender_ethics_risk']
     if req.scenario_id == 'default':
         if policy['covered'] != 'unknown':
             # Only explicit structured or user-confirmed text may set policy facts.
@@ -135,7 +140,7 @@ def recommendation(req: RecommendationRequest):
                  identity_confirmed=req.identity_confirmed,event_type=req.event_type,
                  attendance_with_meal=req.attendance_with_meal,budget_krw=req.budget_krw,
                  scenario_id=req.scenario_id,explanation_mode=req.explanation_mode,
-                 profile_override=policy if req.scenario_id=='default' else None,
+                 profile_override=policy if req.scenario_id in ('default','chat_sender_public') else None,
                  profile_access=access['access'] if req.scenario_id=='default' else 'hypothetical_override',
                  relation_assessment=relation)
     result,evidence=report['result'],report['evidence']
