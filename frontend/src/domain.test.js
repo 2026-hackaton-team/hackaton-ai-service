@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { daysUntil, normalizeAttendance, getAdvice, monthSpending, typeSpending, toICS } from './domain.js'
+import { displayScheduleTitle, isSyntheticScheduleTitle } from './scheduleTitle.js'
 
 test('date calculations use calendar days without UTC offset drift', () => {
   assert.equal(daysUntil('2026-11-07', '2026-10-30'), 8)
@@ -88,4 +89,25 @@ test('priority ranks very-important relations first on the same day while keepin
   assert.equal(getAdvice(context).evidence.find(item => item.label === '관계 중요도').value, '매우 중요')
   assert.ok(getAdvice({...context, events:[...events, {...events[0], id:'earlier', title:'가까운 날', date:'2026-10-31'}]}).text.startsWith('가까운 날'))
   assert.ok(getAdvice({...context, events:[...events, {...events[0], id:'funeral', title:'조문 일정', type:'장례식', date:'2026-11-02'}]}).text.startsWith('조문 일정'))
+})
+
+test('합성 시연과 합성 예정 접두어를 화면용 제목에서 제거한다', () => {
+  assert.equal(displayScheduleTitle('[합성 시연] 김민수 결혼식'), '김민수 결혼식')
+  assert.equal(displayScheduleTitle('[합성 예정] 이지은 돌잔치'), '이지은 돌잔치')
+  assert.equal(displayScheduleTitle('[합성 시연]김민수 결혼식'), '김민수 결혼식')
+})
+
+test('일반 제목과 내부 문구를 변경하지 않는다', () => {
+  assert.equal(displayScheduleTitle('김민수 결혼식'), '김민수 결혼식')
+  assert.equal(displayScheduleTitle('김민수 [합성 시연] 결혼식'), '김민수 [합성 시연] 결혼식')
+  assert.equal(displayScheduleTitle('[합성 기록] 김민수'), '[합성 기록] 김민수')
+  assert.equal(displayScheduleTitle(''), '')
+  assert.equal(displayScheduleTitle(null), null)
+})
+
+test('화면의 합성 데이터 안내는 해당 접두어가 있는 경우에만 필요하다', () => {
+  assert.equal(isSyntheticScheduleTitle('[합성 시연] 김민수 결혼식'), true)
+  assert.equal(isSyntheticScheduleTitle('[합성 예정] 이지은 돌잔치'), true)
+  assert.equal(isSyntheticScheduleTitle('김민수 결혼식'), false)
+  assert.equal(isSyntheticScheduleTitle(undefined), false)
 })
