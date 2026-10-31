@@ -121,6 +121,7 @@ def test_amount_summary_uses_verified_facts_even_if_model_prose_is_wrong():
     result = service.chat({"user_id": "U001", "mode": "amount", "question": "8만 원 이내로 얼마가 좋을까?", "person_id": "P001", "notice_id": "N001", "person_confirmed": True})
     assert result["status"] == "answer"
     assert "김도윤 본인의 결혼식" not in result["message"]
+    assert result["v4_analysis"]["ai_status"] == "unavailable"
     assert "받은 금액 100,000원" in result["message"]
     assert "낸 금액 50,000원" in result["message"]
     assert "예산 80,000원" in result["message"]
