@@ -1,8 +1,9 @@
 'use strict';
+const apiPath = path => path.startsWith('/api/') ? '/v4'+path : path;
 const $ = id => document.getElementById(id);
 const won = n => Number(n).toLocaleString('ko-KR') + '원';
 async function getJSON(path, options={}) {
-  const res = await fetch(path, {cache:'no-store', ...options});
+  const res = await fetch(apiPath(path), {cache:'no-store', ...options});
   let body; try {body=await res.json();} catch (_) {throw new Error('JSON 응답을 받지 못했습니다.');}
   if(!res.ok) throw new Error(typeof body.detail==='string'?body.detail:`요청 실패 (${res.status})`);
   return body;
