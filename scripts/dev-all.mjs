@@ -164,7 +164,12 @@ async function main() {
     writeFileSync(stamp, fingerprint);
     if (!existsSync(vite)) {
       console.log('\n[준비] 화면 의존성 설치');
-      await supervisor.run(process.execPath, [npmCli(), 'install', '--no-package-lock'], { cwd: frontend });
+      if (process.platform === 'win32') {
+        await supervisor.run(process.execPath, [npmCli(), 'install', '--no-package-lock'], { cwd: frontend });
+      } else {
+        // macOS/Linux npm comes from PATH; its install path differs between Node distributions.
+        await supervisor.run('npm', ['install', '--no-package-lock'], { cwd: frontend });
+      }
     }
 
     const apiUrl = `http://127.0.0.1:${apiPort}`;
@@ -174,16 +179,14 @@ async function main() {
       { service: 'FastAPI', env: { ...process.env, PYTHONUNBUFFERED: '1' } });
     await waitFor(`${apiUrl}/api/health`, supervisor, async response => (await response.json()).status === 'ok');
     if (supervisor.stopping) return;
-    await waitFor(`${apiUrl}/v4/api/health`, supervisor, async response => (await response.json()).policy_engine === 'v4');
-    if (supervisor.stopping) return;
     console.log('\n[화면] React 개발 서버 시작');
     supervisor.launch(process.execPath, [vite, '--host', '127.0.0.1', '--port', String(webPort), '--strictPort'], {
       cwd: frontend, service: 'React', env: { ...process.env, MAEUM_API_TARGET: apiUrl },
     });
     await waitFor(webUrl, supervisor);
     if (!supervisor.stopping) {
-      console.log(`\n실행 완료\n앱: ${webUrl}\nv4 직접 열기: ${apiUrl}/v4/\n종료: Ctrl+C\n`);
-      console.log('v4 오프라인 시연은 API 키 없이 가능합니다. AI 자유 상담에는 CODYSSEY_API_KEY가 필요합니다.\n');
+      console.log(`\n실행 완료\n앱: ${webUrl}\n종료: Ctrl+C\n`);
+      console.log('AI 자유 상담에서 가상 시연을 선택할 수 있습니다. 실모델 호출에는 CODYSSEY_API_KEY가 필요합니다.\n');
     }
     process.exitCode = await supervisor.done;
   } catch (error) {

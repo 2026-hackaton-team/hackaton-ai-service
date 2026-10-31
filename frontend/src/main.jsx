@@ -7,5 +7,6 @@ import './people-ledger.css';
 import './home-overview.css';
 import './warm-theme.css';
 import './sidebar-layout.css';
+import './occasion-theme.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
