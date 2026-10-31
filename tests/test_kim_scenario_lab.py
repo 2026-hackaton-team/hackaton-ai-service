@@ -78,7 +78,7 @@ def test_persona_records_are_used_by_normal_recommendation_engine(tmp_path, monk
     assert result["suggested_amount_krw"] == result["v4_analysis"]["amount_krw"]
     assert result["suggested_amount_krw"] != 999999
     assert result["recommendation_basis"] in {"history", "survey", "heuristic"}
-    assert "AI 설명" in result["message"]
+    assert "기록상 받은 금액" in result["message"]
     assert sum(item["kind"] == "개인 거래" for item in result["evidence"]) == 6
 
 
