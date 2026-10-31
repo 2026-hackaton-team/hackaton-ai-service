@@ -136,7 +136,8 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
     state = {
         key: value for key, value in old_context.items()
         if key in {"v4_scenario", "budget_krw", "v4_attendance", "event_type",
-                   "pending_field", "cash_krw", "wreath_krw", "v4_person"}
+                   "pending_field", "cash_krw", "wreath_krw", "v4_person",
+                   "relationship_closeness", "relationship_special_care"}
     }
     if current is None:
         if not marker and state.get("v4_scenario") not in SCENARIOS:
@@ -163,6 +164,12 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         state["event_type"] = "결혼"
 
     if current.startswith("relation_"):
+        # 현재 대화의 직접 입력은 가상 기록과 구분해 임시 개인화 조건으로 사용한다.
+        closeness_match = re.search(r"친밀도(?:는|가|를)?\\s*([1-5])\\s*(?:점|/5)", text)
+        if closeness_match:
+            state["relationship_closeness"] = int(closeness_match.group(1))
+        if re.search(r"특별히\\s*챙기|더\\s*챙기|특별하게\\s*보답", text):
+            state["relationship_special_care"] = True
         scenario = SCENARIOS[current]
         person_id = scenario["person_id"]
         insights = analyze_relationship_case(
@@ -177,6 +184,8 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
                 identity_confirmed=True, event_type=scenario["event_type"],
                 budget_krw=money, scenario_id="default", explanation_mode="offline",
                 allow_llm_analysis=False,
+                closeness_override=state.get("relationship_closeness"),
+                special_care=bool(state.get("relationship_special_care")),
             )
             report = recommendation(request)
             result = report["result"]
@@ -190,7 +199,9 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         if money is None:
             conclusion = "예산을 알려 주시면 기존 추천 엔진으로 상한을 지키는 참고 금액을 계산할 수 있습니다."
         elif amount is not None:
-            conclusion = f"이번 예산 {money:,}원 안의 참고액은 {amount:,}원입니다. 과거 거래액과 같게 돌려줄 의무는 없습니다."
+            baseline = result.get("baseline_amount_krw")
+            difference = f" (과거 이력 기준 {baseline:,}원에서 개인화 조정)" if baseline is not None and baseline != amount else ""
+            conclusion = f"이번 예산 {money:,}원 안의 참고액은 {amount:,}원{difference}입니다. 과거 거래액과 같게 돌려줄 의무는 없습니다."
         else:
             conclusion = f"이번 예산 {money:,}원과 확인 가능한 근거에서는 행동 금액 추천을 보류합니다."
         message = f"[가상 관계 시연: {scenario['name']}] " + " ".join(insights["messages"]) + " " + conclusion
@@ -213,6 +224,8 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             "v4_analysis": {
                 "scenario": current, "person_id": person_id, "status": status,
                 "amount_krw": amount, "legal_assessment": legal,
+                "baseline_amount_krw": result.get("baseline_amount_krw") if money is not None else None,
+                "relationship_adjustments": result.get("relationship_adjustments", []) if money is not None else [],
                 "relationship_insights": summary, "demo_only": True,
             },
         }
