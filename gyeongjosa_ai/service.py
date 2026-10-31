@@ -322,15 +322,23 @@ class ChatService:
                     else:
                         answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]))
                     explanation = answer["answer"]
-                    # 행사 당사자에 대한 모델의 단정은 검증할 수 없으므로 노출하지 않는다.
-                    unsupported_owner = history["transactions"] and re.search(
-                        r"(?:본인|상대(?:방)?|지인)(?:의|이|가)?\s*(?:결혼식|장례식|돌잔치|행사|경조사|부고)",
-                        explanation,
+                    # 과거 거래를 지인의 행사로 잘못 연결한 문장만 제외하고 상담 조언은 보존한다.
+                    owner_record_claim = re.compile(
+                        r"(?:본인|상대(?:방)?|지인)(?:의|이|가)?\s*"
+                        r"(?:결혼식|장례식|돌잔치|행사|경조사|부고)"
+                        r"(?:에서|때|당시)[^.!?\n]{0,25}?(?:받|냈|낸|보냈|기록|거래)"
                     )
-                    if unsupported_owner:
+                    sentences = re.split(r"(?<=[.!?])\s+|\n+", explanation)
+                    safe_sentences = [
+                        sentence for sentence in sentences
+                        if not history["transactions"] or not owner_record_claim.search(sentence)
+                    ]
+                    if not safe_sentences:
                         ai_status = "unavailable"
                         message += " 확인되지 않은 AI의 행사 당사자 설명은 제외했습니다."
                     else:
+                        if len(safe_sentences) != len(sentences):
+                            explanation = " ".join(safe_sentences)
                         model = answer.get("model")
                         cited_ids = answer.get("evidence_ids", [])
                         ai_status = "generated"
