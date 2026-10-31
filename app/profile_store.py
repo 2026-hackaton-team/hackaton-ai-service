@@ -28,6 +28,16 @@ SEEDS = {
     'V4U004': ('civil_servant','government',1,'accepted_contacts'),
     'V4U005': ('civil_servant','government',1,'accepted_contacts'),
     'V4U006': ('civil_servant','government',1,'accepted_contacts'),
+    'V4U011': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U012': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U013': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U014': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U015': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U016': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U017': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U018': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U019': ('private_employee','private_company',1,'accepted_contacts'),
+    'V4U020': ('private_employee','private_company',1,'accepted_contacts'),
 }
 
 class ProfileStore:

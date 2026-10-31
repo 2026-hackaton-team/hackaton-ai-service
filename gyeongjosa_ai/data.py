@@ -84,7 +84,9 @@ class DemoData:
 
     def dashboard(self, user_id):
         """해당 계정의 거래 합계와 명시적 0원 기록 건수를 계산한다."""
-        transactions = [item for item in self.dataset["transactions"] if item["owner_user_id"] == user_id]
+        # 추가 합성 관계 시연의 거래는 기존 전체 장부 합계에 포함하지 않는다.
+        transactions = [item for item in self.dataset["transactions"]
+                        if item["owner_user_id"] == user_id and not item["id"].startswith("V4T")]
         return {
             "received_total_krw": sum(t["amount_krw"] for t in transactions if t["direction"] == "received"),
             "paid_total_krw": sum(t["amount_krw"] for t in transactions if t["direction"] == "paid"),

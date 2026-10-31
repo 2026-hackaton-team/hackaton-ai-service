@@ -69,7 +69,8 @@ def chat_scenarios(user_id: str = Depends(_user)):
         return {"items": []}
     from .v4_chat import SCENARIOS
     return {"items": [
-        {"id": identifier, "title": scenario["name"], "question": scenario["example_question"]}
+        {"id": identifier, "title": scenario["name"], "question": scenario["example_question"],
+         "category": scenario.get("category", "safety")}
         for identifier, scenario in SCENARIOS.items()
     ]}
 
