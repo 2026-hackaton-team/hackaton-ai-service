@@ -149,9 +149,9 @@ class ChatService:
             user_id=user_id, person_id=person["id"], identity_confirmed=True,
             event_type=event_type, attendance_with_meal=attendance, budget_krw=budget,
             profile_override=profile, dataset=self.data.dataset,
-            closeness_override=int(close.group(1)) if close else None,
-            special_care=bool(re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question)),
-            recent_received_override=received,
+            closeness_override=int(close.group(1)) if close else request.get("relationship_closeness"),
+            special_care=bool(request.get("relationship_special_care") or re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question)),
+            recent_received_override=received if received is not None else request.get("recent_received_override"),
         )
         result = report["result"]
         status = result["status"]
@@ -279,7 +279,7 @@ class ChatService:
         v4_result = try_v4_chat(user_id, question, raw_context)
         if v4_result is not None:
             return v4_result
-        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field"}
+        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field", "relationship_closeness", "relationship_special_care", "recent_received_override"}
         context = {key: value for key, value in raw_context.items() if key in keys}
         people = self.data.people(user_id)
         people_ids = {person["id"] for person in people}
@@ -414,6 +414,18 @@ class ChatService:
         ):
             intent = "amount"
 
+        direct_closeness = re.search(r"친밀도(?:는|가|를)?\s*([1-5])\s*(?:점|/5)", question)
+        if direct_closeness:
+            context["relationship_closeness"] = int(direct_closeness.group(1))
+        if re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question):
+            context["relationship_special_care"] = True
+        direct_received = re.search(r"(?:최근|지난번)[^\n]{0,35}?(\d[\d,]*)\s*(만\s*원?|원)(?:을|이나)?\s*받", question)
+        if direct_received:
+            claimed = int(direct_received.group(1).replace(",", "")) * (
+                10000 if direct_received.group(2).startswith("만") else 1
+            )
+            if claimed <= 10000000:
+                context["recent_received_override"] = claimed
         previous_person_id = context.get("person_id")
         mentioned = [person for person in people if person["name"] in question]
         narrowed = [person for person in mentioned if person["fictional_affiliation"] and person["fictional_affiliation"] in question or person["relationship"] in question]
@@ -436,6 +448,11 @@ class ChatService:
                 context["person_id"] = chosen["id"]
         if context.get("person_id") != previous_person_id:
             context.pop("person_confirmed", None)
+            for key in ("relationship_closeness", "relationship_special_care", "recent_received_override"):
+                if key not in {"relationship_closeness" if direct_closeness else "",
+                               "relationship_special_care" if re.search(r"특별히|더\s*챙기", question) else "",
+                               "recent_received_override" if direct_received else ""}:
+                    context.pop(key, None)
 
         if intent == "notice" and not context.get("notice_id"):
             if not notices:
