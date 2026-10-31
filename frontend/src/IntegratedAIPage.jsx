@@ -64,7 +64,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
-    <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
+    <div className="page-heading"><div><h1>마음결 AI</h1></div></div>
     {userId==='SCENARIO_KIM'&&<ScenarioLab userId={userId} onQuestion={setQuestion}/>}
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
