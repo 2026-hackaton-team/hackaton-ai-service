@@ -59,7 +59,7 @@ def test_initial_migration_preserves_source_and_ai_relationship_data(client):
     assert snapshot["people"][0]["closeness_score"] == 5
     assert snapshot["people"][0]["special"] is True
     assert len(snapshot["people"]) == 1
-    assert any(event["owner"] == "me" for event in snapshot["events"])
+    assert any(event.get("owner") == "me" for event in snapshot["events"])
 
     data = data_for_chat(get_service().data, "U001")
     person = next(p for p in data.people("U001") if p["id"] == "p-person")
