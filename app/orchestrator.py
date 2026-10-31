@@ -12,9 +12,13 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
         scenario_id:str='default', kb=None, explanation_mode:str='auto',
         profile_override:dict|None=None, profile_access:str|None=None,
         relation_assessment:dict|None=None, closeness_override:int|None=None,
-        special_care:bool=False, recent_received_override:int|None=None)->dict:
+        special_care:bool=False, recent_received_override:int|None=None,
+        dataset:dict|None=None)->dict:
     if kb is None: kb=KB
-    person=owned_person(user_id,person_id)
+    source = dataset
+    person = (next((p for p in source['people'] if p['id'] == person_id
+                    and p['owner_user_id'] == user_id), None)
+              if source is not None else owned_person(user_id,person_id))
     if person is None:
         return {'result':{'status':'FORBIDDEN_OR_NOT_FOUND','message':'접근 가능한 인물 기록이 없습니다.'},'evidence':[]}
     if not identity_confirmed:
@@ -31,7 +35,8 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
                    event_type=event_type,attendance_with_meal=attendance_with_meal,
                    budget_krw=budget_krw,legal_risk=False,kb=kb,
                    closeness_override=closeness_override,special_care=special_care,
-                   recent_received_override=recent_received_override)
+                   recent_received_override=recent_received_override,
+                   dataset=dataset)
     initial = base.get('amount_krw')
     status=legal['status']
     if base['status']=='RECOMMENDED':
