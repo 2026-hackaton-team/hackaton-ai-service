@@ -126,13 +126,13 @@ export function ShareEventModal({ event, initialScope, initialMessage, onClose }
   const familySet = new Set(people.filter(entry => entry.linkedUsername && relationDraft(entry.relation).relation === '가족').map(entry => entry.linkedUsername));
   const family = pending.filter(friend => familySet.has(friend.username));
 
-  function submit(e, mode = '') {
+  async function submit(e, mode = '') {
     e?.preventDefault();
     const targets = mode === 'all' ? new Set(pending.map(friend => friend.username)) : mode === 'family' ? new Set(family.map(friend => friend.username)) : selected;
     if (event.type === '장례식' && !consent) { setError('장례 소식은 유족(가족)의 공유 동의를 확인한 뒤 보낼 수 있어요.'); return; }
     if (scope === 'friends' && !targets.size && !already.size) { setError('일정을 받을 친구를 한 명 이상 선택해 주세요.'); return; }
     const names = friends.filter(friend => targets.has(friend.username)).map(friend => friend.name);
-    const ok = mutate(state => upsertShare(state, { owner: user.username, ownerName: user.name, event, scope, message, recipients: [...targets], group: mode === 'family' ? 'family' : null }),
+    const ok = await mutate(state => upsertShare(state, { owner: user.username, ownerName: user.name, event, scope, message, recipients: [...targets], group: mode === 'family' ? 'family' : null }),
       names.length ? `${names[0]}님${names.length > 1 ? ` 외 ${names.length - 1}명` : ''}에게 일정을 보냈어요.` : scope === 'friends_of_friends' ? '친구의 친구에게도 소식을 알렸어요.' : '공유 설정을 저장했어요.', setError);
     if (ok) onClose(true);
   }
