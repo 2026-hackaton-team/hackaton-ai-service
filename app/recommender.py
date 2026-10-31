@@ -112,11 +112,11 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
 
     def apply(signal, delta, reason):
         """검증된 개인화 신호의 영향과 설명을 함께 기록한다."""
-        nonlocal_change[0] += Decimal(str(delta))
+        nonlocal change
+        change += Decimal(str(delta))
         adjustments.append({"signal": signal, "direction": "up" if delta > 0 else "down",
                             "percentage_points": int(Decimal(str(delta)) * 100), "reason": reason})
 
-    nonlocal_change = [change]
     if type(closeness) is int and 1 <= closeness <= 5 and closeness != 3:
         delta = Decimal(closeness - 3) * Decimal("0.05")
         apply("closeness", delta, f"현재 친밀도 {closeness}/5를 기준 수준 3/5와 비교해 반영했습니다.")
@@ -145,7 +145,7 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         apply("special_care", Decimal("0.05"),
               "사용자가 특별히 챙기겠다는 의향을 밝혔습니다.")
     # 과도한 가산·감산을 방지하며, 반올림 이전 금액으로 예산 제한의 영향을 판단한다.
-    change = max(Decimal("-0.20"), min(Decimal("0.20"), nonlocal_change[0]))
+    change = max(Decimal("-0.20"), min(Decimal("0.20"), change))
     raw_personalized = base_amount * (Decimal("1") + change)
     unrestricted_amount = max(AMOUNT_UNIT, round_amount(raw_personalized))
     budget_limited = budget_krw is not None and unrestricted_amount > budget_krw
