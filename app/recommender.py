@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from statistics import median
 from .knowledge import KB, KnowledgeBase
+from .inflation import DATA as CPI_DATA, adjust_amount
 
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "original_demo.json"
 from gyeongjosa_ai.special_fixtures import merge_special_fixtures
@@ -21,8 +22,15 @@ def owned_person(user_id: str, person_id: str):
     return next((p for p in DEMO["people"] if p["id"] == person_id and p["owner_user_id"] == user_id), None)
 
 
-def _positive_median(records):
-    amounts = [t["amount_krw"] for t in records if t["amount_krw"] > 0]
+def _positive_median(records, events=None):
+    amounts = []
+    for transaction in records:
+        amount = transaction["amount_krw"]
+        if amount > 0:
+            if events is not None:
+                event_date = events[transaction["private_event_id"]]["start_date"]
+                amount = adjust_amount(amount, event_date)["adjusted_amount_krw"]
+            amounts.append(amount)
     return median(amounts) if amounts else None
 
 
@@ -60,9 +68,9 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
                  and own_events[t["private_event_id"]]["category"] == event_type
                  and (t["contact_person_id"] == person_id if is_relationship_demo
                       else not t["id"].startswith("V4T"))]
-    per_type_med = _positive_median(same_type)
-    paid_med = _positive_median(paid)
-    received_med = _positive_median(received)
+    per_type_med = _positive_median(same_type, own_events)
+    paid_med = _positive_median(paid, own_events)
+    received_med = _positive_median(received, own_events)
 
     survey = kb.eligible_amount_source(event_type=event_type, relationship=person["relationship"], attendance_with_meal=attendance_with_meal)
     survey_shares = ({f["amount_krw"]: f["pct"] / 100 for f in survey["facts"] if f["metric"] == "perceived_amount_share"} if survey else {})
@@ -110,9 +118,12 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         from statistics import median as _median
         # 사용자 자기신고 최신 수령액은 저장된 거래를 변경하지 않고 임시 신호로 처리한다.
         preceding_records = dated_received if recent_received_override is not None else dated_received[:-1]
-        earlier_amounts = [t["amount_krw"] for t in preceding_records if t["amount_krw"] > 0]
+        earlier_amounts = [adjust_amount(t["amount_krw"], own_events[t["private_event_id"]]["start_date"])["adjusted_amount_krw"]
+                           for t in preceding_records if t["amount_krw"] > 0]
         preceding = _median(earlier_amounts) if earlier_amounts else None
-        latest = recent_received_override if recent_received_override is not None else dated_received[-1]["amount_krw"]
+        latest = (recent_received_override if recent_received_override is not None
+                  else adjust_amount(dated_received[-1]["amount_krw"],
+                                     own_events[dated_received[-1]["private_event_id"]]["start_date"])["adjusted_amount_krw"])
         if preceding and latest >= preceding * 2:
             upward += 2 if latest >= preceding * 3 else 1
             adjustments.append({"signal": "recent_large_gift", "direction": "up",
@@ -144,6 +155,12 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
     else:
         ranked = sorted(affordable, key=lambda a: (abs(AMOUNTS.index(a) - AMOUNTS.index(eligible_target)), -calc(a), a))
     tx_ids = list(dict.fromkeys(t["id"] for t in (same_person + same_type)))
+    cpi_coverage = {"monthly": 0, "annual": 0, "unavailable": 0, "after_reference": 0}
+    for transaction in same_person:
+        if transaction["amount_krw"] > 0:
+            adjustment = adjust_amount(
+                transaction["amount_krw"], own_events[transaction["private_event_id"]]["start_date"])
+            cpi_coverage[adjustment["status"]] += 1
     reasons = []
     if survey:
         reasons.append("직장 동료의 결혼식에 참석해 식사하는 조건에 맞는 설문을 참고했습니다.")
@@ -153,6 +170,10 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         reasons.append(f"해당 인물에게 받은 거래가 {len(received)}건 있고 총 {sum(t['amount_krw'] for t in received):,}원입니다.")
     if same_type:
         reasons.append(f"같은 행사 종류의 과거 지급 기록 {len(same_type)}건을 참고했습니다.")
+    if paid or received or same_type:
+        reasons.append(
+            f"과거 지급·수령 비교 기준을 {CPI_DATA['reference_month']}의 소비자물가지수로 환산했습니다."
+            " 월별 지수가 없는 과거 기록은 연평균으로 근사하고, 확인 불가 기록은 원금을 사용합니다.")
     if budget_krw is not None:
         reasons.append(f"예산 {budget_krw:,}원을 초과하는 후보는 제외했습니다.")
     if cold_start:
@@ -175,6 +196,11 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
             "matched_transaction_ids": tx_ids,
             "personal_history": {"paid_count": len(paid), "paid_total_krw": sum(t["amount_krw"] for t in paid),
                                 "received_count": len(received), "received_total_krw": sum(t["amount_krw"] for t in received),
-                                "explicit_zero_paid_count": sum(t["amount_krw"] == 0 for t in paid)},
+                                "explicit_zero_paid_count": sum(t["amount_krw"] == 0 for t in paid),
+                                "paid_median_current_krw": paid_med,
+                                "received_median_current_krw": received_med,
+                                "same_type_paid_median_current_krw": per_type_med,
+                                "cpi_reference_month": CPI_DATA["reference_month"],
+                                "cpi_coverage": cpi_coverage},
             "reasons": reasons,
             "disclaimer": "검증된 예측 모델이 아닌 규칙 기반 추천 시연입니다. 적정 금액이나 법적 적합성을 보장하지 않습니다."}
