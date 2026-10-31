@@ -16,7 +16,7 @@ SCENARIOS = {
         "name": "공직자 부조 예외 성립 가정",
         "person_id": "P004",
         "scenario_id": "chat_public_exception",
-        "event_type": "결혼",
+        "event_type": "장례",
     },
     "procurement": {
         "name": "계약·심사 이해관계 가정",
@@ -75,9 +75,19 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         current = None
     marker = any(word in text for word in DEMO_MARKERS)
     candidate = _detected(text)
-    if current and marker and candidate and candidate != current:
+    if current and candidate and candidate != current:
+        if not marker:
+            return _question(
+                "다른 가상 인물의 상황으로 전환할까요? 이전 예산과 직무 조건은 이어받지 않습니다.",
+                {}, "v4_scenario",
+                [{"id": candidate, "label": f"가상 {SCENARIOS[candidate]['name']} 전환"}],
+            )
         current = None
         old_context = {}
+    if current and candidate is None and not re.search(
+        r"예산|원|참석|식사|부의|조의|결혼|장례|다시|근거|얼마|추천|상대|법적", text
+    ):
+        return None
     if not current and not candidate:
         return None
     if user_id != "U001":
