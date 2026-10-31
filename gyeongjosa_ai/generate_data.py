@@ -2,13 +2,11 @@
 
 import argparse
 import copy
-import json
 import random
 from datetime import date, timedelta
-from pathlib import Path
 
+from . import seed_db
 
-ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DATE = date(2026, 10, 30)
 SURNAMES = ("강", "고", "구", "권", "남", "노", "류", "문", "서", "한")
 GIVEN_NAMES = ("가온", "다온", "도하", "라희", "로아", "서우", "수아", "예담", "이든", "하온")
@@ -296,22 +294,21 @@ def generate_dataset(original):
     data["metadata"]["generation_note"] = "추가된 100명과 질문은 허구이며 고정 시드와 작성된 예시 문구로 생성했다."
     data["generated_scenarios"] = generated_scenarios
     add_demo_notice_details(data)
-    fixtures = json.loads((ROOT / "data" / "scenario_fixtures.json").read_text(encoding="utf-8-sig"))
+    fixtures = seed_db.load("scenario_fixtures")
     add_scenario_fixtures(data, fixtures)
     return data
 
 
 def main():
-    """작업용 원본 사본에서 고정된 시연 데이터 파일을 만든다."""
+    """작업용 원본 사본에서 고정된 시연 데이터를 만들어 시드 DB에 저장한다."""
     parser = argparse.ArgumentParser(description="고정된 가상 시연 데이터를 생성합니다.")
     parser.add_argument("--force", action="store_true", help="기존 작업용 시연 데이터를 명시적으로 덮어씁니다.")
     args = parser.parse_args()
-    original = json.loads((ROOT / "data" / "original_demo.json").read_text(encoding="utf-8-sig"))
-    output = ROOT / "data" / "demo.json"
-    if output.exists() and not args.force:
-        raise SystemExit("data/demo.json이 이미 있습니다. 보관 후 재생성하거나 --force를 명시하세요.")
-    output.write_text(json.dumps(generate_dataset(original), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("가상 데이터 생성 완료: data/demo.json")
+    original = seed_db.load("original_demo")
+    if seed_db.has("demo") and not args.force:
+        raise SystemExit("시드 DB에 demo 자료가 이미 있습니다. 보관 후 재생성하거나 --force를 명시하세요.")
+    seed_db.save("demo", generate_dataset(original))
+    print(f"가상 데이터 생성 완료: {seed_db.SEED_DB} (demo)")
 
 
 if __name__ == "__main__":

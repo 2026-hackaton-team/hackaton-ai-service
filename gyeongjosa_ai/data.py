@@ -1,21 +1,21 @@
 """가상 계정별 기록과 공유 가능한 부고를 조회한다."""
 
-import json
 from collections import defaultdict
 from datetime import date
-from pathlib import Path
 
+from . import seed_db
 from .relationship_priority import priority_score
 
 
-ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DATE = date(2026, 10, 30)
 
 
 def load_data(path=None):
-    """고정된 시연 데이터를 읽어 조회 객체로 만든다."""
-    source = Path(path) if path is not None else ROOT / "data" / "demo.json"
-    dataset = json.loads(source.read_text(encoding="utf-8-sig"))
+    """고정된 시연 데이터를 SQLite 시드에서 읽어 조회 객체로 만든다.
+
+    path로 다른 시드 DB를 지정하면 추가 시연 자료를 결합하지 않고 그대로 읽는다.
+    """
+    dataset = seed_db.load("demo", path)
     if path is None:
         from .special_fixtures import merge_special_fixtures
         dataset = merge_special_fixtures(dataset)
@@ -27,10 +27,9 @@ def load_data(path=None):
 
 def merge_designated_notices(dataset):
     """보낸 사람이 받는 사람을 직접 지정한 시연 소식을 메모리에서만 추가한다."""
-    source = ROOT / "data" / "designated_notices.json"
-    if not source.exists():
+    if not seed_db.has("designated_notices"):
         return dataset
-    extra = json.loads(source.read_text(encoding="utf-8-sig"))
+    extra = seed_db.load("designated_notices")
     existing = {row["id"] for row in dataset["shared_notices"]}
     users = {row["id"] for row in dataset["users"]}
     for notice in extra:

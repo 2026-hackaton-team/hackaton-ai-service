@@ -1,20 +1,18 @@
 """사전 등록된 스무 가지 가상 상황을 자유 상담에서 분석한다."""
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 from app.knowledge import KB
 from app.main import RecommendationRequest, recommendation
 from app.special_cases import assess_special
+from . import seed_db
 from .ai import ModelUnavailable
 from .relationship_insights import analyze_relationship_case
 
-ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = {
     row["id"]: row for row in
-    json.loads((ROOT / "data" / "v4_chat_scenarios.json").read_text(encoding="utf-8"))["scenarios"]
+    seed_db.load("v4_chat_scenarios")["scenarios"]
 }
 DEMO_MARKERS = ("가상", "시나리오", "시연", "데모")
 RISK_TERMS = ("계약", "입찰", "심사", "평가", "거래처", "발주", "이해충돌")

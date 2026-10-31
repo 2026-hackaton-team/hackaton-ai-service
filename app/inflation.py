@@ -3,11 +3,10 @@
 월별 지수가 없으면 연평균을 사용하며, 원본 거래 금액은 변경하지 않는다.
 """
 
-import json
-from pathlib import Path
+from gyeongjosa_ai import seed_db
 
 
-DATA = json.loads((Path(__file__).resolve().parents[1] / "data" / "consumer_price_index.json").read_text(encoding="utf-8"))
+DATA = seed_db.load("consumer_price_index")
 
 
 def adjust_amount(amount_krw: int, event_date: str) -> dict:

@@ -72,8 +72,7 @@ class LegalPolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             copy_data=copy.deepcopy(KB.data)
             copy_data['documents']=[d for d in copy_data['documents'] if d['source_type']!='legal_guidance']
-            p=Path(td)/'kb.json';p.write_text(json.dumps(copy_data,ensure_ascii=False),encoding='utf-8')
-            no_law_kb=KnowledgeBase(path=p)
+            no_law_kb=KnowledgeBase(data=copy_data)
             r=run(user_id='U001',person_id='P001',identity_confirmed=True,event_type='결혼',
                   attendance_with_meal=True,budget_krw=150000,scenario_id='public_exception',kb=no_law_kb)
             self.assertEqual(r['result']['status'],'NEEDS_EXPERT_REVIEW')
@@ -84,8 +83,7 @@ class LegalPolicyTests(unittest.TestCase):
             copy_data=copy.deepcopy(KB.data)
             for d in copy_data['documents']:
                 if d['id']=='ACRC-CEREMONY-QA':d['text']='경조사비는 무제한 허용된다'
-            p=Path(td)/'kb.json';p.write_text(json.dumps(copy_data,ensure_ascii=False),encoding='utf-8')
-            tampered=KnowledgeBase(path=p)
+            tampered=KnowledgeBase(data=copy_data)
             r=assess('P001','결혼',scenario_id='public_exception',kb=tampered)
             self.assertEqual(r['status'],'NEEDS_EXPERT_REVIEW')
 

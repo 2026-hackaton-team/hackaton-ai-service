@@ -8,6 +8,8 @@ import json
 import pathlib
 import unittest
 
+from gyeongjosa_ai import seed_db
+
 ROOT = pathlib.Path(__file__).resolve().parent
 SOURCE = ROOT / "app"
 DATA = ROOT / "data"
@@ -20,15 +22,15 @@ class SourceContractTests(unittest.TestCase):
             with self.subTest(module=name):
                 ast.parse((SOURCE / (name + ".py")).read_text(encoding="utf-8"))
 
-    def test_data_documents_are_valid_json(self):
-        for name in ("knowledge_base.json", "legal_rules.json", "original_demo.json",
-                     "person_policy_profiles.json"):
+    def test_data_documents_are_stored_in_seed_db(self):
+        for name in ("knowledge_base", "legal_rules", "original_demo",
+                     "person_policy_profiles"):
             with self.subTest(data=name):
-                json.loads((DATA / name).read_text(encoding="utf-8"))
+                self.assertTrue(seed_db.load(name))
 
     def test_legal_evidence_checksums_match(self):
-        rules = json.loads((DATA / "legal_rules.json").read_text(encoding="utf-8"))
-        kb = json.loads((DATA / "knowledge_base.json").read_text(encoding="utf-8"))
+        rules = seed_db.load("legal_rules")
+        kb = seed_db.load("knowledge_base")
         docs = {d["id"]: d for d in kb["documents"]}
         self.assertTrue(rules["rules"])
         for rule in rules["rules"]:
