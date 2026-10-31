@@ -1,10 +1,10 @@
 # RAG + React 통합 (개발 중)
 
-현재 이 브랜치는 **v4 백엔드 이식과 자동 테스트까지 완료된 부분 통합** 상태입니다. 최종 Windows 실브라우저 E2E와 전체 DB 일원화는 아직 완료되지 않았습니다. 발표 운영서는 [docs/PRESENTATION_DEMO.md](docs/PRESENTATION_DEMO.md)를 참고하세요.
+현재 원격 **`develop`에는 PR #3이 병합되었으며**, v4 백엔드 이식과 자동 테스트까지 완료된 부분 통합 상태입니다. 최종 Windows 실브라우저 E2E와 전체 DB 일원화는 아직 완료되지 않았습니다. 발표 운영서는 [docs/PRESENTATION_DEMO.md](docs/PRESENTATION_DEMO.md)를 참고하세요.
 
 ## 로컬 실행
 
-1. 저장소 최상위에서 Python 가상환경을 만들고 `pip install -r requirements.txt`.
+1. 로컬 작업 폴더는 `C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai`이며 `develop`으로 동기화합니다. 가상환경은 동기화 폴더 밖에 만들고 `pip install -r requirements.txt 'openai>=1.75,<3'`를 실행합니다. 자세한 명령은 [README.md](README.md)를 참조하세요.
 2. 서버: `python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000`.
 3. `frontend/`에서 `pnpm install` 후 `pnpm dev` 실행.
 4. 브라우저: http://127.0.0.1:5173 ; AI 메뉴에서 가상 계정 선택.
@@ -28,7 +28,7 @@
 - **v4 자기신고 직업·기관·담당 업무/상대 직업 이용 동의 시연은 구현**. React 회원가입 단계의 직업 필수 입력은 미완료
 - v4 RAG 통계·개인화 금액, 법적 위험 시 보류는 구현됨. 실서비스 데이터 없는 신규 가입자에 대한 전체 UX는 미완료
 - 다중 턴 선택지와 서버 상태 전이를 실제 모델·자동 테스트로 검증
-- GitHub CI React 빌드·테스트, Python pytest **155 PASS**. 발표자 PC 브라우저 E2E 및 실제 모델 실호출 미실행
+- GitHub CI React 빌드·테스트, Python pytest **161 PASS**. 발표자 PC 브라우저 E2E 및 실제 모델 실호출 미실행
 
 ## 보안
 
@@ -53,6 +53,6 @@
 4. 합성 시나리오: 30,000원 예산 상한, 공직자/계약 심사 위험 보류, 비동의 직업 차단, 동명이인 확인, 공유 부고 권한 분리
 5. 실모델 키 없는 실패 시 가짜 법적 판정 금지, 프라이버시 Opt-in 강제
 
-**검증 갱신(2026-10-31):** GitHub Actions에서 Python 155 PASS + subtest 7 PASS(경고 1개), React 테스트 및 빌드 PASS. Windows 브리지 Docker는 연결되었고 의존성 없는 이미지에서 소스 테스트 8 PASS. **Windows 기능 테스트/실브라우저 E2E/실제 모델 호출은 미검증**. 이식된 v4 원본에는 약 84개 테스트 메서드가 있었으나 통합 저장소의 155개 회귀 테스트 전체 통과와 구분한다.
+**검증 갱신(2026-10-31):** [병합 전 최종 GitHub Actions](https://github.com/2026-hackaton-team/hackaton-ai-service/actions/runs/41158428848)에서 Python 161 PASS(경고 1개), React 테스트 및 빌드 PASS. Windows 브리지 Docker는 연결되었고 의존성 없는 이미지에서 소스 테스트 8 PASS. **Windows 기능 테스트/실브라우저 E2E/실제 모델 호출은 미검증**. 이식된 v4 원본에는 약 84개 테스트 메서드가 있었으나 통합 저장소의 155개 회귀 테스트 전체 통과와 구분한다.
 
 **기술 부채:** /v4의 원본 데모 데이터와 채팅/React 워크스페이스의 합성 자료가 아직 단일 CRUD 원천으로 합쳐지지 않았다. v4 화면은 React 네이티브 컴포넌트가 아닌 별도 프레임이다. 프로덕션 인증/법적 적법성 검증이 없다. 질문 원문 저장은 채팅 기능에 적용되며, 직무 관계 자유서술의 원문 비저장 정책과 별도로 개인정보 고지 및 서버 필터가 필요하다.
