@@ -51,8 +51,9 @@ def test_budget_followup_preserves_intent_and_selected_person():
     assert initial["status"] == "need_more_info" and initial["pending_field"] == "budget_krw"
     reply = service.chat_auto({"user_id": "U001", "question": "최대 8만 원이야", "context": initial["context"]})
     assert reply["status"] == "answer"
-    assert gateway.answers[-1][0]["budget_krw"] == 80000
+    assert reply["context"]["budget_krw"] == 80000
     assert reply["context"]["person_id"] == "P001"
+    assert reply["v4_analysis"]["legal_assessment"]
 
 
 def test_unavailable_notice_is_rejected_before_classification():
@@ -96,7 +97,8 @@ def test_user_explicitly_confirms_identity_before_history_is_used():
     assert gateway.answers == []
     answer = service.chat_auto({"user_id": "U001", "question": "네, 맞아요", "context": first["context"]})
     assert answer["status"] == "answer"
-    assert gateway.answers[-1][0]["person_confirmed"] is True
+    assert answer["context"]["person_confirmed"] is True
+    assert answer["v4_analysis"]["legal_assessment"]
 
 
 def test_explicit_budget_followup_keeps_prior_intent_even_if_classifier_is_uncertain():
@@ -104,8 +106,9 @@ def test_explicit_budget_followup_keeps_prior_intent_even_if_classifier_is_uncer
     service = ChatService(load_data(), gateway)
     context = {"intent": "amount", "person_id": "P001", "event_type": "결혼", "pending_field": "budget_krw"}
     result = service.chat_auto({"user_id": "U001", "question": "최대 8만 원이요", "context": context})
-    assert result["status"] == "answer" and result["intent"] == "amount"
-    assert gateway.answers[-1][0]["budget_krw"] == 80000
+    assert result["status"] == "need_more_info" and result["intent"] == "amount"
+    assert result["pending_field"] == "attendance_with_meal"
+    assert result["context"]["budget_krw"] == 80000
 
 
 def test_selected_notice_amount_question_shows_details_and_relevant_candidates():
