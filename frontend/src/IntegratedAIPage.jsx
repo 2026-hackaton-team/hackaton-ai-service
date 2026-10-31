@@ -8,6 +8,7 @@ export async function demoApi(path,{userId,method='GET',body,signal}={}) {
 }
 const stored=()=>sessionStorage.getItem('rag-demo-user')||''
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
+  const [view,setView]=useState('chat')
   const [users,setUsers]=useState([])
   const [userId,setUserId]=useState(stored)
   const [cid,setCid]=useState('')
@@ -56,6 +57,8 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
+    <div style={{display:'flex',gap:12,marginBottom:16}}><button type='button' className='button' aria-pressed={view==='chat'} onClick={()=>setView('chat')}>AI 자유 상담</button><button type='button' className='button' aria-pressed={view==='risk'} onClick={()=>setView('risk')}>v4 직무·법적 위험 분석</button></div>
+    {view==='risk' ? <section className='card' aria-label='온마음 v4 직무분석' style={{padding:0,overflow:'hidden'}}><iframe title='온마음 v4 양방향 직무관계 분석 및 RAG 추천' src='/v4/' style={{display:'block',border:0,width:'100%',height:'1300px'}}/></section> : <>
     <div className="page-heading"><div><h1>내 기록을 아는, 마음 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음 AI</strong></span>
@@ -90,6 +93,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
       </form><p className="ai-disclaimer">가상 계정을 사용하는 로컬 시연입니다. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
-    </section>
+    </section></>}
   </div>
 }
