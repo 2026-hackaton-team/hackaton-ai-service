@@ -376,7 +376,8 @@ def test_combined_funeral_amount_and_etiquette_survive_budget_followup():
     assert reply["context"]["original_question"] == question
     assert reply["context"]["requested_aspects"] == ["amount", "funeral_etiquette"]
     assert gateway.answers[-1][0]["requested_aspects"] == ["amount", "funeral_etiquette"]
-    assert question in gateway.answers[-1][0]["question"]
+    assert gateway.answers[-1][0]["original_question"] == question
+    assert gateway.answers[-1][0]["question"] == "50000"
     assert "조문 예절" in reply["message"]
     assert reply["suggested_amount_krw"] is None or reply["suggested_amount_krw"] <= 50000
 
