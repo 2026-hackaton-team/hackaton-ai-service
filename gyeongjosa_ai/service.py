@@ -671,7 +671,8 @@ class ChatService:
             if previous_person_id and context.get("person_id"):
                 context.pop("budget_krw", None)
                 context.pop("budget_state", None)
-            context.pop("work_risk_hint", None)
+            if previous_person_id:
+                context.pop("work_risk_hint", None)
             for key in ("relationship_closeness", "relationship_special_care", "recent_received_override"):
                 if key not in {"relationship_closeness" if direct_closeness else "",
                                "relationship_special_care" if re.search(r"특별히|더\s*챙기", question) else "",
