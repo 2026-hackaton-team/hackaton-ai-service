@@ -135,3 +135,43 @@ def test_unmarked_legal_question_does_not_enter_fictional_scenario():
     """일반 계약 관계 질문을 U001 전용 가상 인물로 전환하지 않는다."""
     from gyeongjosa_ai.v4_chat import try_v4_chat
     assert try_v4_chat("U001", "저는 심사하는 거래처의 부친상에 가고 싶어요.", {}) is None
+
+
+def test_conversation_api_reads_updated_workspace_each_turn(tmp_path, monkeypatch):
+    """실제 대화 API가 합성 원본이 아닌 최신 SQLite 장부를 매 요청 읽는다."""
+    from fastapi.testclient import TestClient
+
+    from gyeongjosa_ai.api import app
+    from gyeongjosa_ai.dependencies import get_service
+    from gyeongjosa_ai import integration_api
+
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    monkeypatch.setattr(integration_api, "_DB", tmp_path / "conversations.sqlite3")
+    gateway = FixedGateway()
+    app.dependency_overrides[get_service] = lambda: ChatService(load_data(), gateway)
+    try:
+        with TestClient(app) as client:
+            save_workspace("U001", _workspace(50000))
+            headers = {"X-Demo-User-Id": "U001"}
+            cid = client.post("/api/conversations", headers=headers).json()["id"]
+            endpoint = f"/api/conversations/{cid}/messages"
+            first = client.post(endpoint, headers=headers, json={
+                "requestId": "turn1",
+                "text": "친구A의 장례식인데 예산은 10만원이에요",
+            })
+            assert first.status_code == 200, first.text
+            assert any("50,000원" in row["text"] for row in first.json()["evidence"]
+                       if row["kind"] == "개인 거래")
+
+            amended = _workspace(200000).model_dump(mode="json")
+            amended["revision"] = 1
+            save_workspace("U001", WorkspaceInput.model_validate(amended))
+            second = client.post(endpoint, headers=headers, json={
+                "requestId": "turn2", "text": "예산은 10만원으로 추천해줘",
+            })
+            assert second.status_code == 200, second.text
+            assert any("200,000원" in row["text"] for row in second.json()["evidence"]
+                       if row["kind"] == "개인 거래")
+            assert second.json()["suggested_amount_krw"] <= 100000
+    finally:
+        app.dependency_overrides.pop(get_service, None)
