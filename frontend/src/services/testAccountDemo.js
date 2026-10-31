@@ -3,6 +3,7 @@ import { ACCOUNTS_KEY, SOCIAL_KEY, SOCIAL_EVENT, normalizeSocial } from './socia
 
 export const TEST_USERNAME = 'test1234';
 export const TEST_PROFILE_ID = 'TEST1234';
+export const matchesTestLogin = (username, password) => String(username || '').trim().toLowerCase() === TEST_USERNAME && password === TEST_USERNAME;
 
 const names = ['윤서진', '김도윤', '이수빈', '박하은', '정유림', '한소민', '최유정', '오지훈', '서예린', '강민혁', '윤지아', '송재현'];
 const username = index => 'test_friend' + String(index + 1).padStart(2, '0');
@@ -19,7 +20,7 @@ export function seedTestSocial(storage = globalThis.localStorage, events = globa
     username: username(i), name,
     email: username(i) + '@example.invalid',
     workplace: '가상 마음결 모임', organization: '시연팀',
-    workType: '민간 기업 임직원', visibility: '전체 공개',
+    workType: '일반 회사원', visibility: '전체 공개',
   }));
   const existing = new Set(accounts.map(item => String(item.username || '').toLowerCase()));
   const added = members.filter(item => !existing.has(item.username));
