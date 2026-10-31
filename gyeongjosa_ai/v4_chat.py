@@ -104,7 +104,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         if not marker and state.get("v4_scenario") not in SCENARIOS:
             return _question(
                 "등록된 가상 인물을 사용하는 시연으로 진행할까요? 일반 상담의 실제 사실로 간주하지 않습니다.",
-                {"pending_field": "v4_scenario"},
+                {}, "v4_scenario",
                 [{"id": candidate, "label": f"가상 {SCENARIOS[candidate]['name']} 시연"}],
             )
         current = candidate or state.get("v4_scenario")
