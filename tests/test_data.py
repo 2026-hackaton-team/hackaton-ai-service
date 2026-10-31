@@ -34,24 +34,23 @@ def data(generated):
 def test_original_copy_matches_source():
     source = ROOT.parent / "data" / "gyeongjosa_demo.json"
     copied = ROOT / "data" / "original_demo.json"
-    # The upstream parent folder is not part of this standalone Git repository.
-    # Preserve the pinned, checked-in original if its external source is absent.
+    # 줄바꿈을 정규화해 윈도와 리눅스에서 같은 원본 내용을 확인한다.
     expected_sha256 = "1f9cee2d3e971013298c7de0ff7dbda11a284e955d3a7208f0228a57cf3f6b5e"
-    assert hashlib.sha256(copied.read_bytes()).hexdigest() == expected_sha256
+    copied_bytes = copied.read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(copied_bytes).hexdigest() == expected_sha256
     if source.exists():
-        assert hashlib.sha256(source.read_bytes()).digest() == hashlib.sha256(copied.read_bytes()).digest()
+        assert hashlib.sha256(source.read_bytes().replace(b"\r\n", b"\n")).digest() == hashlib.sha256(copied_bytes).digest()
 
 
 def test_generated_data_is_repeatable_and_does_not_modify_input(original, generated):
     before = copy.deepcopy(original)
     assert generate_dataset(original) == generated
     assert original == before
-    assert len(generated["users"]) == len(original["users"]) + 100
+    assert len(generated["users"]) == len(original["users"]) + 100 + 6
 
 
 def test_new_accounts_have_expected_contacts_and_events(original, generated):
-    old_ids = {user["id"] for user in original["users"]}
-    new_ids = {user["id"] for user in generated["users"]} - old_ids
+    new_ids = {scenario["user_id"] for scenario in generated["generated_scenarios"]}
     assert len(new_ids) == 100
     for user_id in new_ids:
         contacts = [person for person in generated["people"] if person["owner_user_id"] == user_id]
@@ -59,7 +58,8 @@ def test_new_accounts_have_expected_contacts_and_events(original, generated):
         assert 3 <= len(contacts) <= 8
         assert 2 <= len(events) <= 10
     for relation in generated["friendships"][len(original["friendships"]):]:
-        assert relation["user_a_id"] in new_ids and relation["user_b_id"] in new_ids
+        if not relation["id"].startswith("SCF"):
+            assert relation["user_a_id"] in new_ids and relation["user_b_id"] in new_ids
 
 
 def test_generated_questions_include_varied_expressions(generated):
@@ -76,6 +76,7 @@ def test_generator_does_not_overwrite_without_explicit_force(tmp_path, monkeypat
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "original_demo.json").write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
+    (data_dir / "scenario_fixtures.json").write_bytes((ROOT / "data" / "scenario_fixtures.json").read_bytes())
     output = data_dir / "demo.json"
     output.write_text("기존 작업 데이터", encoding="utf-8")
     monkeypatch.setattr(generator, "ROOT", tmp_path)
@@ -85,7 +86,7 @@ def test_generator_does_not_overwrite_without_explicit_force(tmp_path, monkeypat
     assert output.read_text(encoding="utf-8") == "기존 작업 데이터"
     monkeypatch.setattr(sys, "argv", ["generate_data", "--force"])
     generator.main()
-    assert len(json.loads(output.read_text(encoding="utf-8"))["users"]) == 111
+    assert len(json.loads(output.read_text(encoding="utf-8"))["users"]) == 117
 
 
 def test_generated_references_and_ids_are_consistent(generated):

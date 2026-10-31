@@ -109,9 +109,13 @@ React (frontend/) ── /api/* ─── FastAPI (gyeongjosa_ai) ── 가상 
 ## 6. 개발·유지보수 자료
 
 - [최종 발표 상세 시나리오](docs/PRESENTATION_DEMO.md)
+- [가상 경조사·특수 상황 시나리오 80개](docs/SCENARIO_CATALOG.md)
+- [시나리오별 입력·기대 결과 데이터](data/scenario_cases.json)
 - [통합 상태/미완료 범위](INTEGRATION_STATUS.md)
 - [v4 정책 원본 및 데이터 계약](app/main.py)
 - [v4 회귀 테스트](tests/test_v4.py)
 - [병합 완료된 통합 PR #3](https://github.com/2026-hackaton-team/hackaton-ai-service/pull/3)
+
+가상 시나리오는 기존 사용자 111명의 데이터를 보존하고 별도 사용자 6명과 관련 기록을 추가합니다. 자유 상담은 확장된 `data/demo.json`을 사용하지만 v4 추천은 기존 `data/original_demo.json`을 사용합니다. 시나리오 목록의 미지원 기능과 실모델·브라우저 미검증 상태를 확인하세요.
 
 발표 전에 [최종 리허설 체크리스트](docs/PRESENTATION_DEMO.md#6-발표-직전-최종-게이트)를 **실제 화면에서 확인한 항목만 체크**하세요. 이 프로젝트는 **`develop` 병합 완료, 로컬 최종 시연 검증 대기 중인 프로토타입**입니다.
