@@ -178,6 +178,10 @@ export function ReceivedScheduleDialog({ initialTab = 'friend', onClose }) {
   const groups = useMemo(() => ({ friend: receivedItems.filter(item => item.kind === 'friend'), mutual: receivedItems.filter(item => item.kind === 'mutual') }), [receivedItems]);
   const items = groups[tab];
   const fresh = list => list.filter(item => item.status === 'new').length;
+  if (!user) return <Modal title="받은 일정" subtitle="친구가 보낸 일정과 함께 아는 사람의 소식을 확인하고, 바로 내 달력에 추가해요." onClose={onClose} wide>
+    <div className="feature-empty social-login-needed"><EmptyState icon="LockKeyhole" title="로그인하면 받은 일정을 확인할 수 있어요" description="받은 일정에는 보낸 사람과 장소 같은 개인정보가 담겨 있어, 본인 확인 후에만 보여 드려요." />
+      <div className="social-login-actions"><button type="button" className="button button-secondary" onClick={() => { onClose(); requireLogin('signup'); }}><Icon name="UserPlus" size={16} />회원가입</button><button type="button" className="button button-primary" onClick={() => { onClose(); requireLogin('login'); }}><Icon name="LogIn" size={16} />로그인</button></div></div>
+  </Modal>;
   return <Modal title="받은 일정" subtitle="친구가 보낸 일정과 함께 아는 사람의 소식을 확인하고, 바로 내 달력에 추가해요." onClose={onClose} wide>
     <div className="feature-preview-panel social-received">
       <SectionTabs prefix="received" label="받은 일정 종류" value={tab} onChange={setTab} tabs={[

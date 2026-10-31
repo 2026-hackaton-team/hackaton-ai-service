@@ -96,3 +96,6 @@
 /* 일정 등록 › 행사 유형 직접 입력 */
 .custom-type-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .custom-type-chips .filter-chip { font-size: 12.5px; padding: 5px 11px; }
+
+/* 로그인 전 받은 일정 안내 */
+.notice-login-needed { padding: 8px 0 4px; }

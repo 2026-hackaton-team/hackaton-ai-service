@@ -66,8 +66,8 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
     <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
-        <label>가상 계정 <select className="input" aria-label="가상 계정" value={userId} onChange={e=>setUserId(e.target.value)}>
-          <option value="">계정 선택</option>{users.map(u=><option key={u.id} value={u.id}>{u.name} · {u.affiliation||u.id}</option>)}
+        <label>프로필 <select className="input" aria-label="프로필" value={userId} onChange={e=>setUserId(e.target.value)}>
+          <option value="">프로필 선택</option>{users.map(u=><option key={u.id} value={u.id}>{u.name} · {u.affiliation||u.id}</option>)}
         </select></label>
         <button className="button" type="button" disabled={!userId||busy} onClick={newConversation}>새 대화</button>
       </div>
@@ -125,7 +125,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
           placeholder="예: 친구 결혼식인데 예산은 3만원이야" maxLength={2000}/>
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
-      </form><p className="ai-disclaimer">가상 계정을 사용하는 로컬 시연입니다. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
+      </form><p className="ai-disclaimer">선택한 프로필 기준의 참고 답변이에요. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
     </section>
   </div>
 }
