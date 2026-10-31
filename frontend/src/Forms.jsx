@@ -5,8 +5,8 @@ import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
 import { demoApi } from './services/demoApi.js'
 import { normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
-import { TEST_USERNAME } from './services/testAccountDemo.js'
 
+const TEST_USERNAME = 'test1234'
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const CUSTOM_TYPE = '__custom'
 const CUSTOM_TYPE_SUGGESTIONS = ['환갑', '칠순', '팔순', '졸업', '집들이']

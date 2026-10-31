@@ -250,6 +250,8 @@ def session(maeum_session: str | None = Cookie(default=None)):
 def signup(values: Signup, response: Response):
     """사용자를 서버 SQLite에 등록하고 세션을 발급한다."""
     username = values.username.strip().lower()
+    if username == "test1234":
+        raise HTTPException(409, "시연 전용 계정은 가입할 수 없습니다.")
     profile = values.model_dump(exclude={"password"})
     profile["username"] = username
     profile["email"] = profile["email"].lower()

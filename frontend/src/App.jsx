@@ -108,11 +108,9 @@ export default function App() {
   }
   function changeTheme(mode) { setThemeMode(mode); savePreference({ theme: mode }); }
   function changeSidebar(value) {
-    setSidebarCollapsed(previous => {
-      const next = typeof value === 'function' ? value(previous) : value;
-      savePreference({ sidebarCollapsed: next });
-      return next;
-    });
+    const next = typeof value === 'function' ? value(sidebarCollapsed) : value;
+    setSidebarCollapsed(next);
+    savePreference({ sidebarCollapsed: next });
   }
   async function markRead(keys) {
     if (!user || !keys.length) return;

@@ -99,3 +99,16 @@ def test_saved_friendships_feed_ai_relation_graph(client):
     service = get_service()
     assert "LOCAL_TEST_FRIEND01" in service.data.graph["TEST1234"]
     assert "TEST1234" in service.data.graph["LOCAL_TEST_FRIEND01"]
+
+
+def test_reserved_demo_username_cannot_be_claimed(client):
+    """시연 계정의 기존 데이터 소유자를 회원가입으로 빼앗지 못한다."""
+    response = client.post("/api/account/signup", json={
+        "username": "test1234", "name": "임의 사용자", "password": "newpassword123",
+        "phone": "01012345678", "email": "unused@example.invalid",
+        "workType": "일반 회사원", "visibility": "전체 공개",
+    })
+    assert response.status_code == 409
+    assert client.post("/api/account/login", json={
+        "username": "test1234", "password": "test1234",
+    }).status_code == 200
