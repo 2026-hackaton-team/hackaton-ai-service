@@ -112,6 +112,8 @@ def parse_response(content, context, allowed_ids):
     answer, ids = result.get("answer"), result.get("evidence_ids")
     if not isinstance(answer, str) or not answer.strip() or len(answer) > 2500:
         raise ValueError("답변 형식이 올바르지 않습니다.")
+    if re.search(r"\b(?:suggested_amount_krw|subject_relation|attendance_with_meal|person_id|notice_id)\b", answer):
+        raise ValueError("내부 필드가 사용자 답변에 포함됐습니다.")
     if not isinstance(ids, list) or any(not isinstance(item, str) for item in ids):
         raise ValueError("근거 목록 형식이 올바르지 않습니다.")
     if not set(ids).issubset(allowed_ids):
