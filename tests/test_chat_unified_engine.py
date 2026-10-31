@@ -82,6 +82,35 @@ def test_previous_model_without_meal_field_still_uses_regex(tmp_path, monkeypatc
     assert result["context"]["attendance_with_meal"] is False
 
 
+
+def test_intent_fallback_does_not_replace_answer_generation_model(tmp_path, monkeypatch):
+    """Gemini 분류 결과를 생성 모델 우선순위로 넘기지 않는다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    save_workspace("U001", _workspace(100000))
+
+    class ClassificationGateway(FixedGateway):
+        def __init__(self):
+            super().__init__()
+            self.preferred_models = []
+
+        def classify(self, context, people_ids, notice_ids):
+            return {"intent": "amount", "person_id": None, "notice_id": None,
+                    "event_type": "결혼", "model": "gemini-3.1-flash-lite"}
+
+        def generate(self, context, allowed_ids, preferred_model=None):
+            self.preferred_models.append(preferred_model)
+            return super().generate(context, allowed_ids, preferred_model)
+
+    gateway = ClassificationGateway()
+    service = ChatService(data_for_chat(load_data(), "U001"), gateway)
+    result = service.chat_auto({
+        "user_id": "U001", "question": "친구A 결혼식이고 예산은 10만원이에요",
+        "context": {"person_id": "p1"},
+    })
+    assert result["status"] == "answer"
+    assert result["classification_model"] == "gemini-3.1-flash-lite"
+    assert gateway.preferred_models == [None]
+
 def test_budget_followup_keeps_meal_condition(tmp_path, monkeypatch):
     """예산만 바꾼 후속 질문에서 앞서 말한 식사 불참을 다시 묻지 않는다."""
     monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
