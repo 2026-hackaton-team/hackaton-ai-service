@@ -29,6 +29,7 @@ def data_for_chat(base: DemoData, user_id: str) -> DemoData:
             "id": row["id"], "owner_user_id": user_id, "linked_user_id": None,
             "name": row["name"], "relationship": row.get("relation") or "기타",
             "fictional_affiliation": row.get("group") or "",
+            "special": row.get("special") is True,
         }
         closeness = row.get("closeness_score")
         if type(closeness) is int and 1 <= closeness <= 5:
@@ -40,6 +41,8 @@ def data_for_chat(base: DemoData, user_id: str) -> DemoData:
 
     events = []
     for row in workspace["events"]:
+        if row.get("owner") == "me":
+            continue
         events.append({
             "id": row["id"], "owner_user_id": user_id,
             "contact_person_id": row["personId"],

@@ -10,7 +10,10 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+
+
+SELF_PERSON_ID = "__workspace_self__"
 
 
 class PersonInput(BaseModel):
@@ -22,6 +25,7 @@ class PersonInput(BaseModel):
     relation: str = Field(default="기타", max_length=80)
     group: str = Field(default="", max_length=100)
     importance: str = Field(default="보통", max_length=30)
+    closeness_score: StrictInt | None = Field(default=None, ge=1, le=5)
     lastMet: str = ""
     memo: str = Field(default="", max_length=2000)
     interactions: list[dict] = Field(default_factory=list, max_length=300)
@@ -32,7 +36,7 @@ class EventInput(BaseModel):
 
     model_config = ConfigDict(extra="allow")
     id: str = Field(min_length=1, max_length=128)
-    personId: str = Field(min_length=1, max_length=128)
+    personId: str = Field(default="", max_length=128)
     title: str = Field(min_length=1, max_length=150)
     type: str = Field(min_length=1, max_length=60)
     date: date
@@ -73,8 +77,12 @@ class WorkspaceInput(BaseModel):
             if len(set(ids)) != len(ids):
                 raise ValueError("중복된 ID가 있습니다.")
         people = {item.id for item in self.people}
+        if SELF_PERSON_ID in people:
+            raise ValueError("예약된 인물 ID입니다.")
         events = {item.id: item.personId for item in self.events}
-        if any(item.personId not in people for item in self.events):
+        if any(item.personId not in people and not (
+            item.personId == "" and (item.model_extra or {}).get("owner") == "me"
+        ) for item in self.events):
             raise ValueError("연결된 인맥이 없는 일정이 있습니다.")
         for item in self.records:
             if item.personId not in people:
@@ -156,7 +164,8 @@ def load_workspace(user_id: str):
             rows = db.execute(
                 f"SELECT payload FROM {table} WHERE user_id=? ORDER BY rowid", (user_id,)
             ).fetchall()
-            result[key] = [json.loads(row["payload"]) for row in rows]
+            result[key] = [json.loads(row["payload"]) for row in rows
+                           if key != "people" or json.loads(row["payload"])["id"] != SELF_PERSON_ID]
         return result
 
 
@@ -185,9 +194,12 @@ def save_workspace(user_id: str, snapshot: WorkspaceInput):
         for person in snapshot.people:
             db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
                        (user_id, person.id, person.model_dump_json()))
+        if any(event.personId == "" for event in snapshot.events):
+            db.execute("INSERT INTO workspace_people VALUES (?,?,?)",
+                       (user_id, SELF_PERSON_ID, json.dumps({"id": SELF_PERSON_ID, "name": "본인 행사"}, ensure_ascii=False)))
         for event in snapshot.events:
             db.execute("INSERT INTO workspace_events VALUES (?,?,?,?)",
-                       (user_id, event.id, event.personId, event.model_dump_json()))
+                       (user_id, event.id, event.personId or SELF_PERSON_ID, event.model_dump_json()))
         for record in snapshot.records:
             db.execute("INSERT INTO workspace_records VALUES (?,?,?,?,?,?,?)",
                        (user_id, record.id, record.personId, record.eventId or None,

@@ -9,7 +9,7 @@ import { incomingRequests } from './services/socialStore.js';
 import { occasionClass } from './occasion.js';
 
 const relations = ['전체', ...RELATION_OPTIONS];
-const personDraft = person => ({ name:person.name, ...relationDraft(person.relation), group:person.group || '', importance:normalizeImportance(person.importance), special:person.special === true, lastMet:person.lastMet || '', memo:person.memo || '' });
+const personDraft = person => ({ name:person.name, ...relationDraft(person.relation), group:person.group || '', importance:normalizeImportance(person.importance), closeness_score:person.closeness_score ?? null, special:person.special === true, lastMet:person.lastMet || '', memo:person.memo || '' });
 const displayDate = (date) => date ? date.replaceAll('-', '.') : '아직 기록이 없어요';
 const todayString = () => {
   const now = new Date();
@@ -84,21 +84,23 @@ function PersonDetail({ person, events, records, onUpdate, onAddRecord, onClose 
   const sent = records.filter(record => record.direction === '보낸 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const received = records.filter(record => record.direction === '받은 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const interactions = [...(person.interactions || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  function savePerson(event) {
+  async function savePerson(event) {
     event.preventDefault();
     if (!draft.name.trim()) return;
     const { customRelation, ...values } = draft;
-    onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() });
-    setEditing(false);
+    if (await onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() })) {
+      setEditing(false);
+    }
   }
-  function addInteraction(event) {
+  async function addInteraction(event) {
     event.preventDefault();
     if (!interaction.note.trim()) return;
-    onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet });
-    setInteraction(current => ({ ...current, note: '' }));
+    if (await onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet })) {
+      setInteraction(current => ({ ...current, note: '' }));
+    }
   }
   return <Modal title={`${person.name}님의 관계 기록`} onClose={onClose} wide>
-    <div className="person-detail-header"><div className="avatar people-avatar">{person.name.slice(0, 1)}</div><div><h2>{person.name}<span className="badge green">{person.relation}</span><span className="badge">{normalizeImportance(person.importance)}</span>{person.special && <span className="badge peach">특별히 챙길 사람</span>}{person.linkedUsername && <span className="badge">마음결 @{person.linkedUsername}</span>}</h2><p>{person.group || '소속 그룹 없음'} · 마지막 만남 {displayDate(person.lastMet)}</p></div><button className="button button-secondary" onClick={() => { setDraft(personDraft(person)); setEditing(value => !value); }}><Icon name="pencil" size={15} />{editing ? '편집 닫기' : '관계 편집'}</button></div>
+    <div className="person-detail-header"><div className="avatar people-avatar">{person.name.slice(0, 1)}</div><div><h2>{person.name}<span className="badge green">{person.relation}</span><span className="badge">{normalizeImportance(person.importance)}</span>{person.closeness_score != null && <span className="badge">친밀도 {person.closeness_score}/5</span>}{person.special && <span className="badge peach">특별히 챙길 사람</span>}{person.linkedUsername && <span className="badge">마음결 @{person.linkedUsername}</span>}</h2><p>{person.group || '소속 그룹 없음'} · 마지막 만남 {displayDate(person.lastMet)}</p></div><button className="button button-secondary" onClick={() => { setDraft(personDraft(person)); setEditing(value => !value); }}><Icon name="pencil" size={15} />{editing ? '편집 닫기' : '관계 편집'}</button></div>
     {editing && <form className="person-edit-form" onSubmit={savePerson}>
       <div className="people-form-grid">
         <label className="people-field">이름<input className="input" required maxLength={40} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
@@ -106,6 +108,7 @@ function PersonDetail({ person, events, records, onUpdate, onAddRecord, onClose 
         {draft.relation === '기타' && <label className="people-field">관계 직접 입력<input className="input" aria-label="관계 직접 입력" value={draft.customRelation} placeholder="예) 동호회 선배, 이웃" maxLength={40} onChange={e => setDraft({ ...draft, customRelation:e.target.value })} /><span className="field-hint">비워 두면 ‘기타’로 표시돼요.</span></label>}
         <label className="people-field">소속 그룹<input className="input" value={draft.group} placeholder="예: 대학 동기" maxLength={40} onChange={e => setDraft({ ...draft, group: e.target.value })} /></label>
         <label className="people-field">중요도<select className="input" aria-label="중요도" value={draft.importance} onChange={e => setDraft({ ...draft, importance: e.target.value })}>{IMPORTANCE_OPTIONS.map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="people-field">친밀도 (선택)<select className="input" aria-label="친밀도" value={draft.closeness_score ?? ''} onChange={e => setDraft({ ...draft, closeness_score: e.target.value ? Number(e.target.value) : null })}><option value="">미기록</option>{[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score}/5</option>)}</select></label>
         <label className="people-field people-special-field"><span><input type="checkbox" checked={draft.special} onChange={e => setDraft({ ...draft, special: e.target.checked })} /> 특별히 챙길 사람</span><span className="field-hint">받은 일정에서 이 사람의 소식이 먼저 보여요. 나만 볼 수 있어요.</span></label>
         <label className="people-field">마지막 만난 날짜<input className="input" type="date" max={todayString()} value={draft.lastMet} onChange={e => setDraft({ ...draft, lastMet: e.target.value })} /></label>
       </div><label className="people-field">기억할 메모<textarea className="input" rows={2} maxLength={1000} value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} /></label><button className="button button-primary" type="submit">변경사항 저장</button>

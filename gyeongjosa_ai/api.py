@@ -55,7 +55,8 @@ def users(service: ChatService = Depends(get_service)):
 def people(user_id: str, service: ChatService = Depends(get_service)):
     """선택한 가상 계정의 지인만 반환한다."""
     require_user(service, user_id)
-    return {"people": service.data.people(user_id)}
+    data = data_for_chat(service.data, user_id) if load_workspace(user_id)["initialized"] else service.data
+    return {"people": data.people(user_id)}
 
 
 @app.get("/api/users/{user_id}/notices")
@@ -71,7 +72,8 @@ def notices(user_id: str, service: ChatService = Depends(get_service)):
 def dashboard(user_id: str, service: ChatService = Depends(get_service)):
     """선택한 계정의 받은·낸 금액만 반환한다."""
     require_user(service, user_id)
-    return service.data.dashboard(user_id)
+    data = data_for_chat(service.data, user_id) if load_workspace(user_id)["initialized"] else service.data
+    return data.dashboard(user_id)
 
 
 @app.post("/api/chat")
