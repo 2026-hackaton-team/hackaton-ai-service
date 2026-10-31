@@ -227,6 +227,82 @@
       ],
       "text": "국민권익위원회 2025년 공식 질의응답: 직무관련성이 있으면 금품등 수수는 원칙적으로 금지되나, 사교·의례·부조 목적이 인정되면 한도 내 경조사비 제공이 예외적으로 허용될 수 있다. 축의금·조의금 현금 5만 원, 이를 대신하는 화환·조화 10만 원 가액 범위가 있으며 동시에 제공하면 합산 10만 원 이하, 각각의 가액 제한도 준수해야 한다. 개별 사실관계 확인 없이 적법성을 단정할 수 없다.",
       "facts": []
+    },
+    {
+      "id": "ACRC-TEACHER-PARENT",
+      "title": "담임교사와 학부모의 축의금 제한 안내",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": null,
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=128&list_no=26391&mid=a10106020000",
+      "event_types": [
+        "결혼"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "verified": true,
+      "keywords": [
+        "담임교사",
+        "학부모",
+        "축의금",
+        "청탁금지법",
+        "5만원"
+      ],
+      "text": "국민권익위원회 청탁금지법 학부모 안내: 재학 중 학생을 지도·평가하는 담임교사와 학부모 사이의 선물·축의금은 소액이라도 원활한 직무수행 또는 사교·의례 목적의 예외가 인정되기 어려우므로 금전 제공을 권고하지 않는다. 상황별 실제 사실 확인이 필요하다.",
+      "facts": []
+    },
+    {
+      "id": "ACRC-CASH-WREATH",
+      "title": "축·조의금과 화환·조화 동시 제공 가액",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": "2025-12-01",
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=130&list_no=98967&mid=a10503040000&nPage=64&tag=",
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "verified": true,
+      "keywords": [
+        "조의금",
+        "화환",
+        "조화",
+        "현금",
+        "합산",
+        "10만원",
+        "5만원"
+      ],
+      "text": "국민권익위원회 청탁금지법 질의응답 2025-12-01: 직무 관련 공직자에게 부조 목적의 예외가 성립한다는 전제에서 현금 축·조의금은 5만원 이하, 화환·조화는 10만원 이하이며 동시에 제공하는 경우 총액 10만원 이하이고 개별 기준도 지켜야 한다.",
+      "facts": []
+    },
+    {
+      "id": "ACRC-DOL-EXCEPTION",
+      "title": "돌잔치에 경조사비 예외를 적용할 수 없음",
+      "publisher": "국민권익위원회",
+      "source_type": "legal_guidance",
+      "published_at": null,
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=130&list_no=109976&mid=a10503040000&nPage=23&tag=",
+      "event_types": [
+        "돌"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "verified": true,
+      "keywords": [
+        "돌잔치",
+        "직무관련",
+        "청탁금지법",
+        "경조사비",
+        "장례",
+        "결혼"
+      ],
+      "text": "국민권익위원회 청탁금지법 질의응답: 경조사비 예외의 경조사는 결혼과 장례에 한정되므로 돌잔치 축하금에는 그 예외를 적용할 수 없다. 다른 별도 예외가 인정되는지와 실제 직무 관련성은 추가 확인해야 한다.",
+      "facts": []
     }
   ]
 }
