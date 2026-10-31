@@ -36,7 +36,7 @@ class EventInput(BaseModel):
 
     model_config = ConfigDict(extra="allow")
     id: str = Field(min_length=1, max_length=128)
-    personId: str = Field(min_length=1, max_length=128)
+    personId: str = Field(default="", max_length=128)
     title: str = Field(min_length=1, max_length=150)
     type: str = Field(min_length=1, max_length=60)
     date: date
