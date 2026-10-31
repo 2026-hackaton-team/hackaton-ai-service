@@ -602,3 +602,109 @@ def test_unrelated_negation_does_not_dismiss_work_risk():
                      semantic_hint="negated")
     assert result["high_risk_hint"] is True
     assert result["sender_ethics_risk"] is True
+
+
+def test_unknown_semantic_hint_keeps_existing_work_risk(monkeypatch):
+    """모델의 미확인 분류만으로 명시된 직무 위험 단서가 사라지지 않는다."""
+    from app import orchestrator
+
+    seen = []
+    original = orchestrator.run
+
+    def capture(**kwargs):
+        seen.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(orchestrator, "run", capture)
+    result = ChatService(load_data(), SemanticGateway(work_risk_hint="unknown")).chat_auto({
+        "user_id": "U001", "question": "공직자와 관련된 장례 조의금, 예산은 10만원",
+        "context": {"person_id": "P001", "event_type": "장례"},
+    })
+    assert result["status"] == "answer"
+    assert seen[-1]["profile_override"]["unconfirmed_high_risk"] is True
+
+
+def test_possible_work_risk_survives_bare_budget_revision(monkeypatch):
+    """처음 확인한 직무 위험 가설을 예산 변경 뒤에도 보존한다."""
+    from app import orchestrator
+
+    seen = []
+    original = orchestrator.run
+
+    def capture(**kwargs):
+        seen.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(orchestrator, "run", capture)
+    service = ChatService(load_data(), SemanticGateway(work_risk_hint="possible"))
+    initial = service.chat_auto({
+        "user_id": "U001", "question": "동료와 이해관계가 있는 것 같아. 장례 예산은 999원",
+        "context": {"person_id": "P001", "event_type": "장례"},
+    })
+    assert initial["status"] == "answer"
+    assert initial["context"]["budget_krw"] == 999
+    assert initial["context"]["work_risk_hint"] == "possible"
+    revised = service.chat_auto({
+        "user_id": "U001", "question": "99999", "context": initial["context"],
+    })
+    assert revised["status"] == "answer"
+    assert revised["context"]["budget_krw"] == 99999
+    assert seen[-1]["budget_krw"] == 99999
+    assert all(item["profile_override"]["unconfirmed_high_risk"] for item in seen)
+    assert revised["suggested_amount_krw"] is None or revised["suggested_amount_krw"] <= 99999
+
+
+def test_current_closeness_is_passed_to_recommendation_engine(monkeypatch):
+    """모델이 확인한 현재 친밀도가 과거 점수·프로필 점수보다 우선한다."""
+    from app import orchestrator
+
+    seen = []
+    original = orchestrator.run
+
+    def capture(**kwargs):
+        seen.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(orchestrator, "run", capture)
+    result = ChatService(load_data(), SemanticGateway(relationship_closeness=2)).chat_auto({
+        "user_id": "U001",
+        "question": "친밀도 5점이었지만 지금은 2점이에요. 장례 예산은 10만원",
+        "context": {"person_id": "P001", "event_type": "장례"},
+    })
+    assert result["status"] == "answer"
+    assert result["context"]["relationship_closeness"] == 2
+    assert seen[-1]["closeness_override"] == 2
+
+
+def test_recent_receipt_meaning_is_passed_to_recommendation_engine(monkeypatch):
+    """먼저 말한 수령액 대신 현재 수령액을 계산에 사용하고 예산과 구분한다."""
+    from app import orchestrator
+
+    seen = []
+    original = orchestrator.run
+
+    def capture(**kwargs):
+        seen.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(orchestrator, "run", capture)
+    result = ChatService(load_data(), SemanticGateway(recent_received_amount_krw=200000)).chat_auto({
+        "user_id": "U001",
+        "question": "최근 5만원을 받았지만 지난번에는 20만원을 받았어. 장례 예산은 10만원",
+        "context": {"person_id": "P001", "event_type": "장례"},
+    })
+    assert result["status"] == "answer"
+    assert result["context"]["recent_received_override"] == 200000
+    assert seen[-1]["recent_received_override"] == 200000
+    assert seen[-1]["budget_krw"] == 100000
+
+
+def test_invalid_saved_work_risk_hint_is_rejected():
+    """대화 상태로 전달된 허용되지 않은 위험 분류를 수용하지 않는다."""
+    service = ChatService(load_data(), SemanticGateway())
+    result = service.chat_auto({
+        "user_id": "U001", "question": "99999",
+        "context": {"intent": "amount", "person_id": "P001", "event_type": "장례",
+                    "budget_krw": 999, "work_risk_hint": "safe"},
+    })
+    assert result["status"] == "error"
