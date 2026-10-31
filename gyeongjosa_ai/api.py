@@ -81,3 +81,6 @@ def dashboard(user_id: str, service: ChatService = Depends(get_service)):
 def chat(request: ChatRequest, service: ChatService = Depends(get_service)):
     """기능 선택 없이 자연어 질문을 처리한다."""
     return service.chat_auto(request.model_dump())
+
+from .integration_api import router as integration_router
+app.include_router(integration_router)
