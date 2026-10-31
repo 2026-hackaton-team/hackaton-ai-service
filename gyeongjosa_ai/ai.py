@@ -21,6 +21,7 @@ SYSTEM_PROMPT = """당신은 허구의 경조사 시연 데이터를 바탕으�
 history.person_id와 거래의 contact_person_id가 같으면 해당 거래는 선택한 지인에 연결된 확인된 기록입니다.
 이 연결을 미확인이라고 말하지 마세요. 부고 상주와 지인의 동일인 여부는 사용자의 확인 여부를 따로 따릅니다.
 행사의 subject_relation이 '본인'이면 가상 계정 사용자의 행사이며 지인 본인의 행사가 아닙니다.
+행사 종류(category)와 행사 당사자 관계(subject_relation)를 혼동하지 마세요. 행사 종류가 있으면 모른다고 말하지 마세요.
 공통 친구 수는 사람 수이며 이전 교류 횟수, 만남, 참석 횟수, 친밀도를 뜻하지 않습니다.
 개인 이력이 제공되지 않으면 과거 교류나 만남이 있었다고 추정하지 마세요.
 recommendation이 제공되면 서버가 계산한 참고 금액과 그 근거만 설명하고 suggested_amount_krw는 null로 반환하세요. 다른 금액을 만들지 마세요.
@@ -29,6 +30,8 @@ public_sources 중 context_only는 금액 계산에 적용된 자료가 아니�
 사용자가 말한 시간이 행사 기간에 포함된다는 사실과 별도 확인이 필요하다는 점만 설명하세요.
 답변은 공감하고 정중하게 작성하며 금액이나 참석을 의무처럼 말하지 마세요. 자동 발송과 자동 저장은 하지 마세요.
 인사말에는 확인되지 않은 친밀한 관계, 개인 사연이나 앞으로의 약속을 넣지 마세요.
+질문하지 않은 행사 시각이나 장소가 누락되었다는 설명은 덧붙이지 마세요. 전달받지 않은 필드를 서비스 전체의 미기록으로 단정하지 마세요.
+answer에는 suggested_amount_krw, subject_relation 등 내부 필드명이나 JSON 키를 노출하지 말고 자연스러운 한국어 문단으로 설명하세요.
 answer에는 금액 숫자를 직접 쓰지 마세요. 금액 제안이 필요하면 suggested_amount_krw에 정수로 넣고,
 사용자 예산을 넘지 마세요. 예산과 관련 과거 거래가 있으면 그 범위에서 검토할 금액 하나를 제안하세요.
 정보가 부족하면 suggested_amount_krw에 null을 쓰세요. 기록의 실제 금액은 시스템이 별도 근거 카드로 표시합니다.
@@ -48,8 +51,10 @@ INTENT_PROMPT = """당신은 경조사 서비스의 사용자 질문을 분류�
 지인과 부고 ID는 제공된 허용 목록에 있는 경우에만 선택하고, 대상이 불명확하면 null을 쓰세요.
 동명이인일 때 이름만 같으면 한 사람으로 선택하지 마세요. 사용자의 확인 여부를 대신 확정하지 마세요.
 행사 종류는 문장에 명시됐을 때만 결혼, 장례, 백일, 돌, 생일, 환갑, 칠순, 팔순 중 하나로 쓰세요.
+식사 참석 여부는 질문에서 명확히 언급했을 때만 attendance_with_meal에 true 또는 false로 반환하세요.
+'식사는 하지 않아', '밥 안 먹어'처럼 부정된 식사 표현은 false이며 명확하지 않으면 null입니다.
 반드시 다른 문장이나 코드 울타리 없이 다음 JSON 객체 하나만 반환하세요.
-{"intent":"history", "person_id":null, "notice_id":null, "event_type":null}
+{"intent":"history", "person_id":null, "notice_id":null, "event_type":null, "attendance_with_meal":null}
 """
 INTENTS = {"notice", "history", "amount", "attendance", "message", "out_of_scope"}
 EVENT_TYPES = {"결혼", "장례", "백일", "돌", "생일", "환갑", "칠순", "팔순"}
@@ -65,6 +70,7 @@ SCENARIO_PROMPT = """당신은 경조사 가상 사례의 관계·상황을 해�
 모든 금액 숫자는 known_amounts_krw에 존재하는 금액만 언급하고, 확인되지 않은 사실·출처를 만들지 마세요.
 추가 정보가 없더라도 가능한 의미와 확인할 사항을 먼저 답하세요.
 정중하고 구체적인 한국어 답변을 2~5문장으로 작성하세요.
+시스템 내부 필드명·JSON 키를 노출하지 말고 질문한 내용에만 자연스러운 문장으로 답하세요.
 반드시 다른 문장이나 코드 울타리 없이 JSON 객체 하나만 반환하세요.
 {"analysis":"사례에 대한 구체적인 해석"}
 """
@@ -144,6 +150,9 @@ def parse_intent(content, people_ids, notice_ids):
     result = parse_json(content)
     intent, person_id, notice_id = result.get("intent"), result.get("person_id"), result.get("notice_id")
     event_type = result.get("event_type")
+    meal = result.get("attendance_with_meal")
+    if meal is not None and type(meal) is not bool:
+        raise ValueError("식사 여부의 형식을 확인하지 못했습니다.")
     if intent not in INTENTS:
         raise ValueError("질문 의도를 확인하지 못했습니다.")
     if person_id is not None and person_id not in people_ids:
@@ -152,13 +161,14 @@ def parse_intent(content, people_ids, notice_ids):
         raise ValueError("조회할 수 없는 부고가 선택됐습니다.")
     if event_type is not None and event_type not in EVENT_TYPES:
         raise ValueError("행사 종류를 확인하지 못했습니다.")
-    return {"intent": intent, "person_id": person_id, "notice_id": notice_id, "event_type": event_type}
+    return {"intent": intent, "person_id": person_id, "notice_id": notice_id,
+            "event_type": event_type, "attendance_with_meal": meal}
 
 
 class ModelGateway:
     """Opus를 우선 호출하고 실패하면 GPT로 전환한다."""
 
-    def __init__(self, api_key=None, base_url=None, transport=None, timeout=60):
+    def __init__(self, api_key=None, base_url=None, transport=None, timeout=25):
         load_dotenv(ROOT / ".env", override=False)
         self.api_key = api_key if api_key is not None else os.environ.get("CODYSSEY_API_KEY", "")
         self.base_url = (base_url or os.environ.get("CODYSSEY_BASE_URL") or "https://copa.codyssey.kr/v1").rstrip("/")
