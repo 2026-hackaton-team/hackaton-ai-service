@@ -12,6 +12,7 @@ import Notifications, { useSharedNoticeInbox, receivedReadId } from './Notificat
 import { SocialContext, ShareEventModal, ShareStatus, ReceivedScheduleDialog } from './Social.jsx';
 import { SOCIAL_EVENT, SOCIAL_KEY, ACCOUNTS_KEY, loadSocial, mutateSocial, readMembers, setReceipt, updateSharedEvent, removeShare } from './services/socialStore.js';
 import { buildReceivedItems, itemToEvent } from './services/receivedItems.js';
+import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './services/workspaceStorage.js';
 import { normalizePerson } from './relationships.js';
@@ -183,7 +184,7 @@ export default function App() {
     catch (error) { const text = error?.message || '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; if (onError) onError(text); else notify(text); return false; }
   }
   // 받은 일정은 개인정보라 로그인한 사람에게만 보여 준다.
-  const receivedItems = useMemo(() => !user ? [] : buildReceivedItems({ social, me: user?.username || '', notices: sharedInbox.items, profileId: sharedInbox.userId, events, members }), [social, user, sharedInbox.items, sharedInbox.userId, events, members]);
+  const receivedItems = useMemo(() => !user ? [] : buildReceivedItems({ social, me: user?.username || '', notices: sharedInbox.items, profileId: sharedInbox.userId, events, members, people, today }), [social, user, sharedInbox.items, sharedInbox.userId, events, members, people, today]);
   const newReceivedCount = receivedItems.filter(item => item.status === 'new').length;
   function addToCalendar(item) {
     const existing = events.find(event => event.source?.key === item.key);
@@ -197,8 +198,33 @@ export default function App() {
     notify(`'${item.title}' 일정을 내 달력에 추가했어요.`);
   }
   function hideItem(item) { mutate(state => setReceipt(state, user?.username, item.key, { status: 'hidden' }), '받은 일정에서 숨겼어요.'); }
+  // 프로필(서버)에서 다른 계정에 대해 기록한 중요도 — 받은 일정 순서에만 쓰인다.
+  const [serverPriorities, setServerPriorities] = useState({});
+  useEffect(() => {
+    setServerPriorities({});
+    if (!user || !sharedInbox.userId) return;
+    const controller = new AbortController();
+    demoApi('/relationship-priorities', { userId: sharedInbox.userId, signal: controller.signal })
+      .then(result => { if (!controller.signal.aborted) setServerPriorities(Object.fromEntries((result.items || []).map(item => [item.target_user_id, item]))); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [user?.username, sharedInbox.userId]);
+  async function saveServerPriority(targetUserId, body) {
+    try {
+      const saved = await demoApi(`/relationship-priorities/${encodeURIComponent(targetUserId)}`, { userId: sharedInbox.userId, method: 'PUT', body });
+      setServerPriorities(current => ({ ...current, [targetUserId]: saved }));
+      sharedInbox.refresh();
+      notify('중요도를 저장했어요. 받은 일정 순서에 반영했어요.');
+      return true;
+    } catch (error) { notify(error.message || '중요도를 저장하지 못했어요.'); return false; }
+  }
+  function addLinkedPerson({ name, relation, linkedUsername }) {
+    setPeople(current => [...current, { id: crypto.randomUUID(), name, relation: relation || '친구', group: '마음결 친구', importance: '보통', lastMet: '', memo: '', interactions: [], linkedUsername }]);
+    notify(`${name}님을 내 인맥에 추가하고 연결했어요.`);
+  }
   const socialValue = {
     user, social, members, mutate, notify, receivedItems, sharedInbox, addToCalendar, hideItem,
+    people, updatePerson, addLinkedPerson, serverPriorities, saveServerPriority,
     requireLogin: mode => setModal({ type: mode === 'signup' ? 'signup' : 'login' }),
     openEvent: id => { setNotificationsOpen(false); setModal({ type: 'eventDetail', id }); },
     goFindFriends: () => { setModal(null); setPeopleTab({ tab: 'find', nonce: Date.now() }); navigate('people'); },

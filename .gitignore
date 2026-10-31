@@ -23,3 +23,4 @@ data/demo_profiles.db*
 /docs/LOCAL_RUN.md
 /docs/NEXT_WORK_SPEC.md
 /docs/WORK_NOTES.md
+data/demo_relationship_priorities.sqlite3*

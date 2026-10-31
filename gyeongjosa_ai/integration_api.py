@@ -16,6 +16,8 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, 
 from .dependencies import get_service
 from .data import public_legacy_candidate
 from .shared_events_store import SharedEventsStore
+from .relationship_priority import IMPORTANCE_OPTIONS, PriorityStore
+from .event_parser import parse_event_text
 from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
 from .service import ChatService
 from .workspace_adapter import data_for_chat
@@ -82,7 +84,9 @@ class SharedEventInput(BaseModel):
     end_date: date
     region: str | None = Field(default=None, max_length=100)
     venue: str | None = Field(default=None, max_length=200)
-    audience_scope: Literal["private", "friends_only", "friends_and_friends_of_friends"] = "private"
+    audience_scope: Literal["private", "friends_only", "friends_and_friends_of_friends", "designated"] = "private"
+    recipient_user_ids: list[str] = Field(default_factory=list, max_length=30)
+    recipient_group: Literal["family", "custom"] | None = None
     sharing_authorization: Literal["confirmed", "unknown"] = "unknown"
     direct_friend_attendance: Literal["allowed", "not_allowed", "unknown"] = "unknown"
     friend_of_friend_attendance: Literal["allowed", "not_allowed", "unknown"] = "unknown"
@@ -112,6 +116,10 @@ class SharedEventInput(BaseModel):
             raise ValueError("종료일은 시작일보다 빠를 수 없습니다.")
         if self.audience_scope != "private" and self.sharing_authorization != "confirmed":
             raise ValueError("공유 권한을 확인해 주세요.")
+        if self.audience_scope == "designated" and not self.recipient_user_ids:
+            raise ValueError("소식을 받을 사람을 한 명 이상 지정해 주세요.")
+        if self.audience_scope != "designated" and (self.recipient_user_ids or self.recipient_group):
+            raise ValueError("받는 사람 지정은 '지정한 사람에게' 공유할 때만 사용할 수 있습니다.")
         if self.related_role == "subject" and self.category == "장례":
             raise ValueError("장례에서는 본인 상주 여부를 선택해 주세요.")
         if self.related_role == "mourner" and self.category != "장례":
@@ -158,7 +166,8 @@ def own_shared_event(notice):
     """작성자 화면에 필요한 소식과 공개 상태만 반환한다."""
     fields = ("id", "category", "title", "start_date", "end_date", "region", "venue", "status",
               "audience_scope", "sharing_authorization", "direct_friend_attendance", "friend_of_friend_attendance",
-              "publisher_name_visible", "related_role", "related_user_recommendation_allowed", "created_at", "updated_at")
+              "publisher_name_visible", "related_role", "related_user_recommendation_allowed", "recipient_user_ids",
+              "recipient_group", "created_at", "updated_at")
     return {key: notice.get(key) for key in fields}
 
 @router.get("/demo/users")
@@ -215,9 +224,62 @@ def save_personal_workspace(data: WorkspaceInput, user_id: str = Depends(_user))
     return save_workspace(user_id, data)
 
 
+class RelationshipPriorityInput(BaseModel):
+    """다른 계정에 대해 내가 기록하는 중요도. 상대에게는 공개되지 않는다."""
+
+    model_config = ConfigDict(extra="forbid")
+    importance: Literal[IMPORTANCE_OPTIONS] = "보통"
+    special: StrictBool = False
+    relation: str | None = Field(default=None, max_length=20)
+
+
+class EventParseInput(BaseModel):
+    """한 줄로 적은 경조사 문장."""
+
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=300)
+    today: date | None = None
+
+
+def get_priority_store():
+    """관계 중요도 저장소를 반환한다."""
+    default = Path(__file__).resolve().parents[1] / "data" / "demo_relationship_priorities.sqlite3"
+    return PriorityStore(os.environ.get("GYEONGJOSA_PRIORITY_DB", str(default)))
+
+
 @router.get("/notices")
-def notices(user_id: str = Depends(_user), service=Depends(get_service)):
-    return {"items": [public_legacy_candidate(item) for item in service.data.recommendations(user_id)], "demo": True}
+def notices(user_id: str = Depends(_user), service=Depends(get_service), priorities=Depends(get_priority_store)):
+    items = service.data.recommendations(user_id, priorities.list(user_id))
+    return {"items": [public_legacy_candidate(item) for item in items], "demo": True}
+
+
+@router.get("/relationship-priorities")
+def list_relationship_priorities(user_id: str = Depends(_user), service=Depends(get_service), store=Depends(get_priority_store)):
+    """현재 프로필이 다른 계정에 대해 기록한 중요도를 반환한다."""
+    items = store.list(user_id)
+    return {"items": [{"target_user_id": target, "target_name": service.data.users.get(target, {}).get("name"), **value}
+                      for target, value in items.items()]}
+
+
+@router.put("/relationship-priorities/{target_user_id}")
+def set_relationship_priority(target_user_id: str, data: RelationshipPriorityInput, user_id: str = Depends(_user),
+                              service=Depends(get_service), store=Depends(get_priority_store)):
+    """다른 계정에 대한 중요도를 기록한다. 순서에만 쓰이고 공유 범위는 바꾸지 않는다."""
+    if target_user_id == user_id or target_user_id not in service.data.users:
+        raise HTTPException(404, "중요도를 기록할 수 없는 계정입니다.")
+    return {"target_user_id": target_user_id, **store.set(user_id, target_user_id, data.importance, data.special, data.relation)}
+
+
+@router.delete("/relationship-priorities/{target_user_id}", status_code=204)
+def delete_relationship_priority(target_user_id: str, user_id: str = Depends(_user), store=Depends(get_priority_store)):
+    """기록한 중요도를 지운다."""
+    store.delete(user_id, target_user_id)
+
+
+@router.post("/events/parse")
+def parse_event(data: EventParseInput):
+    """한 줄 문장을 일정 입력값으로 제안한다. 저장하지 않으며 사용자가 확인한 뒤 저장한다."""
+    return parse_event_text(data.text, data.today or shared_today())
 
 @router.get("/notices/{notice_id}")
 def notice(notice_id: str, user_id: str = Depends(_user), service=Depends(get_service)):
@@ -262,8 +324,11 @@ def shared_event_detail(event_id: str, user_id: str = Depends(_user), service=De
 
 
 @router.post("/shared-events", status_code=201)
-def create_shared_event(data: SharedEventInput, user_id: str = Depends(_user), store=Depends(get_shared_store)):
+def create_shared_event(data: SharedEventInput, user_id: str = Depends(_user), store=Depends(get_shared_store),
+                        service=Depends(get_service)):
     """현재 가상 계정의 공유 소식을 저장한다."""
+    if any(uid == user_id or uid not in service.data.users for uid in data.recipient_user_ids):
+        raise HTTPException(422, "받는 사람을 다시 확인해 주세요.")
     item = store.create(user_id, data.model_dump(mode="json"))
     return {"demo": True, **own_shared_event(item)}
 

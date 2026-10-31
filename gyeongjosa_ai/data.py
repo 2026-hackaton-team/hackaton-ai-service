@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+from .relationship_priority import priority_score
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DATE = date(2026, 10, 30)
@@ -17,13 +19,37 @@ def load_data(path=None):
     if path is None:
         from .special_fixtures import merge_special_fixtures
         dataset = merge_special_fixtures(dataset)
+        dataset = merge_designated_notices(dataset)
     return DemoData(dataset)
+
+
+def merge_designated_notices(dataset):
+    """보낸 사람이 받는 사람을 직접 지정한 시연 소식을 메모리에서만 추가한다."""
+    source = ROOT / "data" / "designated_notices.json"
+    if not source.exists():
+        return dataset
+    extra = json.loads(source.read_text(encoding="utf-8-sig"))
+    existing = {row["id"] for row in dataset["shared_notices"]}
+    users = {row["id"] for row in dataset["users"]}
+    for notice in extra:
+        if notice["id"] in existing:
+            raise ValueError("지정 공유 소식 식별자가 중복됩니다.")
+        if notice["publisher_user_id"] not in users or any(uid not in users for uid in notice.get("recipient_user_ids", [])):
+            raise ValueError("지정 공유 소식의 계정 참조가 잘못되었습니다.")
+    return {**dataset, "shared_notices": [*dataset["shared_notices"], *extra]}
+
+
+def designated_for(notice, user_id):
+    """보낸 사람이 이 계정을 받는 사람으로 직접 지정했는지 확인한다."""
+    return (notice.get("audience_scope") == "designated"
+            and user_id in (notice.get("recipient_user_ids") or [])
+            and notice.get("sharing_authorization") == "confirmed")
 
 
 def public_legacy_candidate(candidate):
     """기존 부고 화면에 필요한 필드만 반환한다."""
     notice = candidate["notice"]
-    fields = ("id", "category", "title", "start_date", "end_date", "region",
+    fields = ("id", "category", "title", "start_date", "end_date", "time", "region",
               "venue", "address", "room", "visiting_hours")
     public_notice = {key: notice[key] for key in fields if key in notice}
     if "mourner" in notice:
@@ -32,7 +58,8 @@ def public_legacy_candidate(candidate):
             {key: mourner[key] for key in ("name", "affiliation", "deceased_relation") if key in mourner}
             if isinstance(mourner, dict) else None
         )
-    result = {key: candidate[key] for key in ("relation_type", "publisher_name", "mutual_count", "score", "details") if key in candidate}
+    result = {key: candidate[key] for key in ("relation_type", "publisher_name", "publisher_user_id", "mutual_count", "score", "details",
+                                              "priority_score", "priority_reasons", "recipient_group") if key in candidate}
     result["notice"] = public_notice
     return result
 
@@ -119,14 +146,16 @@ class DemoData:
             return None
         direct = publisher_id in self.graph[user_id]
         mutual = bool(self.graph[user_id] & self.graph[publisher_id])
-        if not direct and not mutual:
-            return None
-        scope = notice.get("audience_scope")
-        if scope != "friends_and_friends_of_friends" and not (scope == "friends_only" and direct):
-            return None
-        attendance = "direct_friend_attendance" if direct else "friend_of_friend_attendance"
-        if notice.get("sharing_authorization") != "confirmed" or notice.get(attendance) != "allowed":
-            return None
+        designated = designated_for(notice, user_id)
+        if not designated:
+            if not direct and not mutual:
+                return None
+            scope = notice.get("audience_scope")
+            if scope != "friends_and_friends_of_friends" and not (scope == "friends_only" and direct):
+                return None
+            attendance = "direct_friend_attendance" if direct else "friend_of_friend_attendance"
+            if notice.get("sharing_authorization") != "confirmed" or notice.get(attendance) != "allowed":
+                return None
         if notice.get("status") not in {"active", "scheduled", "ongoing"}:
             return None
         try:
@@ -137,7 +166,7 @@ class DemoData:
         if start > end or end < today:
             return None
 
-        reason = "direct_friend" if direct else "friend_of_friend"
+        reason = "designated" if designated else "direct_friend" if direct else "friend_of_friend"
         valid_role = "mourner" if notice.get("category") == "장례" else "subject"
         if (notice.get("publisher_name_visible") is True
                 and notice.get("related_user_recommendation_allowed") is True
@@ -168,30 +197,42 @@ class DemoData:
             if candidate is None or notice.get("shared_occurrence_id") in owned_occurrences:
                 continue
             result.append(candidate)
-        priority = {"confirmed_colleague": 0, "direct_friend": 1, "friend_of_friend": 2}
+        priority = {"designated": 0, "confirmed_colleague": 1, "direct_friend": 2, "friend_of_friend": 3}
         result.sort(key=lambda item: (priority[item["reason_code"]], item["notice"]["end_date"],
                                       item["notice"]["start_date"], item["notice"]["id"]))
         return result
 
-    def recommendations(self, user_id):
-        """허용된 친구와 친구의 친구 부고를 고정 시연일과 가중치로 정렬한다."""
+    def recommendations(self, user_id, priorities=None):
+        """볼 수 있는 소식을 고른 뒤, 사용자가 기록한 관계 중요도로 순서를 정한다.
+
+        볼 수 있는 조건: 친구·친구의 친구에게 공유된 부고, 또는 보낸 사람이 나를 직접 지정한 소식.
+        priorities(대상 계정별 중요도)는 순서에만 쓰이고 볼 수 있는 범위를 넓히지 않는다.
+        """
         user = self.users.get(user_id)
         if user is None:
             return []
+        priorities = priorities or {}
         result = []
         for notice in self.dataset["shared_notices"]:
             publisher_id = notice["publisher_user_id"]
             mutual_ids = self.graph[user_id] & self.graph[publisher_id]
             is_direct = publisher_id in self.graph[user_id]
-            if publisher_id == user_id or (not is_direct and not mutual_ids):
+            if publisher_id == user_id:
                 continue
-            if notice["category"] != "장례" or notice["status"] not in {"scheduled", "ongoing"}:
-                continue
-            if notice["audience_scope"] != "friends_and_friends_of_friends":
-                continue
-            attendance_key = "direct_friend_attendance" if is_direct else "friend_of_friend_attendance"
-            if notice.get(attendance_key) != "allowed" or notice["sharing_authorization"] != "confirmed":
-                continue
+            designated = designated_for(notice, user_id)
+            if designated:
+                if notice.get("status") not in {"scheduled", "ongoing", "active"}:
+                    continue
+            else:
+                if not is_direct and not mutual_ids:
+                    continue
+                if notice["category"] != "장례" or notice["status"] not in {"scheduled", "ongoing"}:
+                    continue
+                if notice["audience_scope"] != "friends_and_friends_of_friends":
+                    continue
+                attendance_key = "direct_friend_attendance" if is_direct else "friend_of_friend_attendance"
+                if notice.get(attendance_key) != "allowed" or notice["sharing_authorization"] != "confirmed":
+                    continue
             start = date.fromisoformat(notice["start_date"])
             end = date.fromisoformat(notice["end_date"])
             if end < REFERENCE_DATE:
@@ -203,7 +244,7 @@ class DemoData:
             date_points = 10 * max(0, 30 - days) / 30
             total, weight = mutual_points + date_points, 50
             region_match = None
-            if user["preferred_region"] and notice["region"]:
+            if user["preferred_region"] and notice.get("region"):
                 region_match = user["preferred_region"] == notice["region"]
                 total += 30 * region_match
                 weight += 30
@@ -212,15 +253,22 @@ class DemoData:
                 interest_match = notice["category"] in user["preferred_event_types"]
                 total += 20 * interest_match
                 weight += 20
+            visible = notice.get("publisher_name_visible") is True
+            # 보낸 사람이 공개된 경우에만 내가 기록한 중요도를 반영한다. (숨겨진 보낸 사람을 순서로 추측하지 못하게)
+            priority = priority_score(priorities.get(publisher_id) if visible else None, days)
             result.append({
                 "notice": notice,
-                "relation_type": "direct_friend" if is_direct else "friend_of_friend",
-                "publisher_name": self.users[publisher_id]["name"] if notice.get("publisher_name_visible") is True else None,
+                "relation_type": "designated" if designated else "direct_friend" if is_direct else "friend_of_friend",
+                "publisher_name": self.users[publisher_id]["name"] if visible else None,
+                "publisher_user_id": publisher_id if visible else None,
                 "mutual_count": mutual_count,
                 "score": round(total * 100 / weight, 1),
                 "details": {"region_match": region_match, "interest_match": interest_match, "days_until_start": days},
+                "priority_score": priority["score"],
+                "priority_reasons": priority["reasons"],
+                "recipient_group": notice.get("recipient_group") if designated else None,
             })
-        result.sort(key=lambda item: (-item["score"], item["notice"]["start_date"], item["notice"]["id"]))
+        result.sort(key=lambda item: (-item["priority_score"], -item["score"], item["notice"]["start_date"], item["notice"]["id"]))
         return result
 
     def notice_for_user(self, user_id, notice_id):
