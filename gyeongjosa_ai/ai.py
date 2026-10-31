@@ -78,9 +78,14 @@ gift_comparison(현금과 선물 비교), message(인사말) 중 해당하는 �
 행사 종류는 문장에 명시됐을 때만 결혼, 장례, 백일, 돌, 생일, 환갑, 칠순, 팔순 중 하나로 쓰세요.
 부친상·모친상·조문·장례식·부고는 장례, 결혼식은 결혼, 돌잔치는 돌에 해당합니다.
 식사 참석 여부는 질문에서 명확히 언급했을 때만 attendance_with_meal에 true 또는 false로 반환하세요.
+현재 친밀도를 1~5점으로 명시한 경우만 relationship_closeness에 정수로 담고 과거 점수와 혼동하지 마세요.
+최근 상대에게서 받은 금액을 명시했다면 recent_received_amount_krw에 원 단위 정수로 담으세요. 과거 기록이나 예산을 이 값으로 추측하지 마세요.
+특별히 챙기거나 보답하겠다는 명시적인 의향만 special_care에 true로 반환하세요. 없으면 null입니다.
+업무·계약·심사 관계를 문맥상 의심하면 work_risk_hint는 possible, 명시적으로 부정하면 negated, 그 밖에는 unknown입니다.
+업무 관련성을 단정하거나 법률상 허용 여부를 판단하지 마세요.
 '식사는 하지 않아', '밥 안 먹어'처럼 부정된 식사 표현은 false이며 명확하지 않으면 null입니다.
 반드시 다른 문장이나 코드 울타리 없이 다음 JSON 객체 하나만 반환하세요.
-{"intent":"history", "person_id":null, "notice_id":null, "event_type":null, "attendance_with_meal":null, "requested_aspects":[]}
+{"intent":"history", "person_id":null, "notice_id":null, "event_type":null, "attendance_with_meal":null, "requested_aspects":[], "relationship_closeness":null, "recent_received_amount_krw":null, "special_care":null, "work_risk_hint":"unknown"}
 """
 INTENTS = {"notice", "history", "amount", "attendance", "message", "out_of_scope"}
 ASPECTS = {"amount", "funeral_etiquette", "clothing", "gift_comparison", "message"}
@@ -208,6 +213,18 @@ def parse_intent(content, people_ids, notice_ids):
     event_type = result.get("event_type")
     meal = result.get("attendance_with_meal")
     aspects = result.get("requested_aspects", [])
+    closeness = result.get("relationship_closeness")
+    received = result.get("recent_received_amount_krw")
+    special_care = result.get("special_care")
+    work_risk_hint = result.get("work_risk_hint")
+    if closeness is not None and (type(closeness) is not int or not 1 <= closeness <= 5):
+        raise ValueError("친밀도 값은 1~5의 정수여야 합니다.")
+    if received is not None and (type(received) is not int or not 0 <= received <= 10000000):
+        raise ValueError("최근 수령액은 허용된 정수 금액이어야 합니다.")
+    if special_care is not None and type(special_care) is not bool:
+        raise ValueError("특별히 챙기기 의향 형식이 잘못됐습니다.")
+    if work_risk_hint not in (None, "possible", "negated", "unknown"):
+        raise ValueError("직무 위험 단서 분류가 잘못됐습니다.")
     if not isinstance(aspects, list) or len(aspects) > len(ASPECTS) or any(
         not isinstance(item, str) or item not in ASPECTS for item in aspects
     ) or len(set(aspects)) != len(aspects):
@@ -224,7 +241,9 @@ def parse_intent(content, people_ids, notice_ids):
         raise ValueError("행사 종류를 확인하지 못했습니다.")
     return {"intent": intent, "person_id": person_id, "notice_id": notice_id,
             "event_type": event_type, "attendance_with_meal": meal,
-            "requested_aspects": aspects}
+            "requested_aspects": aspects, "relationship_closeness": closeness,
+            "recent_received_amount_krw": received, "special_care": special_care,
+            "work_risk_hint": work_risk_hint}
 
 
 class ModelGateway:
