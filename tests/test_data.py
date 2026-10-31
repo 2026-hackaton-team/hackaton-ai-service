@@ -34,7 +34,12 @@ def data(generated):
 def test_original_copy_matches_source():
     source = ROOT.parent / "data" / "gyeongjosa_demo.json"
     copied = ROOT / "data" / "original_demo.json"
-    assert hashlib.sha256(source.read_bytes()).digest() == hashlib.sha256(copied.read_bytes()).digest()
+    # The upstream parent folder is not part of this standalone Git repository.
+    # Preserve the pinned, checked-in original if its external source is absent.
+    expected_sha256 = "1f9cee2d3e971013298c7de0ff7dbda11a284e955d3a7208f0228a57cf3f6b5e"
+    assert hashlib.sha256(copied.read_bytes()).hexdigest() == expected_sha256
+    if source.exists():
+        assert hashlib.sha256(source.read_bytes()).digest() == hashlib.sha256(copied.read_bytes()).digest()
 
 
 def test_generated_data_is_repeatable_and_does_not_modify_input(original, generated):
