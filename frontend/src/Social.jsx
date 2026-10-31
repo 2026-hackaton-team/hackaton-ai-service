@@ -229,15 +229,17 @@ function LocalPriorityEditor({ item, onDone }) {
       <label>내 인맥<select className="input" value={choice} onChange={e => setChoice(e.target.value)}><option value="">선택해 주세요</option><option value="__new">새 인맥으로 추가</option>{people.map(entry => <option key={entry.id} value={entry.id}>{entry.name} · {entry.relation}</option>)}</select></label>
       {choice === '__new' && <label>관계<select className="input" value={relation} onChange={e => setRelation(e.target.value)}>{RELATION_OPTIONS.map(entry => <option key={entry}>{entry}</option>)}</select></label>}
     </div>
-    <div className="priority-actions"><button type="button" className="text-button" onClick={onDone}>취소</button><button type="button" className="button button-primary" disabled={!choice} onClick={() => {
-      if (choice === '__new') addLinkedPerson({ name: item.senderName, relation, linkedUsername: item.senderUsername });
-      else updatePerson(choice, { linkedUsername: item.senderUsername });
+    <div className="priority-actions"><button type="button" className="text-button" onClick={onDone}>취소</button><button type="button" className="button button-primary" disabled={!choice} onClick={async () => {
+      const ok = choice === '__new'
+        ? await addLinkedPerson({ name: item.senderName, relation, linkedUsername: item.senderUsername })
+        : await updatePerson(choice, { linkedUsername: item.senderUsername });
+      if (ok) onDone();
     }}>연결하기</button></div>
   </div>;
   return <div className="priority-editor">
     <p className="priority-note">내 인맥 <strong>{person.name}</strong>({person.relation})과 연결돼 있어요. 중요도는 나만 볼 수 있어요.</p>
     <PriorityFields draft={draft} setDraft={setDraft} />
-    <div className="priority-actions"><button type="button" className="text-button" onClick={onDone}>닫기</button><button type="button" className="button button-primary" onClick={() => { updatePerson(person.id, { importance: draft.importance, special: draft.special }); onDone(); }}>저장</button></div>
+    <div className="priority-actions"><button type="button" className="text-button" onClick={onDone}>닫기</button><button type="button" className="button button-primary" onClick={async () => { if (await updatePerson(person.id, { importance: draft.importance, special: draft.special })) onDone(); }}>저장</button></div>
   </div>;
 }
 
