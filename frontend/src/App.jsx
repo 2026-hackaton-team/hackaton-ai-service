@@ -40,7 +40,7 @@ function useStored(key, initial, normalize = value => value) {
 
 export default function App() {
   const localPeople = () => readStored(STORAGE_KEYS.people, initialPeople, items => items.map(normalizePerson));
-  const localEvents = () => readStored(STORAGE_KEYS.events, initialEvents, items => ({ ...items }).map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
+  const localEvents = () => readStored(STORAGE_KEYS.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
   const localRecords = () => readStored(STORAGE_KEYS.records, initialRecords);
   const [people, setPeople] = useState(localPeople);
   const [events, setEvents] = useState(localEvents);
