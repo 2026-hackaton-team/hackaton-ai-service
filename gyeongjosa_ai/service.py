@@ -118,7 +118,7 @@ class ChatService:
         if not isinstance(raw_context, dict):
             return error_result("대화 맥락 형식을 확인해 주세요.")
         from .v4_chat import try_v4_chat
-        v4_result = try_v4_chat(user_id, question, raw_context)
+        v4_result = try_v4_chat(user_id, question, raw_context, gateway=self.gateway)
         if v4_result is not None:
             return v4_result
         keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field"}

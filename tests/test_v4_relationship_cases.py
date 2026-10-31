@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from gyeongjosa_ai.ai import ModelUnavailable
 from gyeongjosa_ai.api import app
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.relationship_insights import analyze_relationship_case
@@ -162,3 +163,78 @@ def test_existing_dataset_bytes_remain_unmodified():
     for dataset in (original, generated):
         assert not any(p["id"].startswith("V4P") for p in dataset["people"])
         assert not any(t["id"].startswith("V4T") for t in dataset["transactions"])
+
+
+class ScenarioGateway:
+    """실제 네트워크 없이 사례 해석을 기록하는 모델 대역이다."""
+
+    api_key = "test"
+
+    def __init__(self):
+        self.contexts = []
+
+    def explain_scenario(self, context):
+        self.contexts.append(context)
+        return {
+            "model": "gpt-5.4",
+            "analysis": "평소보다 큰 배려일 수 있지만 사정을 알 수는 없습니다. 감사 인사를 전해 보세요.",
+        }
+
+
+def test_relationship_scenario_calls_llm_without_changing_recommendation():
+    """가상 관계 질문과 후속 예산 입력이 모델을 호출하고 추천액은 유지한다."""
+    gateway = ScenarioGateway()
+    service = ChatService(load_data(), gateway)
+    first = service.chat_auto({
+        "user_id": "U001",
+        "question": SCENARIOS["relation_recent_large"]["example_question"],
+        "context": {},
+    })
+    assert first["v4_analysis"]["ai_status"] == "generated"
+    assert first["model"] == "gpt-5.4"
+    assert "감사 인사" in first["message"]
+    assert first["suggested_amount_krw"] is None
+    assert len(gateway.contexts) == 1
+    assert 200000 in gateway.contexts[0]["known_amounts_krw"]
+    assert any(item["decision_role"] == "relationship_guidance"
+               for item in gateway.contexts[0]["evidence"])
+    second = service.chat_auto({
+        "user_id": "U001",
+        "question": "이번 예산은 3만원이에요",
+        "context": first["context"],
+    })
+    assert second["v4_analysis"]["ai_status"] == "generated"
+    assert second["suggested_amount_krw"] <= 30000
+    assert gateway.contexts[1]["decision"]["suggested_amount_krw"] == second["suggested_amount_krw"]
+
+
+def test_safety_scenario_uses_llm_only_after_policy_decision():
+    """법률 시연의 보류 판단을 모델이 바꾸지 못한다."""
+    gateway = ScenarioGateway()
+    result = ChatService(load_data(), gateway).chat_auto({
+        "user_id": "U001",
+        "question": SCENARIOS["procurement"]["example_question"],
+        "context": {},
+    })
+    assert result["v4_analysis"]["ai_status"] == "generated"
+    assert result["model"] == "gpt-5.4"
+    assert gateway.contexts[0]["decision"]["status"] == result["v4_analysis"]["status"]
+    assert gateway.contexts[0]["decision"]["suggested_amount_krw"] == result["suggested_amount_krw"]
+
+
+def test_scenario_llm_failure_is_not_reported_as_generated():
+    """모델 실패 시 규칙 기반 결과를 반환하되 실제 AI 성공으로 표시하지 않는다."""
+    class FailingGateway:
+        api_key = "test"
+
+        def explain_scenario(self, _context):
+            raise ModelUnavailable("모델 검증 실패")
+
+    result = ChatService(load_data(), FailingGateway()).chat_auto({
+        "user_id": "U001",
+        "question": SCENARIOS["relation_recent_large"]["example_question"],
+        "context": {},
+    })
+    assert result["v4_analysis"]["ai_status"] == "unavailable"
+    assert result["model"] is None
+    assert "AI 해석:" not in result["message"]
