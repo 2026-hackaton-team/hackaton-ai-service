@@ -9,7 +9,7 @@ import AIPage from './IntegratedAIPage.jsx';
 import EtiquettePage from './EtiquettePage.jsx';
 import Notifications, { useSharedNoticeInbox, receivedReadId } from './Notifications.jsx';
 import { SocialContext, ShareEventModal, ShareStatus, ReceivedScheduleDialog } from './Social.jsx';
-import { setReceipt, updateSharedEvent, removeShare } from './services/socialStore.js';
+import { setReceipt, updateSharedEvent, removeShare, publishFriendOfFriendEvent } from './services/socialStore.js';
 import { buildReceivedItems, itemToEvent } from './services/receivedItems.js';
 import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
@@ -181,7 +181,15 @@ export default function App() {
       const { shareScope, shareMessage, ...rest } = values;
       const created = { ...rest, id: crypto.randomUUID() };
       if (!await saveChanges(state => ({ events: [...state.events, created] }))) return;
-      if (shareScope && shareScope !== 'private' && user) {
+      if (shareScope === 'friends_of_friends' && user) {
+        const shared = await mutate(state => publishFriendOfFriendEvent(state, user, created, shareMessage));
+        if (!shared) {
+          setModal({ type: 'share', id: created.id, event: created, scope: shareScope, message: shareMessage });
+          return;
+        }
+        setModal(null);
+        notify('내 경조사를 등록하고 친구의 친구에게 알렸어요.');
+      } else if (shareScope && shareScope !== 'private' && user) {
         setModal({ type: 'share', id: created.id, event: created, scope: shareScope, message: shareMessage });
         notify('내 경조사를 등록했어요. 이제 보낼 친구를 골라 주세요.');
       } else {

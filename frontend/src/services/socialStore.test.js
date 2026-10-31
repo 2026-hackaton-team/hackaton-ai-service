@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSocial, requestFriend, respondFriend, relationStatus, friendsOf, mutualFriends, incomingRequests, upsertShare, receivedShares, setReceipt, receiptOf, shareResponses, searchMembers, cancelFriendRequest, updateSharedEvent } from './socialStore.js';
+import { normalizeSocial, requestFriend, respondFriend, relationStatus, friendsOf, mutualFriends, incomingRequests, upsertShare, receivedShares, setReceipt, receiptOf, shareResponses, searchMembers, cancelFriendRequest, updateSharedEvent, publishFriendOfFriendEvent } from './socialStore.js';
 
 const befriend = (state, a, b) => { const s = requestFriend(state, a, b); return respondFriend(s, incomingRequests(s, b)[0].id, b, true); };
 const event = { id: 'e1', title: '채해커 결혼식', type: '결혼식', date: '2026-11-21', time: '13:00', location: '라온 웨딩홀', memo: '' };
@@ -43,6 +43,18 @@ test('shares reach chosen friends, and friends of friends only when the scope al
   assert.deepEqual(mutualFriends(s, 'carol', 'host'), ['bob']);
   s = updateSharedEvent(s, 'host', { ...event, location: '새 장소' });
   assert.equal(s.shares[0].event.location, '새 장소');
+});
+
+test('friend-of-friend publication reaches a two-hop account without an invitation', () => {
+  let s = befriend(befriend(normalizeSocial(null), 'test12345', 'testbridge'), 'testbridge', 'test1234');
+  const published = { ...event, id: 'nov7', date: '2026-11-07' };
+  s = publishFriendOfFriendEvent(s, { username: 'test12345', name: '추천 수신 시연자' }, published, '참석해 주세요');
+  assert.deepEqual(s.shares[0].recipients, []);
+  assert.equal(s.shares[0].scope, 'friends_of_friends');
+  assert.equal(s.shares[0].event.date, '2026-11-07');
+  assert.equal(s.shares[0].message, '참석해 주세요');
+  assert.deepEqual(receivedShares(s, 'test1234').map(item => [item.kind, item.mutual]), [['mutual', ['testbridge']]]);
+  assert.equal(receivedShares(s, 'test12345').length, 0);
 });
 
 test('receipts are kept per user and reported back to the sender', () => {
