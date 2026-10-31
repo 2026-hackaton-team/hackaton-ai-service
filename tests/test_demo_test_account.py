@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from gyeongjosa_ai.api import app
 from gyeongjosa_ai.data import load_data
-from gyeongjosa_ai.test_account_seed import TEST_USER_ID, test_workspace
+from gyeongjosa_ai.test_account_seed import TEST_USER_ID, test_workspace as _test_workspace
 from gyeongjosa_ai.workspace_store import WorkspaceInput
 
 
@@ -27,7 +27,7 @@ def client(tmp_path, monkeypatch):
 
 def test_workspace_fixture_links_and_boundaries():
     """24명·18개 일정·120개 거래의 소유 관계가 유효하다."""
-    payload = test_workspace()
+    payload = _test_workspace()
     assert len(payload["people"]) == 24
     assert len(payload["events"]) == 18
     assert len(payload["records"]) == 120
