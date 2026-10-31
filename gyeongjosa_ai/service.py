@@ -122,7 +122,9 @@ class ChatService:
 
     def _recommend_amount(self, request, person, history, event_type, budget):
         """일반 금액 상담은 거래 유무와 관계없이 동일한 법률·RAG·추천 엔진으로 계산한다."""
-        from app.legal_policy import profile_for
+        from app.main import STORE
+        from app.profile_store import profile_for_recipient
+        from app.relationship_analysis import analyze
         from app.orchestrator import run
 
         question = request["question"]
@@ -131,10 +133,22 @@ class ChatService:
         if attendance is None and re.search(r"식사|뷔페|밥", question):
             attendance = not bool(re.search(r"식사\s*(?:안|하지)|안\s*(?:먹|할)", question))
         risk = bool(re.search(r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임|교사|인허가", question))
-        profile = profile_for(person["id"])
-        if risk:
-            # 위험 단서는 확인된 사실이 아니어도 행동 추천을 멈추는 근거가 된다.
-            profile["unconfirmed_high_risk"] = True
+        access = profile_for_recipient(
+            store=STORE, data=self.data.dataset, viewer_id=user_id, person_id=person["id"]
+        )
+        profile = dict(access["policy"] or {
+            "covered": "unknown", "duty_related": "unknown",
+            "exception_confirmed": "unknown", "conflict": "unknown",
+            "provenance": "unavailable_profile",
+            "description": "상대의 직업·직무 관련성 정보가 확인되지 않았습니다.",
+        })
+        relation = analyze(
+            sender=STORE.get(user_id), recipient=profile,
+            relationship_text=question[:400], allow_llm_analysis=False,
+        )
+        profile["sender_ethics_risk"] = relation["sender_ethics_risk"]
+        # 일반 자유서술의 의심 단서는 허용 사실로 사용하지 않고 보류 근거로 사용한다.
+        profile["unconfirmed_high_risk"] = bool(risk or relation["high_risk_hint"])
         close = re.search(r"친밀도(?:는|가|를)?\s*([1-5])\s*(?:점|/5)", question)
         recent = re.search(r"(?:최근|지난번)[^\n]{0,35}?(\d[\d,]*)\s*(만\s*원?|원)(?:을|이나)?\s*받", question)
         received = None
@@ -148,7 +162,8 @@ class ChatService:
         report = run(
             user_id=user_id, person_id=person["id"], identity_confirmed=True,
             event_type=event_type, attendance_with_meal=attendance, budget_krw=budget,
-            profile_override=profile, dataset=self.data.dataset,
+            profile_override=profile, profile_access=access["access"],
+            relation_assessment=relation, dataset=self.data.dataset,
             closeness_override=int(close.group(1)) if close else request.get("relationship_closeness"),
             special_care=bool(request.get("relationship_special_care") or re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question)),
             recent_received_override=received if received is not None else request.get("recent_received_override"),
