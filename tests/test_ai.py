@@ -313,3 +313,26 @@ def test_fallback_alone_still_uses_ten_seconds():
     assert result["model"] == FALLBACK_MODEL
     assert len(calls) == 1 and calls[0][0] == FALLBACK_MODEL
     assert 0 < calls[0][1] <= 10
+
+
+@pytest.mark.parametrize("aspects", [
+    None, "amount", ["amount", "amount"], ["unknown"], [1],
+    ["amount", "message", "clothing", "gift_comparison", "funeral_etiquette", "extra"],
+])
+def test_invalid_multiple_aspects_are_rejected(aspects):
+    """구조화된 상담 항목은 허용된 값의 중복 없는 배열이어야 한다."""
+    payload = {"intent": "amount", "person_id": None, "notice_id": None,
+               "event_type": None, "requested_aspects": aspects}
+    with pytest.raises(ValueError):
+        parse_intent(json.dumps(payload), set(), set())
+
+
+def test_multiple_aspects_and_legacy_intent_are_both_accepted():
+    """기존 단일 의도 모델 응답과 복합 상담 모델 응답을 모두 수용한다."""
+    base = {"intent": "amount", "person_id": None, "notice_id": None,
+            "event_type": None}
+    previous = parse_intent(json.dumps(base), set(), set())
+    assert previous["requested_aspects"] == []
+    base["requested_aspects"] = ["amount", "funeral_etiquette"]
+    combined = parse_intent(json.dumps(base), set(), set())
+    assert combined["requested_aspects"] == ["amount", "funeral_etiquette"]

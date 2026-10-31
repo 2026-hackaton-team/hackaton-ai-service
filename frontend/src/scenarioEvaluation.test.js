@@ -115,3 +115,18 @@ test('법률 보류·예산 누락·잘못된 추천 금액을 구분한다',()=
   assert.equal(compareBudget({...valid,suggested_amount_krw:110000},100000).kind,'over')
   assert.equal(compareBudget({status:'error',suggested_amount_krw:null},100000),null)
 })
+
+test('예산 부족과 법률 보류의 안내를 구분하고 법률 위험을 우선한다',()=>{
+  const low=compareBudget({
+    status:'answer',context:{budget_krw:1111},suggested_amount_krw:null,
+    v4_analysis:{status:'NO_AFFORDABLE_CANDIDATE'},
+  })
+  assert.equal(low.kind,'withheld')
+  assert.match(low.detail,/1만원 단위/)
+  assert.doesNotMatch(low.detail,/법률/)
+  const legal=compareBudget({
+    status:'answer',context:{budget_krw:1111},suggested_amount_krw:null,
+    v4_analysis:{status:'POTENTIALLY_PROHIBITED'},
+  })
+  assert.match(legal.detail,/법률/)
+})
