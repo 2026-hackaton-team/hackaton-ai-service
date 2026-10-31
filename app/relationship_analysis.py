@@ -60,8 +60,14 @@ def analyze(*, sender:dict, recipient:dict, relationship_text:str='',
     if negated and (high_signal or general_signal):
         possible='unknown'  # contradictions must be clarified
     # LLM의 명시적 부정 판단은 가설을 미확인으로 낮출 수 있지만 허용 사실을 확정하지 않는다.
+    compact = ''.join(text.split())
+    explicit_negation = negated or any(phrase in compact for phrase in (
+        '계약관계없', '계약관계는없', '계약관계가없', '계약관련성없',
+        '계약관련성은없', '거래처가아니', '거래처는아니',
+        '심사관련성없', '심사관련성은없',
+    ))
     if (semantic_hint=='negated' and duty_context=='unknown' and high_signal
-            and any(word in text for word in ('없', '아니', '무관'))):
+            and explicit_negation):
         possible='unknown'
     elif semantic_hint=='possible' and possible=='unknown' and not negated:
         possible='duty_related'
