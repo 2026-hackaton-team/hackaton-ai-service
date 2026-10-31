@@ -49,6 +49,39 @@ def test_meal_attendance_understands_particles_and_negation(question, expected):
     assert parse_meal_attendance(question) is expected
 
 
+
+def test_model_meal_interpretation_precedes_regex_fallback(tmp_path, monkeypatch):
+    """정규식이 놓치는 식사 거절도 모델의 명시 판단으로 해석한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    save_workspace("U001", _workspace(100000))
+    gateway = FixedGateway()
+    gateway.classify = lambda *args: {
+        "intent": "amount", "person_id": None, "notice_id": None,
+        "event_type": "결혼", "attendance_with_meal": False, "model": "fixed-model",
+    }
+    service = ChatService(data_for_chat(load_data(), "U001"), gateway)
+    question = "친구A 결혼식에 참석하지만 밥은 사양할게. 예산은 12만원이야."
+    assert parse_meal_attendance(question) is True
+    result = service.chat_auto({"user_id": "U001", "question": question})
+    assert result["status"] == "answer"
+    assert result["context"]["attendance_with_meal"] is False
+
+
+def test_previous_model_without_meal_field_still_uses_regex(tmp_path, monkeypatch):
+    """기존 분류 모델 형식은 안전하게 이전 식사 해석을 유지한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    save_workspace("U001", _workspace(100000))
+    gateway = FixedGateway()
+    gateway.classify = lambda *args: {
+        "intent": "amount", "person_id": None, "notice_id": None,
+        "event_type": "결혼", "model": "fixed-model",
+    }
+    service = ChatService(data_for_chat(load_data(), "U001"), gateway)
+    result = service.chat_auto({"user_id": "U001",
+        "question": "친구A 결혼식에는 참석하지만 식사는 하지 않아. 예산 12만원이야."})
+    assert result["context"]["attendance_with_meal"] is False
+
+
 def test_budget_followup_keeps_meal_condition(tmp_path, monkeypatch):
     """예산만 바꾼 후속 질문에서 앞서 말한 식사 불참을 다시 묻지 않는다."""
     monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
