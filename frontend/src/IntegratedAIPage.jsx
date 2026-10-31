@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {Icon} from './ui.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
-import {extractAIInterpretation} from './aiResponseText.js'
+import {extractAIInterpretation, visibleAIMessage} from './aiResponseText.js'
 import { demoApi } from './services/demoApi.js'
 export { demoApi } from './services/demoApi.js'
 const QUICK_QUESTIONS = [
@@ -85,6 +85,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'ai-user-bubble':'ai-assistant-content ai-answer-bubble'}>
+            {(m.role==='user'||visibleAIMessage(m.body,m.result?.v4_analysis?.amount_krw))&&<p style={{whiteSpace:'pre-wrap'}}>{m.role==='user'?m.body:visibleAIMessage(m.body,m.result?.v4_analysis?.amount_krw)}</p>}
             {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&extractAIInterpretation(m.body)&&
               <section className="ai-result-card" aria-label="AI 해석">
                 <p className="ai-interpretation">{extractAIInterpretation(m.body)}</p>
@@ -97,7 +98,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
               <section className="ai-result-card" aria-label="추천 참고 금액">
                 <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>
               </section>}
-            {(m.role==='user'||m.result?.v4_analysis?.amount_krw==null)&&<p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>}
             {m.role==='assistant'&&m.result?.budget_analysis&&<BudgetComparison result={m.result} compact/>}
           </div>
         </div>)}

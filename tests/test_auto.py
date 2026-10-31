@@ -341,3 +341,152 @@ def test_non_numeric_budget_followup_is_not_taken_as_amount():
     gateway.intent = "out_of_scope"
     result = service.chat_auto({"user_id": "U001", "question": "100000abc", "context": first["context"]})
     assert result["status"] == "out_of_scope"
+
+
+class AspectGateway(AutoGateway):
+    """기존 분류 호출에서 복합 상담 항목을 반환하는 모델 대역이다."""
+
+    def __init__(self, intent, aspects, person_id=None, notice_id=None):
+        super().__init__(intent=intent, person_id=person_id, notice_id=notice_id)
+        self.aspects = aspects
+
+    def classify(self, context, people_ids, notice_ids):
+        return {**super().classify(context, people_ids, notice_ids),
+                "requested_aspects": self.aspects}
+
+    def generate(self, context, allowed_ids, preferred_model=None):
+        result = super().generate(context, allowed_ids, preferred_model=preferred_model)
+        result["answer"] = "조문 예절과 선물 선택은 상황에 맞춰 안내합니다."
+        return result
+
+
+def test_combined_funeral_amount_and_etiquette_survive_budget_followup():
+    """추가 예산 질문 뒤에도 원래 요청한 조문 예절을 함께 답한다."""
+    gateway = AspectGateway("amount", ["amount", "funeral_etiquette"], "P001", "N001")
+    service = ChatService(load_data(), gateway)
+    question = "회사 동료 부고의 조의금과 조문 예절이 궁금해"
+    first = service.chat_auto({
+        "user_id": "U001", "question": question,
+        "context": {"person_id": "P001", "notice_id": "N001", "person_confirmed": True},
+    })
+    assert first["pending_field"] == "budget_krw"
+    assert first["context"]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    reply = service.chat_auto({"user_id": "U001", "question": "50000", "context": first["context"]})
+    assert reply["status"] == "answer"
+    assert reply["context"]["original_question"] == question
+    assert reply["context"]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    assert gateway.answers[-1][0]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    assert gateway.answers[-1][0]["original_question"] == question
+    assert gateway.answers[-1][0]["question"] == "50000"
+    assert "조문 예절" in reply["message"]
+    assert reply["suggested_amount_krw"] is None or reply["suggested_amount_krw"] <= 50000
+
+
+def test_bare_budget_revisions_keep_original_cash_gift_request():
+    """금액 답변 뒤에도 숫자 예산 수정과 현금·선물 비교 목적을 보존한다."""
+    gateway = AspectGateway("amount", ["amount", "gift_comparison"], "P001")
+    service = ChatService(load_data(), gateway)
+    question = "조카 돌잔치에 현금과 선물 중 뭐가 좋을까?"
+    first = service.chat_auto({
+        "user_id": "U001", "question": question,
+        "context": {"person_id": "P001", "event_type": "돌"},
+    })
+    assert first["pending_field"] == "budget_krw"
+    context = first["context"]
+    for budget in (1111, 10000, 100000):
+        reply = service.chat_auto({
+            "user_id": "U001", "question": str(budget), "context": context,
+        })
+        assert reply["status"] == "answer"
+        assert reply["context"]["budget_krw"] == budget
+        assert reply["context"]["original_question"] == question
+        assert reply["context"]["requested_aspects"] == ["amount", "gift_comparison"]
+        assert gateway.answers[-1][0]["budget_krw"] == budget
+        assert gateway.answers[-1][0]["requested_aspects"] == ["amount", "gift_comparison"]
+        assert "선물" in reply["message"]
+        if reply.get("suggested_amount_krw") is not None:
+            assert reply["suggested_amount_krw"] <= budget
+        context = reply["context"]
+
+
+def test_funeral_etiquette_only_does_not_require_person_or_budget():
+    """예절만 묻는 질문은 지인·예산 확인 없이 곧바로 답한다."""
+    gateway = AspectGateway("message", ["funeral_etiquette"])
+    result = ChatService(load_data(), gateway).chat_auto({
+        "user_id": "U001", "question": "조문 예절과 복장만 알려 줘",
+    })
+    assert result["status"] == "answer"
+    assert result.get("pending_field") is None
+    assert result["context"]["requested_aspects"] == ["funeral_etiquette"]
+    assert gateway.answers[0][0]["requested_aspects"] == ["funeral_etiquette"]
+    assert "조문 예절" in result["message"]
+
+
+def test_new_advice_topic_replaces_previous_aspects():
+    """새로운 상담 질문은 이전 복합 상담의 항목을 물려받지 않는다."""
+    gateway = AspectGateway("message", ["clothing"])
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({
+        "user_id": "U001", "question": "결혼식에 어떤 복장을 입을까?",
+        "context": {"intent": "amount", "budget_krw": 50000,
+                    "requested_aspects": ["amount", "funeral_etiquette"],
+                    "original_question": "조의금과 조문 예절이 궁금해"},
+    })
+    assert result["status"] == "answer"
+    assert result["context"]["requested_aspects"] == ["clothing"]
+    assert result["context"]["original_question"] == "결혼식에 어떤 복장을 입을까?"
+    assert result["context"].get("budget_krw") is None
+
+
+def test_different_event_does_not_reuse_previous_person_or_budget():
+    """장례에서 결혼으로 주제가 바뀌면 지난 상담의 대상·예산을 배제한다."""
+    class NewEventGateway(AspectGateway):
+        """새 경조사 항목을 반환하는 의도 분류 대역이다."""
+
+        def classify(self, context, people_ids, notice_ids):
+            return {**super().classify(context, people_ids, notice_ids), "event_type": "결혼"}
+
+    gateway = NewEventGateway("amount", ["amount", "clothing"])
+    result = ChatService(load_data(), gateway).chat_auto({
+        "user_id": "U001", "question": "결혼식 축의금과 복장이 궁금해",
+        "context": {"intent": "amount", "person_id": "P001", "event_type": "장례",
+                    "budget_krw": 50000, "original_question": "부의금은 얼마일까?",
+                    "requested_aspects": ["amount"]},
+    })
+    assert result["pending_field"] == "person_id"
+    assert result["context"]["event_type"] == "결혼"
+    assert result["context"].get("person_id") is None
+    assert result["context"].get("budget_krw") is None
+    assert result["context"]["requested_aspects"] == ["amount", "clothing"]
+
+
+def test_person_name_followup_keeps_amount_intent_when_classifier_is_uncertain():
+    """지인을 확인하는 짧은 이름 답변은 독립적인 새 질문으로 오인하지 않는다."""
+    gateway = AutoGateway(intent="out_of_scope", person_id=None)
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({
+        "user_id": "U001", "question": "해든기획팀 김도윤",
+        "context": {"intent": "amount", "pending_field": "person_id",
+                    "event_type": "장례", "budget_krw": 50000},
+    })
+    assert result["intent"] == "amount"
+    assert result["context"]["person_id"] == "P001"
+    assert result["status"] == "answer"
+
+
+def test_funeral_type_survives_budget_followup_without_notice():
+    """부친상 질문은 예산 입력 뒤에도 행사 종류를 다시 묻지 않는다."""
+    gateway = AspectGateway("amount", ["amount", "funeral_etiquette"], "P001")
+    service = ChatService(load_data(), gateway)
+    first = service.chat_auto({
+        "user_id": "U001", "question": "회사 동료 부친상, 조의금과 조문 예절이 궁금해",
+        "context": {"person_id": "P001"},
+    })
+    assert first["pending_field"] == "budget_krw"
+    reply = service.chat_auto({
+        "user_id": "U001", "question": "50000", "context": first["context"],
+    })
+    assert reply["status"] == "answer"
+    assert reply["context"].get("pending_field") is None
+    assert gateway.answers[-1][0]["event_type"] == "장례"
+    assert "조문 예절" in reply["message"]

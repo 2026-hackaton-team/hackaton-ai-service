@@ -7,7 +7,13 @@ export function compareBudget(result, fallbackBudget) {
   if (amount == null) return {
     kind:'withheld', budget, amount:null, gap:null, usagePercent:null,
     title:'추천 금액 보류',
-    detail:'법률 검토 또는 추가 정보가 필요해 예산과의 차액을 계산하지 않습니다.',
+    detail:['NEEDS_EXPERT_REVIEW','POTENTIALLY_PROHIBITED'].includes(result?.v4_analysis?.status)
+      ? '법률·직무 관련 확인이 필요해 금액 제안을 보류했습니다.'
+      : result?.v4_analysis?.status==='NO_AFFORDABLE_CANDIDATE'||budget<10000
+        ? '현재 예산 안에서는 1만원 단위의 현금 추천 후보가 없습니다. 비금전적 대안도 고려해 보세요.'
+        : result?.v4_analysis?.status==='NEEDS_FACTS'
+          ? '법률·직무 관련 사실 확인 전에는 금액 제안을 확정할 수 없습니다.'
+          : '현재 조건에서 추천 금액을 정하지 못했습니다. 추가 정보를 확인해 주세요.',
   }
   if (!Number.isSafeInteger(amount) || amount < 0 || amount > budget) return {
     kind:'over', budget, amount, gap:budget-amount, usagePercent:null,
