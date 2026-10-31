@@ -74,17 +74,28 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
-        {scenarioExamples.length>0&&!messages.length&&<div className="ai-suggestion-chips" aria-label="가상 분석 시연 선택">
-          {scenarioExamples.map(example=><button type="button" key={example.id} disabled={busy} onClick={()=>send(example.question)} title={example.question}>{example.title}</button>)}
+        {scenarioExamples.length>0&&!messages.length&&<div aria-label="가상 분석 시연 선택" style={{padding:12}}>
+          {[{category:'safety',title:'법률·직무 10개'},{category:'relationship',title:'감정·관계 10개'}].map(group=>
+            <details key={group.category} open={group.category==='relationship'}>
+              <summary>{group.title}</summary>
+              <div className="ai-suggestion-chips">
+                {scenarioExamples.filter(example=>(example.category||'safety')===group.category).map(example=>
+                  <button type="button" key={example.id} disabled={busy} onClick={()=>send(example.question)} title={example.question}>{example.title}</button>)}
+              </div>
+            </details>)}
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'':'ai-assistant-content'}>
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
             {m.role==='assistant'&&m.result?.v4_analysis&&<div className="ai-evidence">
               <p><strong>v4 분석: {m.result.v4_analysis.status}</strong></p>
-              {m.result.v4_analysis.amount_krw!=null
-                ? <p>예산 안의 참고 금액: <strong>{m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</strong></p>
-                : <p>송금 추천 금액: 보류</p>}
+              {m.result.v4_analysis.status==='RELATIONSHIP_INSIGHT'
+                ? <p>관계 이력을 분석했습니다. 금액은 예산을 확인한 뒤 추천할 수 있습니다.</p>
+                : m.result.v4_analysis.amount_krw!=null
+                  ? <p>예산 안의 참고 금액: <strong>{m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</strong></p>
+                  : <p>송금 추천 금액: 보류</p>}
+              {m.result.v4_analysis.relationship_insights?.closeness_score!=null&&
+                <p>사용자가 기록한 친밀도: {m.result.v4_analysis.relationship_insights.closeness_score}/5</p>}
               {m.result.v4_analysis.legal_assessment?.reason&&<p>{m.result.v4_analysis.legal_assessment.reason}</p>}
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
               <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
