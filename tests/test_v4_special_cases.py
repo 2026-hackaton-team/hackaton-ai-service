@@ -11,10 +11,27 @@ from gyeongjosa_ai.api import app
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.special_fixtures import merge_special_fixtures
 from gyeongjosa_ai.v4_chat import SCENARIOS
-from tests.test_v4_chat import chat
+from gyeongjosa_ai.service import ChatService
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class OfflineGateway:
+    """시나리오 검증 중 외부 모델 호출을 허용하지 않는다."""
+
+    def classify(self, *_args, **_kwargs):
+        raise AssertionError("외부 모델을 호출하면 안 됩니다.")
+
+    def generate(self, *_args, **_kwargs):
+        raise AssertionError("외부 모델을 호출하면 안 됩니다.")
+
+
+def chat(question, context=None):
+    """가상 시연 채팅 한 턴을 실행한다."""
+    return ChatService(load_data(), OfflineGateway()).chat_auto({
+        "user_id": "U001", "question": question, "context": context or {},
+    })
 
 
 def test_ten_scenarios_have_distinct_synthetic_person_mapping():
