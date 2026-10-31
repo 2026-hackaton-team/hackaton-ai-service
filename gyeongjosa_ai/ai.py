@@ -23,7 +23,7 @@ history.person_id와 거래의 contact_person_id가 같으면 해당 거래는 �
 행사의 subject_relation이 '본인'이면 가상 계정 사용자의 행사이며 지인 본인의 행사가 아닙니다.
 공통 친구 수는 사람 수이며 이전 교류 횟수, 만남, 참석 횟수, 친밀도를 뜻하지 않습니다.
 개인 이력이 제공되지 않으면 과거 교류나 만남이 있었다고 추정하지 마세요.
-recommendation이 제공되면 서버가 계산한 참고 금액만 사용하고 모델이 다른 금액을 만들지 마세요.
+recommendation이 제공되면 서버가 계산한 참고 금액과 그 근거만 설명하고 suggested_amount_krw는 null로 반환하세요. 다른 금액을 만들지 마세요.
 public_sources 중 context_only는 금액 계산에 적용된 자료가 아니라 배경 정보입니다.
 행사 기간과 실제 조문 가능 시간은 다릅니다. 세부 시간이 없으면 가능한 날짜나 시간이라고 확정하지 말고,
 사용자가 말한 시간이 행사 기간에 포함된다는 사실과 별도 확인이 필요하다는 점만 설명하세요.
@@ -95,7 +95,8 @@ def parse_response(content, context, allowed_ids):
         budget = context.get("budget_krw")
         if context.get("mode") != "amount" or budget is None or suggested > budget:
             raise ValueError("제안 금액이 예산 또는 요청 범위를 벗어났습니다.")
-    if context.get("mode") == "amount" and required_transactions and context.get("budget_krw") is not None and suggested is None:
+    if (context.get("mode") == "amount" and required_transactions and context.get("budget_krw") is not None
+            and suggested is None and "recommendation" not in context):
         raise ValueError("예산에 맞는 금액 선택지가 누락됐습니다.")
     known_amounts = {item.get("amount_krw") for item in history.get("transactions", []) if isinstance(item.get("amount_krw"), int)}
     known_amounts.update(item for item in (context.get("budget_krw"), suggested) if isinstance(item, int) and not isinstance(item, bool))
