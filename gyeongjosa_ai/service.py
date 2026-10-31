@@ -172,7 +172,7 @@ class ChatService:
         attendance = request.get("attendance_with_meal")
         if attendance is None:
             attendance = parse_meal_attendance(question)
-        risk = bool(re.search(r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임|교사|인허가", situation))
+        work_risk_hint = request.get("_work_risk_hint")
         access = profile_for_recipient(
             store=STORE, data=self.data.dataset, viewer_id=user_id, person_id=person["id"]
         )
@@ -185,7 +185,11 @@ class ChatService:
         relation = analyze(
             sender=STORE.get(user_id), recipient=profile,
             relationship_text=situation[:400], allow_llm_analysis=False,
+            semantic_hint=work_risk_hint,
         )
+        risk = bool(relation["high_risk_hint"] or work_risk_hint == "possible" or
+                    work_risk_hint is None and re.search(
+                        r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임|교사|인허가", situation))
         profile["sender_ethics_risk"] = relation["sender_ethics_risk"]
         # 일반 자유서술의 의심 단서는 허용 사실로 사용하지 않고 보류 근거로 사용한다.
         profile["unconfirmed_high_risk"] = bool(risk or relation["high_risk_hint"])
@@ -621,6 +625,29 @@ class ChatService:
                                "recent_received_override" if direct_received else ""}:
                     context.pop(key, None)
 
+        # LLM이 해석한 현재 관계를 우선하되, 문장에 없는 점수·금액은 반영하지 않는다.
+        normalized_question = "".join(question.replace(",", "").split())
+        closeness = classified.get("relationship_closeness")
+        if closeness is not None and "친밀도" in question and (
+            f"{closeness}점" in normalized_question or f"{closeness}/5" in normalized_question
+        ):
+            context["relationship_closeness"] = closeness
+        received = classified.get("recent_received_amount_krw")
+        if received is not None and "받" in question and any(
+            word in question for word in ("최근", "지난번")
+        ) and (
+            f"{received}원" in normalized_question or
+            received % 10000 == 0 and (
+                f"{received // 10000}만원" in normalized_question or
+                f"{received // 10000}만" in normalized_question
+            )
+        ):
+            context["recent_received_override"] = received
+        if classified.get("special_care") is True and any(
+            word in question for word in ("챙기", "보답")
+        ):
+            context["relationship_special_care"] = True
+
         if intent == "notice" and not context.get("notice_id"):
             if not notices:
                 return {"status": "answer", "message": "현재 이 계정에서 추천할 수 있는 부고가 없습니다.", "intent": intent, "classification_model": classified["model"], "model": None, "evidence": [], "context": {"intent": intent}}
@@ -630,7 +657,8 @@ class ChatService:
             return {**result, "intent": intent, "classification_model": classified["model"], "context": context}
         context["intent"] = intent
         context.pop("pending_field", None)
-        request_for_chat = {**context, "user_id": user_id, "question": question, "mode": intent}
+        request_for_chat = {**context, "user_id": user_id, "question": question,
+                            "mode": intent, "_work_risk_hint": classified.get("work_risk_hint")}
         result = self.chat(request_for_chat)
         if result.get("pending_field"):
             context["pending_field"] = result["pending_field"]
