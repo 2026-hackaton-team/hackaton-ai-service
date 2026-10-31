@@ -135,10 +135,12 @@ export default function App() {
 
   async function updateEvent(id, patch) {
     const target = events.find(event => event.id === id);
-    if (await saveChanges(state => ({ events: state.events.map(event => event.id === id ? { ...event, ...patch } : event) }))) {
+    const ok = await saveChanges(state => ({ events: state.events.map(event => event.id === id ? { ...event, ...patch } : event) }));
+    if (ok) {
       if (target?.owner === 'me' && user) mutate(state => updateSharedEvent(state, user.username, { ...target, ...patch }));
       notify('일정을 서버에 저장했어요.');
     }
+    return ok;
   }
 
   async function saveEvent(values) {
