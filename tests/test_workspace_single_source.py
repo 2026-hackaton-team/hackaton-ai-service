@@ -69,6 +69,11 @@ def test_initial_migration_preserves_source_and_ai_relationship_data(client):
     assert history["paid_total_krw"] == 100000
     assert history["received_total_krw"] == 200000
     assert all(event["id"] != "e-mine" for event in data.events("U001"))
+    people = client.get("/api/users/U001/people").json()["people"]
+    assert [person["id"] for person in people] == ["p-person"]
+    dashboard = client.get("/api/users/U001/dashboard").json()
+    assert dashboard["paid_total_krw"] == 100000
+    assert dashboard["received_total_krw"] == 200000
 
 
 def test_account_separation_and_cas_conflict(client):
