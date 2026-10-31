@@ -4,6 +4,7 @@ import json
 import os
 import re
 import ssl
+import time
 from pathlib import Path
 
 import httpx
@@ -170,7 +171,7 @@ def parse_intent(content, people_ids, notice_ids):
 class ModelGateway:
     """Opus를 우선 호출하고 실패하면 GPT로 전환한다."""
 
-    def __init__(self, api_key=None, base_url=None, transport=None, timeout=25):
+    def __init__(self, api_key=None, base_url=None, transport=None, timeout=60):
         load_dotenv(ROOT / ".env", override=False)
         self.api_key = api_key if api_key is not None else os.environ.get("CODYSSEY_API_KEY", "")
         self.base_url = (base_url or os.environ.get("CODYSSEY_BASE_URL") or "https://copa.codyssey.kr/v1").rstrip("/")
@@ -178,7 +179,7 @@ class ModelGateway:
         self.timeout = timeout
         self.attempts = 0
 
-    def _request(self, context, system_prompt, model):
+    def _request(self, context, system_prompt, model, timeout=None):
         """지정된 모델을 한 번 호출하고 응답 문자열을 가져온다."""
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
@@ -194,7 +195,7 @@ class ModelGateway:
             # 운영체제 인증서를 사용하면서 인증서와 호스트 검증을 유지한다.
             tls = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             tls.load_default_certs()
-            with httpx.Client(timeout=self.timeout, transport=self.transport, verify=tls) as client:
+            with httpx.Client(timeout=self.timeout if timeout is None else timeout, transport=self.transport, verify=tls) as client:
                 response = client.post(
                     f"{self.base_url}/chat/completions",
                     headers={"Authorization": f"Bearer {self.api_key}"},
@@ -206,18 +207,18 @@ class ModelGateway:
             raise ModelUnavailable("모델 호출 또는 응답 검증에 실패했습니다.") from exc
         return content
 
-    def generate_for_model(self, context, allowed_ids, model):
+    def generate_for_model(self, context, allowed_ids, model, timeout=None):
         """지정된 모델의 답변 형식과 근거를 검사한다."""
-        content = self._request(context, SYSTEM_PROMPT, model)
+        content = self._request(context, SYSTEM_PROMPT, model, timeout=timeout)
         try:
             parsed = parse_response(content, context, allowed_ids)
         except (ValueError, TypeError) as exc:
             raise ModelUnavailable("모델 답변 검증에 실패했습니다.") from exc
         return {**parsed, "model": model}
 
-    def classify_for_model(self, context, people_ids, notice_ids, model):
+    def classify_for_model(self, context, people_ids, notice_ids, model, timeout=None):
         """지정된 모델로 의도를 분류하고 허용된 대상만 선택한다."""
-        content = self._request(context, INTENT_PROMPT, model)
+        content = self._request(context, INTENT_PROMPT, model, timeout=timeout)
         try:
             parsed = parse_intent(content, people_ids, notice_ids)
         except (ValueError, TypeError) as exc:
@@ -228,9 +229,13 @@ class ModelGateway:
         """주 모델 실패 시 보조 모델로 의도 분류를 재시도한다."""
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
+        deadline = time.monotonic() + self.timeout
         for model in (PRIMARY_MODEL, FALLBACK_MODEL):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                return self.classify_for_model(context, people_ids, notice_ids, model)
+                return self.classify_for_model(context, people_ids, notice_ids, model, timeout=remaining)
             except ModelUnavailable:
                 continue
         raise ModelUnavailable("두 AI 모델의 질문 분류를 확인하지 못했습니다. 기록 조회는 계속 이용할 수 있습니다.")
@@ -240,9 +245,13 @@ class ModelGateway:
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
         models = (FALLBACK_MODEL,) if preferred_model == FALLBACK_MODEL else (PRIMARY_MODEL, FALLBACK_MODEL)
+        deadline = time.monotonic() + self.timeout
         for model in models:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                return self.generate_for_model(context, allowed_ids, model)
+                return self.generate_for_model(context, allowed_ids, model, timeout=remaining)
             except ModelUnavailable:
                 continue
         raise ModelUnavailable("두 AI 모델의 응답을 확인하지 못했습니다. 기록 조회는 계속 이용할 수 있습니다.")
@@ -251,9 +260,13 @@ class ModelGateway:
         """실제 모델로 가상 사례를 해석하고 주·보조 모델 응답을 검증한다."""
         if not self.api_key:
             raise ModelUnavailable("코디세이 API 키가 설정되지 않았습니다.")
+        deadline = time.monotonic() + self.timeout
         for model in (PRIMARY_MODEL, FALLBACK_MODEL):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                content = self._request(context, SCENARIO_PROMPT, model)
+                content = self._request(context, SCENARIO_PROMPT, model, timeout=remaining)
                 analysis = parse_scenario_explanation(content, context["known_amounts_krw"])
                 return {"analysis": analysis, "model": model}
             except (ModelUnavailable, ValueError, TypeError, KeyError):
