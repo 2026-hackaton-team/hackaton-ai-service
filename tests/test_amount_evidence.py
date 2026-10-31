@@ -43,6 +43,19 @@ class AmountEvidenceTests(unittest.TestCase):
         self.assertIsNone(KB.eligible_amount_source(
             event_type="결혼", relationship="친구", attendance_with_meal=True))
 
+    def test_historical_public_means_have_distinct_cpi_equivalents(self):
+        nh = KB.by_id["NH-2026-05"]
+        originals = {f["year"]: f["value"] for f in nh["facts"] if f["metric"] == "mean_transfer_krw"}
+        adjusted = [f for f in nh["facts"] if f["metric"] == "cpi_equivalent_mean_krw"]
+        self.assertEqual(len(adjusted), 3)
+        for fact in adjusted:
+            year = fact["observed_year"]
+            self.assertEqual(fact["nominal_value"], originals[year])
+            self.assertEqual(fact["value"], adjust_amount(originals[year], f"{year}-01-01")["adjusted_amount_krw"])
+            self.assertEqual(fact["cpi_precision"], "annual")
+            self.assertEqual(fact["reference_month"], "2026-09")
+        self.assertFalse(nh["can_anchor_amount"])
+
     def test_person_history_uses_adjusted_values_but_keeps_nominal_totals(self):
         dataset = {
             "event_categories": ["결혼"],
