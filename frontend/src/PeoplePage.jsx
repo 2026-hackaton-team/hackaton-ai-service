@@ -3,6 +3,7 @@ import { Icon, Modal, EmptyState } from './ui.jsx';
 import { formatMoney } from './domain.js';
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, relationDraft, resolveRelation, matchesRelation, normalizeImportance, importanceRank } from './relationships.js';
 import './people-ledger.css';
+import { SectionTabs, FriendPreview } from './FeaturePreview.jsx';
 
 const relations = ['전체', ...RELATION_OPTIONS];
 const personDraft = person => ({ name:person.name, ...relationDraft(person.relation), group:person.group || '', importance:normalizeImportance(person.importance), lastMet:person.lastMet || '', memo:person.memo || '' });
@@ -13,6 +14,7 @@ const todayString = () => {
 };
 
 export default function PeoplePage({ people, events, records, onAddPerson, onUpdatePerson, onAddRecord }) {
+  const [activeTab, setActiveTab] = useState('people');
   const [query, setQuery] = useState('');
   const [relation, setRelation] = useState('전체');
   const [selectedId, setSelectedId] = useState(null);
@@ -27,8 +29,16 @@ export default function PeoplePage({ people, events, records, onAddPerson, onUpd
   return <div className="people-page">
     <div className="pl-page-heading">
       <div><span className="pl-eyebrow">RELATIONSHIPS</span><h1>오래 이어갈 인연</h1><p>가까운 사람부터, 함께한 순간까지 기억해요.</p></div>
-      <button className="button button-primary" onClick={onAddPerson}><Icon name="user-plus" size={17} />인맥 등록</button>
     </div>
+    <div className="feature-toolbar">
+      <SectionTabs prefix="people-main" label="인맥 관리 화면" value={activeTab} onChange={setActiveTab} tabs={[
+        { id: 'people', label: '내 인맥', icon: 'UsersRound' },
+        { id: 'find', label: '친구 찾기', icon: 'Search' },
+        { id: 'requests', label: '받은 요청', icon: 'Mail' },
+      ]} />
+      <button className="button button-primary" onClick={onAddPerson}><Icon name="UserPlus" size={17} />인맥 추가</button>
+    </div>
+    <section id="people-main-people-panel" role="tabpanel" aria-labelledby="people-main-people-tab" hidden={activeTab !== 'people'}>
     <section className="card people-directory">
       <div className="people-toolbar">
         <label className="pl-search"><Icon name="search" size={18} /><input aria-label="인맥 검색" placeholder="이름, 관계, 그룹으로 검색" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="검색 지우기" onClick={() => setQuery('')}><Icon name="x" size={15} /></button>}</label>
@@ -54,6 +64,9 @@ export default function PeoplePage({ people, events, records, onAddPerson, onUpd
       })}
     </div>}
     <div className="people-gentle-note"><Icon name="heart" size={16} /><p>관계의 깊이는 금액으로 정해지지 않아요. 함께한 시간을 기억하는 작은 기록이에요.</p></div>
+    </section>
+    <section id="people-main-find-panel" role="tabpanel" aria-labelledby="people-main-find-tab" hidden={activeTab !== 'find'}><FriendPreview kind="find" /></section>
+    <section id="people-main-requests-panel" role="tabpanel" aria-labelledby="people-main-requests-tab" hidden={activeTab !== 'requests'}><FriendPreview kind="requests" /></section>
     {selected && <PersonDetail key={selected.id} person={selected} events={events.filter(event => event.personId === selected.id)} records={records.filter(record => record.personId === selected.id)} onUpdate={patch => onUpdatePerson(selected.id, patch)} onAddRecord={() => { setSelectedId(null); onAddRecord(selected.id); }} onClose={() => setSelectedId(null)} />}
   </div>;
 }

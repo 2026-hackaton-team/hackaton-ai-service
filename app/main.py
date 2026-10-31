@@ -15,7 +15,7 @@ from .relationship_analysis import analyze
 from .llm import MODEL, explain
 
 ROOT = Path(__file__).resolve().parents[1]
-app = FastAPI(title='경조사 RAG+LLM+추천엔진 v3',version='0.4.0',docs_url='/api/docs',redoc_url=None)
+app = FastAPI(title='마음결 경조사 RAG·추천 분석',version='0.4.0',docs_url='/api/docs',redoc_url=None)
 DEMO_USERS = {u['id']:u for u in DEMO['users'] if u.get('demo_account')}
 STORE = ProfileStore()
 

@@ -1,0 +1,40 @@
+.notice-center{font-size:15px;line-height:1.7}
+.notice-account{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.notice-account label{display:flex;flex:1;min-width:180px;flex-direction:column;gap:7px;color:var(--muted);font-size:14px}
+.notice-account .input{font-size:14px;min-height:44px;width:100%}
+.notice-center .button,.notice-center .text-button{min-height:44px;font-size:14px}
+.notice-center .notification-toolbar{gap:12px;flex-wrap:wrap;align-items:center}
+.notice-center .notification-tabs{gap:5px;flex-wrap:wrap}
+.notice-center .notification-tabs button{min-height:44px;font-size:14px;padding:9px 13px}
+.notice-center .notification-tabs button[aria-pressed=true]{background:var(--primary-soft);color:var(--primary)}
+.notice-card-list{display:grid;gap:12px;max-height:none}
+.notice-shared-card{padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.notice-shared-card.unread{border-color:var(--primary);background:var(--surface-soft)}
+.notice-card-top,.notice-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.notice-kind{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--primary);font-weight:600}
+.notice-read-label{font-size:13px;color:var(--muted)}
+.notice-shared-card.unread .notice-read-label{color:var(--primary);font-weight:650}
+.notice-shared-card h3,.notice-detail h3{font-size:20px;line-height:1.5;margin:13px 0 9px;overflow-wrap:anywhere}
+.notice-shared-card p{font-size:14px;color:var(--muted);margin:5px 0;line-height:1.7}
+.notice-card-bottom{margin-top:16px}.notice-card-bottom>span{font-size:12px;color:var(--muted)}
+.notice-status{font-size:14px;line-height:1.7;padding:12px 0;color:var(--muted)}
+.notice-error{color:var(--text)}
+.notice-back{margin-bottom:12px}
+.notice-detail>p{font-size:15px}
+.notice-detail dl{margin:22px 0}
+.notice-detail dl>div{display:grid;grid-template-columns:80px minmax(0,1fr);gap:14px;padding:13px 0;border-bottom:1px solid var(--border)}
+.notice-detail dt{font-size:14px;color:var(--muted)}
+.notice-detail dd{margin:0;font-size:15px;overflow-wrap:anywhere}
+.notice-context-note{font-size:14px!important;color:var(--muted)}
+.notice-center .notification-item{border:1px solid var(--border);border-radius:12px;margin:0;padding:18px;min-height:76px}
+.notice-center .notification-item-body strong{font-size:16px;line-height:1.5}
+.notice-center .notification-item-body>span,.notice-center .notification-item-body small{font-size:14px;line-height:1.7}
+.notice-center .notification-preferences strong{font-size:15px}
+.notice-center .notification-preferences p{font-size:13px;line-height:1.7}
+.notice-center .empty-state h3{font-size:19px}.notice-center .empty-state p{font-size:14px;line-height:1.7}
+.notice-center button:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
+@media(max-width:600px){.notice-shared-card{padding:16px}.notice-account{align-items:stretch}.notice-account label{min-width:0;width:100%;flex-basis:100%}.notice-account>.button{margin-left:auto}.notice-detail dl>div{grid-template-columns:62px minmax(0,1fr);gap:10px}}
+
+.notice-center .notice-card-list{max-height:none;overflow:visible;margin:0;padding:0}
+.notice-center .notification-toolbar>.text-button{font-size:14px}
+.notice-center .notification-tabs button span{font-size:13px}
