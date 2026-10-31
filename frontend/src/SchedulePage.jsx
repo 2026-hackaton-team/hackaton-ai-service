@@ -3,6 +3,7 @@ import { Icon, EmptyState } from './ui.jsx'
 import { daysUntil } from './domain.js'
 import './schedule.css'
 import { ReceivedScheduleDialog } from './FeaturePreview.jsx'
+import SharedEventsPanel from './SharedEventsPanel.jsx'
 
 const TYPES = ['전체', '결혼식', '장례식', '돌잔치', '생일']
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -24,7 +25,7 @@ function readDate(date) {
   return new Date(year, month - 1, day)
 }
 
-export default function SchedulePage({ events = [], people = [], onAddEvent, onOpenEvent, onUpdateEvent }) {
+export default function SchedulePage({ events = [], people = [], onAddEvent, onOpenEvent, onUpdateEvent, demoUserId, onDemoUserChange }) {
   const today = seoulToday()
   const [receivedOpen, setReceivedOpen] = useState(false)
   const [month, setMonth] = useState(() => {
@@ -68,6 +69,7 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
     </div>
     {receivedOpen && <ReceivedScheduleDialog today={today} onClose={() => setReceivedOpen(false)} />}
 
+    <SharedEventsPanel userId={demoUserId} onUserIdChange={onDemoUserChange} today={today} />
     <div className="schedule-layout">
       <section className="card schedule-calendar" aria-label="경조사 달력">
         <div className="schedule-calendar-header">

@@ -1,6 +1,5 @@
 """가상 시연 화면과 팀 연동을 위한 최소 HTTP 인터페이스."""
 
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -8,8 +7,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from .ai import ModelGateway
-from .data import REFERENCE_DATE, load_data
+from .data import REFERENCE_DATE, public_legacy_candidate
+from .dependencies import get_service
 from .service import ChatService
 
 
@@ -24,12 +23,6 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     context: dict[str, Any] = Field(default_factory=dict)
     history: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
-
-
-@lru_cache(maxsize=1)
-def get_service():
-    """고정된 가상 데이터와 모델 연결을 준비한다."""
-    return ChatService(load_data(), ModelGateway())
 
 
 def require_user(service, user_id):
@@ -67,7 +60,9 @@ def people(user_id: str, service: ChatService = Depends(get_service)):
 def notices(user_id: str, service: ChatService = Depends(get_service)):
     """선택한 계정에 허용된 부고와 점수를 반환한다."""
     require_user(service, user_id)
-    return {"reference_date": REFERENCE_DATE.isoformat(), "notices": service.data.recommendations(user_id)}
+    return {"reference_date": REFERENCE_DATE.isoformat(), "notices": [
+        public_legacy_candidate(item) for item in service.data.recommendations(user_id)
+    ]}
 
 
 @app.get("/api/users/{user_id}/dashboard")

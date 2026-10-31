@@ -20,6 +20,23 @@ def load_data(path=None):
     return DemoData(dataset)
 
 
+def public_legacy_candidate(candidate):
+    """기존 부고 화면에 필요한 필드만 반환한다."""
+    notice = candidate["notice"]
+    fields = ("id", "category", "title", "start_date", "end_date", "region",
+              "venue", "address", "room", "visiting_hours")
+    public_notice = {key: notice[key] for key in fields if key in notice}
+    if "mourner" in notice:
+        mourner = notice["mourner"]
+        public_notice["mourner"] = (
+            {key: mourner[key] for key in ("name", "affiliation", "deceased_relation") if key in mourner}
+            if isinstance(mourner, dict) else None
+        )
+    result = {key: candidate[key] for key in ("relation_type", "publisher_name", "mutual_count", "score", "details") if key in candidate}
+    result["notice"] = public_notice
+    return result
+
+
 class DemoData:
     """데이터 소유자와 공유 조건을 확인하는 시연용 저장소."""
 
@@ -94,6 +111,67 @@ class DemoData:
             "paid_entry_count": sum(t["direction"] == "paid" for t in transactions),
             "explicit_zero_entry_count": sum(t["amount_krw"] == 0 for t in transactions),
         }
+
+    def shared_event_for_user(self, user_id, notice, today):
+        """공유 조건을 통과한 소식과 확인된 추천 이유를 반환한다."""
+        publisher_id = notice.get("publisher_user_id")
+        if user_id not in self.users or publisher_id not in self.users or publisher_id == user_id:
+            return None
+        direct = publisher_id in self.graph[user_id]
+        mutual = bool(self.graph[user_id] & self.graph[publisher_id])
+        if not direct and not mutual:
+            return None
+        scope = notice.get("audience_scope")
+        if scope != "friends_and_friends_of_friends" and not (scope == "friends_only" and direct):
+            return None
+        attendance = "direct_friend_attendance" if direct else "friend_of_friend_attendance"
+        if notice.get("sharing_authorization") != "confirmed" or notice.get(attendance) != "allowed":
+            return None
+        if notice.get("status") not in {"active", "scheduled", "ongoing"}:
+            return None
+        try:
+            start = date.fromisoformat(notice["start_date"])
+            end = date.fromisoformat(notice["end_date"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if start > end or end < today:
+            return None
+
+        reason = "direct_friend" if direct else "friend_of_friend"
+        valid_role = "mourner" if notice.get("category") == "장례" else "subject"
+        if (notice.get("publisher_name_visible") is True
+                and notice.get("related_user_recommendation_allowed") is True
+                and notice.get("related_user_id") == publisher_id
+                and notice.get("related_role") == valid_role):
+            for person in self.people(user_id):
+                if (person.get("linked_user_id") == publisher_id
+                        and person.get("linked_user_confirmed_for_recommendation") is True
+                        and str(person.get("relationship", "")).replace(" ", "") == "직장동료"):
+                    reason = "confirmed_colleague"
+                    break
+        return {
+            "notice": notice,
+            "reason_code": reason,
+            "publisher_name": self.users[publisher_id]["name"] if notice.get("publisher_name_visible") is True else None,
+        }
+
+    def shared_event_recommendations(self, user_id, extra_notices, today):
+        """허용된 소식에서 확인된 개인 일정 중복을 제외하고 정렬한다."""
+        owned_occurrences = {
+            event.get("shared_occurrence_id") for event in self.dataset["private_events"]
+            if event.get("owner_user_id") == user_id and event.get("status") != "cancelled"
+            and event.get("shared_occurrence_id")
+        }
+        result = []
+        for notice in [*self.dataset["shared_notices"], *extra_notices]:
+            candidate = self.shared_event_for_user(user_id, notice, today)
+            if candidate is None or notice.get("shared_occurrence_id") in owned_occurrences:
+                continue
+            result.append(candidate)
+        priority = {"confirmed_colleague": 0, "direct_friend": 1, "friend_of_friend": 2}
+        result.sort(key=lambda item: (priority[item["reason_code"]], item["notice"]["end_date"],
+                                      item["notice"]["start_date"], item["notice"]["id"]))
+        return result
 
     def recommendations(self, user_id):
         """허용된 친구와 친구의 친구 부고를 고정 시연일과 가중치로 정렬한다."""
