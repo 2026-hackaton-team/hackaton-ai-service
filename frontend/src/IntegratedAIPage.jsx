@@ -10,6 +10,7 @@ const stored=()=>sessionStorage.getItem('rag-demo-user')||''
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const [view,setView]=useState('chat')
   const [users,setUsers]=useState([])
+  const [scenarioExamples,setScenarioExamples]=useState([])
   const [userId,setUserId]=useState(stored)
   const [cid,setCid]=useState('')
   const [conversations,setConversations]=useState([])
@@ -23,9 +24,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   useEffect(()=>{
     controller.current?.abort()
     setMessages([]);setCid('');setConversations([]);setError('')
-    if(!userId)return
+    if(!userId){setScenarioExamples([]);return}
     sessionStorage.setItem('rag-demo-user',userId)
     demoApi('/conversations',{userId}).then(r=>setConversations(r.items||[])).catch(e=>setError(e.message))
+    demoApi('/demo/v4-scenarios',{userId}).then(r=>setScenarioExamples(r.items||[])).catch(e=>setError(e.message))
   },[userId])
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end',behavior:'smooth'})},[messages])
   async function openConversation(id) {
@@ -72,12 +74,8 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
-        {userId==='U001'&&!messages.length&&<div className="ai-suggestion-chips" aria-label="가상 분석 시연 선택">
-          {[
-            '가상 시나리오: 직장 동료 김도윤 결혼식에 참석해서 식사해요. 예산은 3만원이에요',
-            '가상 시나리오: 공직자 부조 예외 성립 가정, 장례식 예산은 10만원이에요',
-            '가상 시나리오: 계약 심사 거래처 부친상, 예산은 3만원이에요',
-          ].map(example=><button type="button" key={example} disabled={busy} onClick={()=>send(example)}>{example}</button>)}
+        {scenarioExamples.length>0&&!messages.length&&<div className="ai-suggestion-chips" aria-label="가상 분석 시연 선택">
+          {scenarioExamples.map(example=><button type="button" key={example.id} disabled={busy} onClick={()=>send(example.question)} title={example.question}>{example.title}</button>)}
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'':'ai-assistant-content'}>

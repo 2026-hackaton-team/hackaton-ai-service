@@ -13,7 +13,11 @@ REFERENCE_DATE = date(2026, 10, 30)
 def load_data(path=None):
     """고정된 시연 데이터를 읽어 조회 객체로 만든다."""
     source = Path(path) if path is not None else ROOT / "data" / "demo.json"
-    return DemoData(json.loads(source.read_text(encoding="utf-8-sig")))
+    dataset = json.loads(source.read_text(encoding="utf-8-sig"))
+    if path is None:
+        from .special_fixtures import merge_special_fixtures
+        dataset = merge_special_fixtures(dataset)
+    return DemoData(dataset)
 
 
 class DemoData:
@@ -34,7 +38,7 @@ class DemoData:
         """계정 선택에 필요한 가상 사용자 정보만 반환한다."""
         return [
             {"id": user["id"], "name": user["name"], "affiliation": user["fictional_affiliation"]}
-            for user in self.dataset["users"]
+            for user in self.dataset["users"] if not user["id"].startswith("V4U")
         ]
 
     def people(self, user_id):

@@ -62,6 +62,18 @@ class MessageInput(BaseModel):
 def demo_users(service=Depends(get_service)):
     return {"items": service.data.list_users(), "referenceDate": "2026-10-30", "demo": True}
 
+@router.get("/demo/v4-scenarios")
+def chat_scenarios(user_id: str = Depends(_user)):
+    """현재 가상 계정에서 접근할 수 있는 합성 시연 질문만 제공한다."""
+    if user_id != "U001":
+        return {"items": []}
+    from .v4_chat import SCENARIOS
+    return {"items": [
+        {"id": identifier, "title": scenario["name"], "question": scenario["example_question"]}
+        for identifier, scenario in SCENARIOS.items()
+    ]}
+
+
 @router.get("/workspace")
 def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
     return {
@@ -127,7 +139,7 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
         context = json.loads(row["state"])
         if data.selection:
             field, value = data.selection.get("field"), data.selection.get("value")
-            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","budget_krw","budget_state","v4_scenario","v4_attendance"}:
+            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","budget_krw","budget_state","v4_scenario","v4_attendance","v4_person"}:
                 raise HTTPException(422, "허용되지 않은 선택입니다.")
             if field == "person_id" and value not in {p["id"] for p in service.data.people(user_id)}:
                 raise HTTPException(403, "선택할 수 없는 지인입니다.")
@@ -146,6 +158,11 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
                     raise HTTPException(403, "선택할 수 없는 가상 시나리오입니다.")
             if field == "v4_attendance" and value not in {"yes", "no"}:
                 raise HTTPException(422, "참석·식사 여부를 확인해 주세요.")
+            if field == "v4_person" and (
+                user_id != "U001" or context.get("v4_scenario") != "duplicate_mourner"
+                or value not in {"P001", "P002"}
+            ):
+                raise HTTPException(403, "이 시연에서 선택할 수 없는 인물입니다.")
             context[field] = value
         history = [{"role": m["role"], "content": m["body"]} for m in reversed(previous)]
         result = service.chat_auto({"user_id": user_id, "question": data.text, "context": context, "history": history})
