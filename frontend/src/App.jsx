@@ -117,48 +117,97 @@ export default function App() {
     sendReminders(); const timer = setInterval(sendReminders, 60000); return () => clearInterval(timer);
   }, [notificationSettings.browser, upcoming, today]);
 
-  function updatePerson(id, patch) { setPeople(current => current.map(person => person.id === id ? { ...person, ...patch } : person)); notify('관계 기록을 저장했어요.'); }
-  function updateEvent(id, patch) { setEvents(current => current.map(event => event.id === id ? { ...event, ...patch } : event)); notify('일정을 업데이트했어요.'); }
-  function saveEvent(values) {
+  async function commitData(nextPeople, nextEvents, nextRecords) {
+    if (demoUserId && (!workspaceReady || !workspaceInitialized || workspaceBusy)) {
+      notify('가상 계정의 서버 기록을 먼저 불러오거나 이전해 주세요.');
+      return false;
+    }
+    if (!demoUserId) {
+      try { commitWorkspace({ people:nextPeople, events:nextEvents, records:nextRecords }); }
+      catch { notify('브라우저 기록을 저장하지 못했어요.'); return false; }
+      setPeople(nextPeople); setEvents(nextEvents); setRecords(nextRecords);
+      return true;
+    }
+    setWorkspaceBusy(true);
+    try {
+      const saved = await demoApi('/workspace/personal', {userId:demoUserId, method:'PUT',
+        body:{revision:workspaceRevision.current,people:nextPeople,events:nextEvents,records:nextRecords}});
+      if (workspaceUser.current !== demoUserId) return false;
+      workspaceRevision.current = saved.revision;
+      setPeople(saved.people); setEvents(saved.events); setRecords(saved.records);
+      return true;
+    } catch(error) {
+      notify(error.message);
+      return false;
+    } finally { setWorkspaceBusy(false); }
+  }
+  async function initializeWorkspace(importLocal) {
+    if (!demoUserId || !workspaceReady || workspaceInitialized || workspaceBusy) return;
+    const selectedUser = demoUserId;
+    const snapshot = {revision:workspaceRevision.current,
+      people:importLocal ? localPeople() : [], events:importLocal ? localEvents() : [],
+      records:importLocal ? localRecords() : []};
+    setWorkspaceBusy(true);
+    try {
+      const preview = await demoApi('/workspace/migrations/preview', {userId:selectedUser,method:'POST',body:snapshot});
+      if (preview.initialized) { notify('이미 서버에 기록이 있습니다. 다시 불러오세요.'); return; }
+      const saved = await demoApi('/workspace/personal', {userId:selectedUser,method:'PUT',body:snapshot});
+      if (workspaceUser.current !== selectedUser) return;
+      workspaceRevision.current = saved.revision;
+      setPeople(saved.people); setEvents(saved.events); setRecords(saved.records);
+      setWorkspaceInitialized(true);
+      notify(importLocal ? '브라우저 기록을 서버에 이전했어요.' : '빈 서버 작업 공간을 만들었어요.');
+    } catch(error) { notify(error.message); }
+    finally { setWorkspaceBusy(false); }
+  }
+  async function updatePerson(id, patch) {
+    if (await commitData(people.map(person => person.id === id ? {...person,...patch} : person), events, records))
+      notify('관계 기록을 저장했어요.');
+  }
+  async function updateEvent(id, patch) {
+    if (await commitData(people, events.map(event => event.id === id ? {...event,...patch} : event), records))
+      notify('일정을 업데이트했어요.');
+  }
+  async function saveEvent(values) {
     let personId = values.personId;
+    let nextPeople = people;
     if (!personId && values.personName) {
       const existing = people.find(person => person.name === values.personName.trim());
       personId = existing?.id || crypto.randomUUID();
-      if (!existing) setPeople(current => [...current, { id: personId, name: values.personName.trim(), relation: '기타', group: '', importance: '보통', lastMet: '', memo: '', interactions: [] }]);
+      if (!existing) nextPeople = [...people, {id:personId,name:values.personName.trim(),relation:'기타',group:'',importance:'보통',lastMet:'',memo:'',interactions:[]}];
     }
-    const { personName, ...event } = values;
-    setEvents(current => [...current, { ...event, personId, id: crypto.randomUUID() }]);
-    setModal(null);
-    notify(values.type === '장례식' && themeMode === 'auto' && daysUntil(values.date, today) >= 0 && daysUntil(values.date, today) <= 3 ? '일정을 등록하고 차분한 분위기로 바꿨어요.' : '일정을 등록했어요. 알림함에서도 확인해 보세요.');
-  }
-  function savePerson(values) { setPeople(current => [...current, { ...values, id: crypto.randomUUID() }]); setModal(null); notify('새로운 인연을 등록했어요.'); }
-  function storeFinancialRecords(nextRecords, nextPeople = people) {
-    try {
-      commitWorkspace({records:nextRecords, ...(nextPeople !== people ? {people:nextPeople} : {})});
-    } catch {
-      notify('브라우저 저장 공간을 확인해 주세요. 금액 기록을 저장하지 못했어요.'); return false;
+    const {personName, ...event} = values;
+    if (await commitData(nextPeople, [...events,{...event,personId,id:crypto.randomUUID()}], records)) {
+      setModal(null); notify('일정을 등록했어요. 알림함에서도 확인해 보세요.');
     }
-    if (nextPeople !== people) setPeople(nextPeople);
-    setRecords(nextRecords); return true;
   }
-  function saveRecord(values) {
+  async function savePerson(values) {
+    if (await commitData([...people,{...values,id:crypto.randomUUID()}], events, records)) {
+      setModal(null); notify('새로운 인연을 등록했어요.');
+    }
+  }
+  async function storeFinancialRecords(nextRecords, nextPeople = people) {
+    return commitData(nextPeople, events, nextRecords);
+  }
+  async function saveRecord(values) {
     const id = modal?.recordId;
     if (id && !records.some(record => record.id === id)) { notify('수정할 기록을 찾을 수 없어요.'); return; }
-    const next = id ? records.map(record => record.id === id ? {...values, id} : record) : [...records, {...values, id:crypto.randomUUID()}];
-    if (!storeFinancialRecords(next)) return;
+    const next = id ? records.map(record => record.id === id ? {...values,id} : record) : [...records,{...values,id:crypto.randomUUID()}];
+    if (!await storeFinancialRecords(next)) return;
     setModal(null); notify(id ? '금액 기록을 수정했어요. 통계에도 반영했어요.' : '주고받은 마음을 기록했어요. 통계에도 반영했어요.');
   }
-  function deleteRecord(id) {
-    if (!storeFinancialRecords(records.filter(record => record.id !== id))) return false;
-    notify('금액 기록을 삭제했어요. 통계에도 반영했어요.'); return true;
+  async function deleteRecord(id) {
+    if (!await storeFinancialRecords(records.filter(record => record.id !== id))) return false;
+    notify('금액 기록을 삭제했어요. 통계에도 반영했어요.');
+    return true;
   }
-  function importRecords(plan) {
+  async function importRecords(plan) {
     try {
       const added = materializeImport(plan, () => crypto.randomUUID(), records);
-      if (!storeFinancialRecords([...records, ...added.records], added.people.length ? [...people, ...added.people] : people)) return false;
-      notify(added.records.length + '건을 가져왔어요.' + (added.people.length ? ' 새 인맥 ' + added.people.length + '명도 등록했어요.' : ''));
+      if (!await storeFinancialRecords([...records,...added.records], added.people.length ? [...people,...added.people] : people)) return false;
+      notify(added.records.length + '건을 가져왔어요.' + (added.people.length ? ' 새 인맥도 등록했어요.' : ''));
       return true;
-    } catch (error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
+    } catch(error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
   }
   function openEvent(event) { setNotificationsOpen(false); setModal({ type: 'eventDetail', id: event.id }); }
   function downloadCalendar(event) { const blob = new Blob([toICS(event)], { type: 'text/calendar;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${event.title}.ics`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('캘린더 파일을 저장했어요. 캘린더 앱에서 열어 주세요.'); }
