@@ -127,7 +127,7 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
         context = json.loads(row["state"])
         if data.selection:
             field, value = data.selection.get("field"), data.selection.get("value")
-            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","budget_krw","budget_state"}:
+            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","budget_krw","budget_state","v4_scenario","v4_attendance"}:
                 raise HTTPException(422, "허용되지 않은 선택입니다.")
             if field == "person_id" and value not in {p["id"] for p in service.data.people(user_id)}:
                 raise HTTPException(403, "선택할 수 없는 지인입니다.")
@@ -140,13 +140,19 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
             if field == "budget_krw":
                 if type(value) is not int or value < 0 or value > 1000000000:
                     raise HTTPException(422, "예산을 확인해 주세요.")
+            if field == "v4_scenario":
+                from .v4_chat import SCENARIOS
+                if user_id != "U001" or value not in SCENARIOS:
+                    raise HTTPException(403, "선택할 수 없는 가상 시나리오입니다.")
+            if field == "v4_attendance" and value not in {"yes", "no"}:
+                raise HTTPException(422, "참석·식사 여부를 확인해 주세요.")
             context[field] = value
         history = [{"role": m["role"], "content": m["body"]} for m in reversed(previous)]
         result = service.chat_auto({"user_id": user_id, "question": data.text, "context": context, "history": history})
         # Failed provider calls do not become fake successful conversation turns.
         if result.get("status") == "error":
             raise HTTPException(502, result.get("message") or "AI 서비스에 연결하지 못했습니다.")
-        new_state = result.get("context") or context
+        new_state = result.get("context", context)
         now = _now()
         try:
             db.execute("BEGIN IMMEDIATE")
