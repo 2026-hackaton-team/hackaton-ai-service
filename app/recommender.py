@@ -33,13 +33,15 @@ def _closeness(amount, anchor):
 def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_type: str,
               attendance_with_meal: bool | None, budget_krw: int | None, legal_risk: bool = False,
               kb: KnowledgeBase = KB, closeness_override: int | None = None,
-              special_care: bool = False, recent_received_override: int | None = None):
+              special_care: bool = False, recent_received_override: int | None = None,
+              dataset: dict | None = None):
     if not identity_confirmed:
         return {"status": "NEEDS_IDENTITY_CONFIRMATION", "message": "동명이인일 수 있습니다. 추천 대상자를 확인해 주세요."}
-    person = owned_person(user_id, person_id)
+    source = dataset if dataset is not None else DEMO
+    person = next((p for p in source['people'] if p['id'] == person_id and p['owner_user_id'] == user_id), None)
     if person is None:
         return {"status": "FORBIDDEN_OR_NOT_FOUND", "message": "접근 가능한 해당 인물 기록이 없습니다."}
-    if event_type not in DEMO["event_categories"]:
+    if event_type not in source["event_categories"]:
         return {"status": "INVALID_EVENT_TYPE", "message": "지원하지 않는 행사입니다."}
     if legal_risk:
         return {"status": "LEGAL_REVIEW_REQUIRED", "message": "직무 관련 청탁금지법 적용 여부를 먼저 검토해야 합니다."}
@@ -47,8 +49,8 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         return {"status": "NEEDS_ATTENDANCE_CONTEXT", "message": "결혼식 참석·식사 여부를 선택해 주세요."}
     if budget_krw is not None and budget_krw < 0:
         return {"status": "INVALID_BUDGET", "message": "예산은 음수가 될 수 없습니다."}
-    own_events = {e["id"]: e for e in DEMO["private_events"] if e["owner_user_id"] == user_id}
-    transactions = [t for t in DEMO["transactions"] if t["owner_user_id"] == user_id and t["private_event_id"] in own_events]
+    own_events = {e["id"]: e for e in source["private_events"] if e["owner_user_id"] == user_id}
+    transactions = [t for t in source["transactions"] if t["owner_user_id"] == user_id and t["private_event_id"] in own_events]
     same_person = [t for t in transactions if t["contact_person_id"] == person_id]
     paid = [t for t in same_person if t["direction"] == "paid"]
     received = [t for t in same_person if t["direction"] == "received"]
@@ -64,20 +66,21 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
 
     survey = kb.eligible_amount_source(event_type=event_type, relationship=person["relationship"], attendance_with_meal=attendance_with_meal)
     survey_shares = ({f["amount_krw"]: f["pct"] / 100 for f in survey["facts"] if f["metric"] == "perceived_amount_share"} if survey else {})
-    if not survey_shares and paid_med is None and received_med is None:
-        return {"status": "INSUFFICIENT_EVIDENCE", "message": "일치하는 설문이나 해당 인물의 과거 금전 이력이 없어 금액 추천을 보류합니다."}
+    cold_start = not survey_shares and paid_med is None and received_med is None and per_type_med is None
     weights = {k: v for k, v in RAW_WEIGHTS.items() if
                (k == "matched_survey" and bool(survey_shares)) or
                (k == "same_type_paid" and per_type_med is not None) or
                (k == "paid_to_person" and paid_med is not None) or
                (k == "received_from_person" and received_med is not None)}
     denom = sum(weights.values())
-    weights = {k: v / denom for k, v in weights.items()}
+    weights = {k: v / denom for k, v in weights.items()} if denom else {}
     affordable = [a for a in AMOUNTS if budget_krw is None or a <= budget_krw]
     if not affordable:
         return {"status": "NO_AFFORDABLE_CANDIDATE", "message": "설정한 예산 내 기본 후보가 없습니다. 축하·위로 메시지 등 비금전적 대안도 고려해 주세요."}
 
     def calc(amount):
+        if cold_start:
+            return _closeness(amount, 50000)
         signals = {}
         if "matched_survey" in weights:
             signals["matched_survey"] = survey_shares.get(amount, 0.0) / max(survey_shares.values())
@@ -145,13 +148,16 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         reasons.append(f"같은 행사 종류의 과거 지급 기록 {len(same_type)}건을 참고했습니다.")
     if budget_krw is not None:
         reasons.append(f"예산 {budget_krw:,}원을 초과하는 후보는 제외했습니다.")
-    if not survey:
+    if cold_start:
+        reasons.append("해당 지인의 금전 이력과 직접 일치하는 공개 금액 설문이 없어 50,000원을 시연용 비교 기준으로 사용했습니다. 통계적 적정액은 아닙니다.")
+    elif not survey:
         reasons.append("해당 상황에 직접 일치하는 공개 금액 설문이 없어 개인 이력 중심으로 계산했습니다.")
     if adjustments:
         reasons.extend(item["reason"] for item in adjustments)
     level = "moderate" if survey else "low"
     return {"status": "RECOMMENDED", "amount_krw": ranked[0], "alternatives_krw": ranked[1:3],
             "baseline_amount_krw": baseline_amount, "personalized_amount_krw": ranked[0],
+            "recommendation_basis": "heuristic" if cold_start else "survey" if survey else "history",
             "relationship_adjustments": adjustments,
             "scores": [{"amount_krw": a, "score": (
                 round(1 - abs(AMOUNTS.index(a) - AMOUNTS.index(eligible_target)) / len(AMOUNTS) + calc(a) / 100, 6)

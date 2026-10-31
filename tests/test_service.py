@@ -73,8 +73,12 @@ def test_empty_history_and_missing_availability_are_questions(service):
     attendance = service.chat({"user_id": "U001", "mode": "attendance", "question": "조문하러 갈까?", "notice_id": "N001"})
     assert attendance["status"] == "need_more_info" and attendance["pending_field"] == "availability"
     no_history = service.chat({"user_id": "U004", "mode": "amount", "question": "장례 예산 8만 원", "person_id": "P019", "event_type": "장례"})
-    assert no_history["status"] == "answer" and "이력이 없습니다" in no_history["message"]
-    assert no_history["model"] is None and no_history.get("suggested_amount_krw") is None
+    assert no_history["status"] == "answer"
+    assert "금전 이력은 0건" in no_history["message"] and "50,000원" in no_history["message"]
+    assert no_history["suggested_amount_krw"] == 50000
+    assert no_history["recommendation_basis"] == "history"
+    assert no_history["evidence_level"] == "low"
+    assert service.gateway.calls[-1][0]["history"]["transactions"] == []
 
 
 def test_notice_and_identity_are_never_assumed(service):
@@ -144,3 +148,92 @@ def test_missing_notice_details_and_unshared_publisher_are_not_guessed(service):
     sent = service.gateway.calls[-1][0]["notice"]
     assert sent["venue"] is None and sent["address"] is None and sent["visiting_hours"] is None
     assert sent["publisher_name"] is None and "이수빈" not in result["message"]
+
+
+def test_cold_start_reuses_matched_rag_survey_with_budget(service):
+    person = {
+        "id": "TEST_COLD_START", "owner_user_id": "U001", "linked_user_id": None,
+        "name": "가상 지인", "relationship": "직장 동료", "fictional_affiliation": "시연",
+    }
+    service.data.dataset["people"].append(person)
+    service.data.people_by_id[person["id"]] = person
+    result = service.chat({
+        "user_id": "U001", "mode": "amount", "question": "결혼식 참석하고 식사해요",
+        "person_id": person["id"], "event_type": "결혼", "budget_krw": 80000,
+    })
+    assert result["status"] == "answer"
+    assert result["suggested_amount_krw"] == 50000
+    assert result["recommendation_basis"] == "survey"
+    assert any(item["id"] == "INC-2025-05" and item["decision_role"] == "applied_statistic" for item in result["evidence"])
+    assert service.gateway.calls[-1][0]["recommendation"]["matched_source_id"] == "INC-2025-05"
+
+
+def test_cold_start_budget_limit_and_legal_hint(service):
+    base = {"user_id": "U004", "mode": "amount", "person_id": "P019", "event_type": "장례"}
+    small = service.chat({**base, "question": "장례 예산 2만 원", "budget_krw": 20000})
+    assert small["suggested_amount_krw"] is None
+    assert "예산" in small["message"]
+    risky = service.chat({**base, "question": "공무원 계약 관계인 경우 장례 예산 8만 원", "budget_krw": 80000})
+    assert risky["suggested_amount_krw"] is None
+    assert "법률 확인 전 일반 참고액은 50,000원" in risky["message"]
+
+
+def test_cold_start_wedding_requires_meal_context(service):
+    result = service.chat({
+        "user_id": "U004", "mode": "amount", "question": "결혼 예산 8만 원",
+        "person_id": "P019", "event_type": "결혼", "budget_krw": 80000,
+    })
+    assert result["status"] == "need_more_info"
+    assert result["pending_field"] == "attendance_with_meal"
+
+
+def test_cold_start_account_isolation(service):
+    result = service.chat({
+        "user_id": "U004", "mode": "amount", "question": "장례 예산 8만 원",
+        "person_id": "P006", "event_type": "장례", "budget_krw": 80000,
+    })
+    assert result["status"] == "error"
+    assert service.gateway.calls == []
+
+
+def test_other_person_same_event_history_is_used_instead_of_heuristic():
+    from app.recommender import recommend
+
+    dataset = {
+        "people": [{"id": "P1", "owner_user_id": "U", "relationship": "친구"}],
+        "event_categories": ["장례"],
+        "private_events": [{"id": "E1", "owner_user_id": "U",
+                            "category": "장례", "start_date": "2026-10-30"}],
+        "transactions": [{"id": "T1", "owner_user_id": "U", "private_event_id": "E1",
+                          "contact_person_id": "P2", "direction": "paid", "amount_krw": 100000}],
+    }
+    result = recommend(
+        user_id="U", person_id="P1", identity_confirmed=True,
+        event_type="장례", attendance_with_meal=None,
+        budget_krw=100000, dataset=dataset,
+    )
+    assert result["status"] == "RECOMMENDED"
+    assert result["recommendation_basis"] == "history"
+    assert result["weights_used"]["same_type_paid"] == 1.0
+    assert result["amount_krw"] == 100000
+
+
+def test_cold_start_uses_heuristic_only_when_no_amount_anchor_exists():
+    from app.recommender import recommend
+
+    dataset = {
+        "people": [{"id": "P1", "owner_user_id": "U", "relationship": "지인"}],
+        "event_categories": ["팔순"],
+        "private_events": [],
+        "transactions": [],
+    }
+    result = recommend(
+        user_id="U", person_id="P1", identity_confirmed=True,
+        event_type="팔순", attendance_with_meal=None,
+        budget_krw=80000, dataset=dataset,
+    )
+    assert result["status"] == "RECOMMENDED"
+    assert result["amount_krw"] == 50000
+    assert result["recommendation_basis"] == "heuristic"
+    assert result["weights_used"] == {}
+    assert result["evidence_level"] == "low"
