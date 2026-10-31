@@ -227,3 +227,78 @@ def test_conversation_api_preserves_work_risk_when_budget_changes(tmp_path, monk
             assert state["budget_krw"] == 99999
     finally:
         app.dependency_overrides.pop(get_service, None)
+
+
+def test_wedding_meal_followup_then_multiple_bare_budget_updates(tmp_path, monkeypatch):
+    """식사 여부 추가 질문 이후에도 1원 예산을 연속해서 바꿀 수 있는지 확인한다."""
+    from gyeongjosa_ai.dependencies import get_service
+    from gyeongjosa_ai.data import load_data
+    from gyeongjosa_ai.service import ChatService
+
+    class DiagnosisGateway:
+        """식사 확인 답변의 의도가 다르게 분류되는 상황을 재현한다."""
+
+        def __init__(self):
+            self.calls = 0
+
+        def classify(self, context, people_ids, notice_ids):
+            self.calls += 1
+            return {
+                "intent": "amount" if self.calls == 1 else "out_of_scope",
+                "person_id": None, "notice_id": None,
+                "event_type": "결혼" if self.calls == 1 else None,
+                "attendance_with_meal": None, "requested_aspects": [],
+                "model": "test-model",
+            }
+
+        def generate(self, context, allowed_ids, preferred_model=None):
+            return {
+                "answer": "선택한 예산 안에서 판단해 주세요.",
+                "evidence_ids": sorted(allowed_ids),
+                "suggested_amount_krw": None, "model": "test-model",
+            }
+
+    monkeypatch.setattr(integration_api, "_DB", tmp_path / "diagnostic.sqlite")
+    app.dependency_overrides[get_service] = lambda: ChatService(load_data(), DiagnosisGateway())
+    try:
+        with TestClient(app) as client:
+            headers = {"X-Demo-User-Id": "U001"}
+            created = client.post("/api/conversations", headers=headers)
+            assert created.status_code == 201
+            cid = created.json()["id"]
+
+            def submit(text, index):
+                response = client.post(
+                    f"/api/conversations/{cid}/messages", headers=headers,
+                    json={"requestId": f"diagnostic-{index}", "text": text},
+                )
+                assert response.status_code == 200, response.text
+                return response.json()
+
+            initial = submit("친구 결혼식인데 축의금은 얼마가 적당할까?", 1)
+            assert initial["pending_field"] == "person_id"
+            person = submit("해든기획팀 김도윤", 2)
+            assert person["pending_field"] == "budget_krw"
+            one = submit("1", 3)
+            assert one["pending_field"] == "attendance_with_meal"
+            assert one["context"]["budget_krw"] == 1
+            meal = submit("식사할 예정이에요", 4)
+            assert meal["status"] == "answer"
+            assert meal["context"]["attendance_with_meal"] is True
+            assert meal["context"].get("pending_field") is None
+            assert meal["budget_analysis"]["budget_krw"] == 1
+
+            for index, amount in enumerate((1111, 11111, 100000), 5):
+                result = submit(str(amount), index)
+                assert result["status"] == "answer"
+                assert result["budget_analysis"]["budget_krw"] == amount
+                assert result["context"]["budget_krw"] == amount
+                assert result["suggested_amount_krw"] is None or result["suggested_amount_krw"] <= amount
+                state = client.get(
+                    f"/api/conversations/{cid}", headers=headers,
+                ).json()["state"]
+                assert state["budget_krw"] == amount
+                assert state.get("pending_field") is None
+                assert state["attendance_with_meal"] is True
+    finally:
+        app.dependency_overrides.pop(get_service, None)
