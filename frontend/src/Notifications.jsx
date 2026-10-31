@@ -27,7 +27,7 @@ export function useSharedNoticeInbox(userId = '') {
 const dateLabel = value => value ? String(value).replaceAll('-', '.') : '날짜 확인 필요';
 const iconFor = type => type === '장례식' ? 'Flower2' : type === '돌잔치' || type === '생일' ? 'Cake' : 'Heart';
 const viaLabel = item => item.kind === 'friend' ? `${item.senderName}님이 보낸 일정`
-  : item.mutualNames?.length ? `${item.mutualNames.slice(0, 2).join(', ')}님을 통해 알게 된 소식` : `함께 아는 친구 ${item.mutualCount}명의 소식`;
+  : item.mutualNames?.length ? `${item.mutualNames.slice(0, 2).join(', ')}님을 통해 알게 된 소식` : item.mutualCount ? `함께 아는 친구 ${item.mutualCount}명의 소식` : '친구의 친구가 공유한 소식';
 
 /** 받은 일정의 읽음 표시 키 (서버 소식은 기존 키 형식을 유지) */
 export function receivedReadId(item, profileId) {
