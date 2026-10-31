@@ -11,7 +11,8 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
         attendance_with_meal:bool|None, budget_krw:int|None,
         scenario_id:str='default', kb=None, explanation_mode:str='auto',
         profile_override:dict|None=None, profile_access:str|None=None,
-        relation_assessment:dict|None=None)->dict:
+        relation_assessment:dict|None=None, closeness_override:int|None=None,
+        special_care:bool=False)->dict:
     if kb is None: kb=KB
     person=owned_person(user_id,person_id)
     if person is None:
@@ -28,7 +29,8 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
                      search_plan=query_plan['queries'])
     base=recommend(user_id=user_id,person_id=person_id,identity_confirmed=True,
                    event_type=event_type,attendance_with_meal=attendance_with_meal,
-                   budget_krw=budget_krw,legal_risk=False,kb=kb)
+                   budget_krw=budget_krw,legal_risk=False,kb=kb,
+                   closeness_override=closeness_override,special_care=special_care)
     initial = base.get('amount_krw')
     status=legal['status']
     if base['status']=='RECOMMENDED':
