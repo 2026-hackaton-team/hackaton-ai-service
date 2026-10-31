@@ -159,8 +159,8 @@ def test_meal_intent_rejects_invalid_type(meal):
 
 
 def test_model_request_timeout_for_demo():
-    """긴 모델 대기를 줄이되 호출자가 명시한 제한시간은 보존한다."""
-    assert ModelGateway(api_key="test").timeout == 25
+    """모델당 과도한 재시도 대신 기존 기본 제한시간을 공유하며 설정을 유지한다."""
+    assert ModelGateway(api_key="test").timeout == 60
     assert ModelGateway(api_key="test", timeout=42).timeout == 42
 
 
@@ -173,3 +173,23 @@ def test_internal_field_names_never_pass_response_validation():
                              ensure_ascii=False)
         with pytest.raises(ValueError, match="내부 필드"):
             parse_response(payload, context, set())
+
+
+def test_model_fallback_shares_one_timeout_budget():
+    """두 모델 재시도가 각각 제한시간 전체를 새로 받지 않는다."""
+    import time
+
+    calls = []
+
+    class DelayedGateway(ModelGateway):
+        def generate_for_model(self, context, allowed_ids, model, timeout=None):
+            calls.append((model, timeout))
+            if model == "claude-opus-4-8":
+                time.sleep(0.02)
+                raise ModelUnavailable("첫 모델 오류")
+            return {"answer": "확인했습니다.", "evidence_ids": [], "model": model}
+
+    gateway = DelayedGateway(api_key="test", timeout=1)
+    assert gateway.generate({}, set())["model"] == "gpt-5.4"
+    assert len(calls) == 2
+    assert 0 < calls[1][1] < calls[0][1] <= 1
