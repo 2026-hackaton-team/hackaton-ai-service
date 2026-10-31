@@ -28,6 +28,12 @@ TOPIC = re.compile(r"예산|원|참석|식사|부의|조의|조화|화환|결혼
 
 def _detected(text: str) -> str | None:
     """관계 사례와 특수 법적 사례의 고유 표현을 우선 분류한다."""
+    from app.recommender import owned_person
+    for identifier, scenario in SCENARIOS.items():
+        if identifier.startswith("relation_"):
+            person = owned_person("U001", scenario["person_id"])
+            if person and person["name"] in text:
+                return identifier
     for identifier in SCENARIOS:
         if identifier.startswith("relation_") and any(
             word in text for word in SCENARIOS[identifier]["keywords"]
@@ -165,10 +171,10 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
 
     if current.startswith("relation_"):
         # 현재 대화의 직접 입력은 가상 기록과 구분해 임시 개인화 조건으로 사용한다.
-        closeness_match = re.search(r"친밀도(?:는|가|를)?\\s*([1-5])\\s*(?:점|/5)", text)
+        closeness_match = re.search(r"친밀도(?:는|가|를)?\s*([1-5])\s*(?:점|/5)", text)
         if closeness_match:
             state["relationship_closeness"] = int(closeness_match.group(1))
-        if re.search(r"특별히\\s*챙기|더\\s*챙기|특별하게\\s*보답", text):
+        if re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", text):
             state["relationship_special_care"] = True
         scenario = SCENARIOS[current]
         person_id = scenario["person_id"]
@@ -216,6 +222,20 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
                 "id": "note:" + person_id, "kind": "사용자 입력 관계 메모",
                 "text": insights["relationship_note"], "decision_role": "user_recorded",
             })
+        # 연구 자료는 관계 설명에만 사용하고 금액 가중치로 전환하지 않는다.
+        guidance = [doc for doc in KB.retrieve(
+            f"{scenario['name']} {text} 친구 호혜성 선물 감사",
+            event_type=scenario["event_type"], top_k=10
+        ) if doc["source_type"] == "relationship_guidance"][:3]
+        for doc in guidance:
+            evidence.append({"id": doc["id"], "kind": "인간관계 연구",
+                             "text": doc["excerpt"], "url": doc["url"],
+                             "decision_role": "relationship_guidance"})
+        if money is not None:
+            for adjustment in result.get("relationship_adjustments", []):
+                evidence.append({"id": "adjustment:" + adjustment["signal"],
+                                 "kind": "개인화 추천 규칙", "text": adjustment["reason"],
+                                 "decision_role": "personalization"})
         summary = {key: value for key, value in insights.items() if key != "history"}
         return {
             "status": "answer", "intent": "amount", "message": message,
