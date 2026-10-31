@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {Icon} from './ui.jsx'
 import ScenarioLab from './ScenarioLab.jsx'
+import HistoryStats from './HistoryStats.jsx'
 import { demoApi } from './services/demoApi.js'
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js'
 export { demoApi } from './services/demoApi.js'
@@ -124,6 +125,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
               <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
             </div>}
+            {m.role==='assistant'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&<p><strong>참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</strong></p>}
             {m.role==='assistant'&&Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<details><summary>근거 보기</summary>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</details>}
           </div>
