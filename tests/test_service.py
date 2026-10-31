@@ -194,3 +194,25 @@ def test_cold_start_account_isolation(service):
     })
     assert result["status"] == "error"
     assert service.gateway.calls == []
+
+
+def test_other_person_same_event_history_is_used_instead_of_heuristic():
+    from app.recommender import recommend
+
+    dataset = {
+        "people": [{"id": "P1", "owner_user_id": "U", "relationship": "친구"}],
+        "event_categories": ["장례"],
+        "private_events": [{"id": "E1", "owner_user_id": "U",
+                            "category": "장례", "start_date": "2026-10-30"}],
+        "transactions": [{"id": "T1", "owner_user_id": "U", "private_event_id": "E1",
+                          "contact_person_id": "P2", "direction": "paid", "amount_krw": 100000}],
+    }
+    result = recommend(
+        user_id="U", person_id="P1", identity_confirmed=True,
+        event_type="장례", attendance_with_meal=None,
+        budget_krw=100000, dataset=dataset,
+    )
+    assert result["status"] == "RECOMMENDED"
+    assert result["recommendation_basis"] == "history"
+    assert result["weights_used"]["same_type_paid"] == 1.0
+    assert result["amount_krw"] == 100000

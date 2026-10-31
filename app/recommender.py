@@ -66,7 +66,7 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
 
     survey = kb.eligible_amount_source(event_type=event_type, relationship=person["relationship"], attendance_with_meal=attendance_with_meal)
     survey_shares = ({f["amount_krw"]: f["pct"] / 100 for f in survey["facts"] if f["metric"] == "perceived_amount_share"} if survey else {})
-    cold_start = not survey_shares and paid_med is None and received_med is None
+    cold_start = not survey_shares and paid_med is None and received_med is None and per_type_med is None
     weights = {k: v for k, v in RAW_WEIGHTS.items() if
                (k == "matched_survey" and bool(survey_shares)) or
                (k == "same_type_paid" and per_type_med is not None) or
