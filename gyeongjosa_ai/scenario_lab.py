@@ -23,10 +23,10 @@ def with_scenario_user(base: DemoData) -> DemoData:
     return DemoData({**base.dataset, "users": [*base.dataset["users"], USER]})
 
 
-def scenario_workspace():
-    """20개 인물·행사·양방향 장부의 검증 가능한 SQLite 입력을 구성한다."""
+def scenario_workspace(scenario_cases=None):
+    """합성 인물·행사·양방향 장부의 검증 가능한 SQLite 입력을 구성한다."""
     people, events, records = [], [], []
-    for case in cases():
+    for case in cases() if scenario_cases is None else scenario_cases:
         person = {
             "id": case["person_id"], "name": case["name"], "relation": case["relation"],
             "group": case["group"], "importance": "중요" if case["closeness_score"] >= 4 else "보통",

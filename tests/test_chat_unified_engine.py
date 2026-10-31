@@ -5,7 +5,7 @@ import pytest
 
 from gyeongjosa_ai.ai import ModelUnavailable
 from gyeongjosa_ai.data import load_data
-from gyeongjosa_ai.service import ChatService, parse_budget
+from gyeongjosa_ai.service import ChatService, parse_budget, parse_meal_attendance
 from gyeongjosa_ai.workspace_adapter import data_for_chat
 from gyeongjosa_ai.workspace_store import WorkspaceInput, save_workspace
 
@@ -37,6 +37,70 @@ class FixedGateway:
 def test_budget_disambiguates_recorded_amounts(question, expected):
     """금액이 여러 개일 때 예산 표현을 우선한다."""
     assert parse_budget(question) == expected
+
+
+@pytest.mark.parametrize(("question", "expected"), [
+    ("식사는 하지 않아", False), ("식사를 하지 않을 예정이야", False),
+    ("식사하지 않고 참석해", False), ("식사는 못 해", False),
+    ("참석해서 식사해요", True), ("이번 예산은 3만원이야", None),
+])
+def test_meal_attendance_understands_particles_and_negation(question, expected):
+    """조사가 들어간 식사 부정과 명시하지 않은 상태를 구분한다."""
+    assert parse_meal_attendance(question) is expected
+
+
+def test_budget_followup_keeps_meal_condition(tmp_path, monkeypatch):
+    """예산만 바꾼 후속 질문에서 앞서 말한 식사 불참을 다시 묻지 않는다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    save_workspace("U001", _workspace(100000))
+    gateway = FixedGateway()
+    monkeypatch.setattr(gateway, "classify", lambda *args: {
+        "intent": "amount", "person_id": None, "notice_id": None,
+        "event_type": "결혼", "model": "fixed-model"})
+    service = ChatService(data_for_chat(load_data(), "U001"), gateway)
+    first = service.chat_auto({"user_id": "U001",
+        "question": "친구A 결혼식에 참석하지만 식사는 하지 않아. 예산은 12만원이야."})
+    assert first["context"]["attendance_with_meal"] is False
+    assert first["context"]["event_type"] == "결혼"
+    second = service.chat_auto({"user_id": "U001", "context": first["context"],
+        "question": "상대와 행사 조건은 그대로야. 이번 예산을 3만원으로 줄일게."})
+    assert second["status"] == "answer"
+    assert second["context"]["attendance_with_meal"] is False
+    assert second["context"]["budget_krw"] == 30000
+    assert second["suggested_amount_krw"] <= 30000
+
+
+def test_history_reply_contains_calculated_stats(tmp_path, monkeypatch):
+    """이력 조회도 모델의 문구와 별개로 실제 장부의 평균을 반환한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    save_workspace("U001", _workspace(100000))
+    result = ChatService(data_for_chat(load_data(), "U001"), FixedGateway()).chat({
+        "user_id": "U001", "mode": "history", "person_id": "p1", "question": "주고받은 평균"})
+    assert result["history_stats"]["received"]["average_krw"] == 100000
+    assert result["history_stats"]["paid"]["average_krw"] is None
+
+
+def test_amount_explanation_receives_event_categories_and_attendance(tmp_path, monkeypatch):
+    """같은 인물의 결혼·장례 구분과 기록된 참석 여부를 설명 모델에 전달한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "workspace.sqlite3"))
+    snapshot = _workspace(100000).model_dump(mode="json")
+    snapshot["events"] = [{"id": "wedding", "personId": "p1", "title": "친구 결혼",
+                           "type": "결혼식", "date": "2025-01-01", "attendance": "attended"}]
+    snapshot["records"].append({"id": "r2", "personId": "p1", "eventId": "wedding",
+                                "type": "결혼식", "date": "2025-01-01", "direction": "보낸 마음", "amount": 70000})
+    save_workspace("U001", WorkspaceInput.model_validate(snapshot))
+    gateway = FixedGateway()
+    result = ChatService(data_for_chat(load_data(), "U001"), gateway).chat({
+        "user_id": "U001", "mode": "amount", "person_id": "p1", "event_type": "장례",
+        "question": "장례 예산은 10만원이고 식사는 하지 않아", "budget_krw": 100000})
+    context = gateway.contexts[-1]
+    events = {e["id"]: e for e in context["history"]["events"]}
+    assert {e["category"] for e in events.values()} == {"결혼", "장례"}
+    assert events["wedding"]["actual_attendance"] == "attended"
+    assert context["attendance_with_meal"] is False
+    assert all(t["event_id"] in events for t in context["history"]["transactions"])
+    assert {e["id"] for e in context["history"]["events"]} <= set(context["allowed_evidence_ids"])
+    assert any(e["id"] == "r2" and "결혼" in e["text"] for e in result["evidence"])
 
 
 def _workspace(amount):

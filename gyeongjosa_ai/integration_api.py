@@ -23,6 +23,7 @@ from .event_parser import parse_event_text
 from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
 from .service import ChatService
 from .workspace_adapter import data_for_chat
+from .test_account_seed import TEST_USER_ID, ensure_test_workspace
 
 router = APIRouter(prefix="/api")
 _DB = Path(os.environ.get("GYEONGJOSA_DEMO_DB", str(Path(__file__).resolve().parents[1] / "data" / "demo_conversations.sqlite3")))
@@ -61,8 +62,8 @@ def _now():
 
 def _user(x_demo_user_id: str = Header(default=""), token: str = Depends(bearer_token),
           service=Depends(get_service), accounts=Depends(get_account_store)):
-    """합성 시연 계정(U001 등), 또는 로그인한 회원 자신의 ID(ACC:아이디)만 허용한다."""
-    if x_demo_user_id.startswith(WORKSPACE_PREFIX):
+    """기존 합성 계정과 회원·테스트 계정 자신의 로그인 세션을 구분한다."""
+    if x_demo_user_id.startswith(WORKSPACE_PREFIX) or x_demo_user_id == TEST_USER_ID:
         profile = accounts.authenticate(token)
         if profile is None or workspace_owner(profile["username"]) != x_demo_user_id:
             raise HTTPException(401, "로그인한 계정의 기록만 사용할 수 있어요. 다시 로그인해 주세요.")
@@ -73,6 +74,8 @@ def _user(x_demo_user_id: str = Header(default=""), token: str = Depends(bearer_
                     "preferred_region": "서울", "preferred_event_types": []}
             service.data.users[x_demo_user_id] = user
             service.data.dataset["users"].append(user)
+        if x_demo_user_id == TEST_USER_ID:
+            ensure_test_workspace()
         return x_demo_user_id
     if not x_demo_user_id or x_demo_user_id not in service.data.users:
         raise HTTPException(401, "로그인이 필요해요.")
