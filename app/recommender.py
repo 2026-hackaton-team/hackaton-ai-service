@@ -129,6 +129,13 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
                             "reason": "사용자가 특별히 챙기겠다는 의향을 밝혔습니다."})
     steps = max(-2, min(2, upward - downward))
     target = AMOUNTS[max(0, min(len(AMOUNTS) - 1, AMOUNTS.index(baseline_amount) + steps))]
+    # 예산 미적용 기준 후보와 현재 선택액을 비교하며 추천액은 변경하지 않는다.
+    unrestricted_baseline = min(AMOUNTS, key=lambda a: (-calc(a), a))
+    unrestricted_amount = (
+        AMOUNTS[max(0, min(len(AMOUNTS) - 1, AMOUNTS.index(unrestricted_baseline) + steps))]
+        if adjustments else unrestricted_baseline
+    )
+    budget_limited = budget_krw is not None and unrestricted_amount > budget_krw
     eligible_target = min((a for a in affordable if a >= target), default=affordable[-1])
     if target > affordable[-1]:
         eligible_target = affordable[-1]
@@ -157,6 +164,7 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
     level = "moderate" if survey else "low"
     return {"status": "RECOMMENDED", "amount_krw": ranked[0], "alternatives_krw": ranked[1:3],
             "baseline_amount_krw": baseline_amount, "personalized_amount_krw": ranked[0],
+            "unrestricted_amount_krw": unrestricted_amount, "budget_limited": budget_limited,
             "recommendation_basis": "heuristic" if cold_start else "survey" if survey else "history",
             "relationship_adjustments": adjustments,
             "scores": [{"amount_krw": a, "score": (
