@@ -297,3 +297,47 @@ def test_numeric_budget_is_accepted_after_undecided_answer_even_if_classifier_is
     gateway.intent = "out_of_scope"
     result = service.chat_auto({"user_id": "U001", "question": "8만원이요", "context": undecided["context"]})
     assert result["status"] == "answer" and gateway.answers[-1][0]["budget_krw"] == 80000
+
+@pytest.mark.parametrize("reply, expected", [
+    ("100000", 100000),
+    ("100,000", 100000),
+    ("100000원", 100000),
+    ("10만", 100000),
+    ("10만원", 100000),
+    ("0", 0),
+])
+def test_bare_budget_reply_after_prompt_does_not_repeat_question(reply, expected):
+    """예산 질문 뒤 숫자만 입력해도 같은 질문을 반복하지 않는다."""
+    gateway = AutoGateway(intent="amount", person_id="P001", notice_id="N001")
+    service, first = start_amount_question(gateway)
+    gateway.intent = "out_of_scope"
+    result = service.chat_auto({"user_id": "U001", "question": reply, "context": first["context"]})
+    assert result["status"] == "answer" and result["context"]["budget_krw"] == expected
+    assert "최대 예산이 있나요" not in result["message"]
+
+
+def test_bare_budget_after_undecided_answer_preserves_amount_intent():
+    """예산 미정 답변 후 숫자만 입력하면 금액 상담을 이어 간다."""
+    gateway = AutoGateway(intent="amount", person_id="P001", notice_id="N001")
+    service, first = start_amount_question(gateway)
+    undecided = service.chat_auto({"user_id": "U001", "question": "예산을 아직 정하지 않았어요", "context": first["context"]})
+    gateway.intent = "out_of_scope"
+    result = service.chat_auto({"user_id": "U001", "question": "100000", "context": undecided["context"]})
+    assert result["status"] == "answer" and result["context"]["budget_krw"] == 100000
+
+
+def test_bare_number_outside_budget_followup_is_not_assumed_to_be_budget():
+    """예산 질문 문맥 밖의 숫자는 자동으로 예산 처리하지 않는다."""
+    gateway = AutoGateway(intent="out_of_scope", person_id=None)
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({"user_id": "U001", "question": "100000"})
+    assert result["status"] == "out_of_scope"
+
+
+def test_non_numeric_budget_followup_is_not_taken_as_amount():
+    """금액 뒤에 임의 문자가 붙으면 숫자 예산 답변으로 취급하지 않는다."""
+    gateway = AutoGateway(intent="amount", person_id="P001", notice_id="N001")
+    service, first = start_amount_question(gateway)
+    gateway.intent = "out_of_scope"
+    result = service.chat_auto({"user_id": "U001", "question": "100000abc", "context": first["context"]})
+    assert result["status"] == "out_of_scope"
