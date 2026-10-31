@@ -138,3 +138,7 @@
 .people-special-field > span:first-child { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); }
 .people-special-field input { width: 16px; height: 16px; accent-color: var(--accent); }
 .people-special-mark { font-weight: 700; color: var(--accent); }
+
+/* 친구의 친구 추천 */
+.friend-recommendation-help { margin: -2px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.friend-recommendation-score { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 600; }
