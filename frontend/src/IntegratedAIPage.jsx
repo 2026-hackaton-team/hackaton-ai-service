@@ -3,6 +3,7 @@ import {Icon} from './ui.jsx'
 import ScenarioLab from './ScenarioLab.jsx'
 import HistoryStats from './HistoryStats.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
+import { aiAnalysisStatusLabel } from './aiAnalysisStatus.js'
 import { demoApi } from './services/demoApi.js'
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js'
 export { demoApi } from './services/demoApi.js'
@@ -109,9 +110,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
             {m.role==='assistant'&&m.result?.v4_analysis&&<div className="ai-evidence">
               <p><strong>개인화·법률 분석: {m.result.v4_analysis.status}</strong></p>
-              {m.result.v4_analysis.ai_status==='generated'
-                ? <p>실제 AI 해석 완료 · 사용 모델: {m.result.model}</p>
-                : <p>실제 AI 해석 미실행 · {m.result.v4_analysis.ai_status==='unavailable'?'모델 호출 또는 검증 실패':'API 키 미설정'} (규칙 기반 분석만 표시)</p>}
+              <p>{aiAnalysisStatusLabel(m.result.v4_analysis.ai_status, m.result.model)}</p>
               {m.result.v4_analysis.status==='RELATIONSHIP_INSIGHT'
                 ? <p>관계 이력을 분석했습니다. 금액은 예산을 확인한 뒤 추천할 수 있습니다.</p>
                 : m.result.v4_analysis.amount_krw!=null
