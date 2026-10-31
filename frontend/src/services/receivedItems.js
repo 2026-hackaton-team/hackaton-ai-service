@@ -1,6 +1,9 @@
 // 받은 일정 = 친구가 보낸 일정(friend) + 함께 아는 사람 소식(mutual)
 // 출처는 두 가지: 마음결 친구가 공유한 일정(local) · 서버의 공유 부고 추천(server)
 import { receivedShares, receiptOf } from './socialStore.js';
+import { daysBetween, priorityFor, priorityFromServer } from './relationshipPriority.js';
+
+const CATEGORY_TYPES = { 장례: '장례식', 결혼: '결혼식', 돌: '돌잔치' };
 
 /** 서버 예시 데이터의 '가상' 접두어 등을 화면에서 정리한다. */
 export const cleanText = value => String(value ?? '').replace(/가상\s*(주소:\s*)?/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -15,6 +18,7 @@ export function shareToItem({ share, kind, mutual }, { receipt, nameOf = name =>
     senderName: share.ownerName || share.owner, senderUsername: share.owner,
     mutualNames: mutual.map(nameOf), mutualCount: mutual.length,
     person: { name: share.ownerName || share.owner, relation: kind === 'friend' ? '친구' : '지인', group: '마음결 친구', linkedUsername: share.owner },
+    group: share.group || null,
     receivedAt: share.updatedAt || share.createdAt, receipt,
   };
 }
@@ -25,9 +29,12 @@ export function noticeToItem(entry, { profileId = '', receipt } = {}) {
   const venue = [cleanText(notice.venue), cleanText(notice.room)].filter(Boolean).join(' · ');
   const relation = mourner.deceased_relation ? `${cleanText(mourner.name)}님 ${cleanText(mourner.deceased_relation)}상` : '';
   return {
-    key: `notice:${profileId}:${notice.id}`, source: 'server', kind: entry.relation_type === 'direct_friend' ? 'friend' : 'mutual',
-    title: cleanText(notice.title) || '부고', type: notice.category === '장례' ? '장례식' : cleanText(notice.category) || '기타',
-    date: notice.start_date || '', endDate: notice.end_date || '', time: firstTime(notice.visiting_hours),
+    key: `notice:${profileId}:${notice.id}`, source: 'server',
+    kind: entry.relation_type === 'friend_of_friend' ? 'mutual' : 'friend',
+    designated: entry.relation_type === 'designated', group: entry.recipient_group || null,
+    publisherUserId: entry.publisher_user_id || '',
+    title: cleanText(notice.title) || '부고', type: CATEGORY_TYPES[notice.category] || cleanText(notice.category) || '기타',
+    date: notice.start_date || '', endDate: notice.end_date || '', time: notice.time || firstTime(notice.visiting_hours),
     location: venue || cleanText(notice.region), region: cleanText(notice.region),
     visitingHours: cleanText(notice.visiting_hours), message: relation,
     memo: [relation, notice.visiting_hours ? `조문 ${cleanText(notice.visiting_hours)}` : ''].filter(Boolean).join(' · '),
@@ -39,7 +46,7 @@ export function noticeToItem(entry, { profileId = '', receipt } = {}) {
 }
 
 /** 화면에 보여 줄 받은 일정 목록. 숨긴 항목은 제외하고, 달력 추가 여부를 함께 계산한다. */
-export function buildReceivedItems({ social, me, notices = [], profileId = '', events = [], members = [] }) {
+export function buildReceivedItems({ social, me, notices = [], profileId = '', events = [], members = [], people = [], today = '' }) {
   const nameOf = username => members.find(member => String(member.username).toLowerCase() === username)?.name || username;
   const local = receivedShares(social, me).map(entry => shareToItem(entry, { receipt: receiptOf(social, me, `share:${entry.share.id}`), nameOf }));
   const server = notices.map(entry => {
@@ -48,9 +55,15 @@ export function buildReceivedItems({ social, me, notices = [], profileId = '', e
   });
   return [...local, ...server].map(item => {
     const linked = events.find(event => event.source?.key === item.key) || (item.receipt?.eventId && events.find(event => event.id === item.receipt.eventId));
-    return { ...item, addedEventId: linked?.id || '', status: linked ? 'added' : item.receipt?.status === 'hidden' ? 'hidden' : 'new' };
+    const days = daysBetween(item.date, today);
+    // 받은 일정의 순서: 내가 기록한 관계 중요도(사람과 연결된 경우만) + 남은 날짜
+    const person = item.source === 'local' ? people.find(entry => entry.linkedUsername && entry.linkedUsername === item.senderUsername) : null;
+    const priority = item.source === 'server'
+      ? priorityFromServer(item.raw || {}, days)
+      : priorityFor(person ? { importance: person.importance, special: person.special === true, relation: person.relation } : null, days);
+    return { ...item, linkedPersonId: person?.id || '', priority, addedEventId: linked?.id || '', status: linked ? 'added' : item.receipt?.status === 'hidden' ? 'hidden' : 'new' };
   }).filter(item => item.status !== 'hidden')
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    .sort((a, b) => b.priority.score - a.priority.score || String(a.date).localeCompare(String(b.date)));
 }
 
 /** 받은 일정을 내 달력 일정으로 바꾼다. */

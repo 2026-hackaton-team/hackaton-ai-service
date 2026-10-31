@@ -81,7 +81,7 @@ export function shareForEvent(state, owner, eventId) {
   return state.shares.find(item => key(item.owner) === key(owner) && item.eventId === eventId);
 }
 
-export function upsertShare(state, { owner, ownerName, event, scope = 'friends', message = '', recipients = [] }) {
+export function upsertShare(state, { owner, ownerName, event, scope = 'friends', message = '', recipients = [], group = null }) {
   if (!key(owner)) throw new Error('로그인한 뒤 일정을 보낼 수 있어요.');
   if (!SHARE_SCOPES[scope]) throw new Error('공유 범위를 선택해 주세요.');
   const friends = new Set(friendsOf(state, owner));
@@ -92,6 +92,7 @@ export function upsertShare(state, { owner, ownerName, event, scope = 'friends',
     id: existing?.id || newId('share'), owner: key(owner), ownerName: ownerName || owner, eventId: event.id,
     event: eventSnapshot(event), scope, message: String(message || '').trim().slice(0, 300),
     recipients: [...new Set([...(existing?.recipients || []), ...targets])],
+    group: group || existing?.group || null, // 'family' 이면 받는 쪽에 '가족에게 보낸 일정'으로 표시
     createdAt: existing?.createdAt || now(), updatedAt: now(),
   };
   return { ...state, shares: existing ? state.shares.map(item => item === existing ? next : item) : [...state.shares, next] };
