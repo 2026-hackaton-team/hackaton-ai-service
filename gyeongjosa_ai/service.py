@@ -116,6 +116,10 @@ class ChatService:
         raw_context = request.get("context") or {}
         if not isinstance(raw_context, dict):
             return error_result("대화 맥락 형식을 확인해 주세요.")
+        from .v4_chat import try_v4_chat
+        v4_result = try_v4_chat(user_id, question, raw_context)
+        if v4_result is not None:
+            return v4_result
         keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "pending_field"}
         context = {key: value for key, value in raw_context.items() if key in keys}
         people = self.data.people(user_id)
