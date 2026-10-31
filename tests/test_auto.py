@@ -435,6 +435,7 @@ def test_new_advice_topic_replaces_previous_aspects():
     assert result["status"] == "answer"
     assert result["context"]["requested_aspects"] == ["clothing"]
     assert result["context"]["original_question"] == "결혼식에 어떤 복장을 입을까?"
+    assert result["context"].get("budget_krw") is None
 
 
 def test_different_event_does_not_reuse_previous_person_or_budget():
