@@ -291,7 +291,7 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
         context = json.loads(row["state"])
         if data.selection:
             field, value = data.selection.get("field"), data.selection.get("value")
-            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","budget_krw","budget_state","v4_scenario","v4_attendance","v4_person"}:
+            if field not in {"person_id","notice_id","person_confirmed","availability","event_type","attendance_with_meal","budget_krw","budget_state","v4_scenario","v4_attendance","v4_person"}:
                 raise HTTPException(422, "허용되지 않은 선택입니다.")
             if field == "person_id" and value not in {p["id"] for p in service.data.people(user_id)}:
                 raise HTTPException(403, "선택할 수 없는 지인입니다.")
@@ -301,6 +301,8 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
                 raise HTTPException(409, "현재 대화 단계의 선택이 아닙니다.")
             if field == "person_confirmed" and not context.get("notice_id"):
                 raise HTTPException(409, "확인할 부고가 없습니다.")
+            if field == "attendance_with_meal" and type(value) is not bool:
+                raise HTTPException(422, "식사 여부를 확인해 주세요.")
             if field == "budget_krw":
                 if type(value) is not int or value < 0 or value > 1000000000:
                     raise HTTPException(422, "예산을 확인해 주세요.")
