@@ -77,6 +77,23 @@ def test_budget_is_never_exceeded():
     assert 0 < high["amount_krw"] <= 30000
 
 
+def test_budget_limit_reports_unrestricted_candidate_without_changing_amount():
+    """예산 제한을 제거한 후보와 실제 선택액의 차이를 검증한다."""
+    kwargs = {
+        "user_id": "U001", "person_id": "V4P013", "identity_confirmed": True,
+        "event_type": "장례", "attendance_with_meal": None,
+        "closeness_override": 5, "special_care": True,
+    }
+    unconstrained = recommender.recommend(budget_krw=None, **kwargs)
+    restricted = recommender.recommend(budget_krw=30000, **kwargs)
+    assert unconstrained["status"] == restricted["status"] == "RECOMMENDED"
+    assert unconstrained["amount_krw"] > 30000
+    assert restricted["amount_krw"] == 30000
+    assert restricted["unrestricted_amount_krw"] == unconstrained["amount_krw"]
+    assert restricted["budget_limited"] is True
+    assert unconstrained["budget_limited"] is False
+
+
 def test_free_chat_uses_personalized_engine_and_evidence():
     """자유 상담에서 관계 보정과 연구 출처가 함께 전달된다."""
     result = ask("가상 시나리오: 금액보다 소중한 친구야. 친밀도를 5점으로 등록했어. 예산은 10만원이고 특별히 챙기고 싶어")
