@@ -91,6 +91,8 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&
               <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>}
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
+            {m.role==='assistant'&&m.result?.intent==='history'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
+            {m.role==='assistant'&&m.result?.budget_analysis&&<BudgetComparison result={m.result} compact/>}
             {m.role==='assistant'&&(m.result?.v4_analysis||m.result?.history_stats||m.result?.budget_analysis||m.result?.evidence?.length>0)&&<details className="ai-analysis-details"><summary>추천 계산·통계·근거 자세히 보기</summary>
             {m.result?.v4_analysis&&<div className="ai-evidence">
               <p><strong>개인화·법률 분석: {m.result.v4_analysis.status}</strong></p>
@@ -109,7 +111,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
               <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
             </div>}
-            {m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
+            {m.result?.intent!=='history'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
             {m.result?.budget_analysis&&<BudgetComparison result={m.result}/>}
             {Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<div>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</div>}
             </details>}}
