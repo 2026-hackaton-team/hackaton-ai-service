@@ -425,8 +425,16 @@ class ChatService:
             elif re.search(r"식사|먹|참석|네|예", question):
                 context["attendance_with_meal"] = True
         previous_intent = context.get("intent")
+        budget = parse_budget(question)
+        bare_budget = re.fullmatch(r"\d[\d,]*", question)
+        if (
+            budget is None and bare_budget and previous_intent == "amount"
+            and (pending in {"budget_krw", "budget_clarification"}
+                 or not pending and context.get("budget_state") in {"undecided", "difficult"})
+        ):
+            budget = int(question.replace(",", ""))
         explicit_followup = (
-            pending in {"budget_krw", "budget_clarification"} and parse_budget(question) is not None
+            pending in {"budget_krw", "budget_clarification"} and budget is not None
             or pending == "person_confirmed" and bool(re.search(r"네|예|맞아|맞아요|맞습니다|아니|틀려|다른 사람", question))
             or pending == "person_id" and bool(context.get("person_id"))
             or pending == "notice_id" and bool(context.get("notice_id"))
@@ -438,9 +446,11 @@ class ChatService:
         elif pending and previous_intent in MODES and intent != previous_intent:
             context.pop("pending_field", None)
             pending = None
-        if not pending and previous_intent == "amount" and context.get("budget_state") in {"undecided", "difficult"} and re.fullmatch(
-            r"\s*(?:(?:최대|예산(?:은|이|을|으로)?)\s*)?\d[\d,]*(?:\s*만\s*원?|\s*원)(?:\s*(?:이요|이야|이에요|입니다|정도|으로|까지만))?\s*[.!?]*\s*",
-            question,
+        if not pending and previous_intent == "amount" and context.get("budget_state") in {"undecided", "difficult"} and (
+            bare_budget or re.fullmatch(
+                r"\s*(?:(?:최대|예산(?:은|이|을|으로)?)\s*)?\d[\d,]*(?:\s*만\s*원?|\s*원)(?:\s*(?:이요|이야|이에요|입니다|정도|으로|까지만))?\s*[.!?]*\s*",
+                question,
+            )
         ):
             intent = "amount"
         if intent == "out_of_scope":
@@ -464,7 +474,6 @@ class ChatService:
                 return {**result, "intent": intent, "classification_model": classified["model"], "context": context}
         if pending == "availability":
             context["availability"] = question
-        budget = parse_budget(question)
         if budget is not None:
             context.pop("budget_state", None)
             context["budget_krw"] = budget
