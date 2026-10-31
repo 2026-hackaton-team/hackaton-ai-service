@@ -708,10 +708,13 @@ class ChatService:
         if mode == "attendance" and not request.get("availability"):
             return question_result("행사 기간에 시간을 낼 수 있는지 알려 주시겠어요?", "availability")
 
+        event_question = request.get("original_question") or question
         event_type = (request.get("event_type")
                       or (candidate["notice"]["category"] if candidate else None)
-                      or next((category for category in CATEGORIES if category in question), None))
-        if event_type == "부고":
+                      or next((category for category in CATEGORIES if category in event_question), None))
+        if event_type == "부고" or event_type is None and any(
+            word in event_question for word in ("부친상", "모친상", "장례식", "조문")
+        ):
             event_type = "장례"
         if mode in {"amount", "message"} and not candidate and not event_type and not advice_only:
             prefix = "선택한 지인의 경조사 이력이 없습니다. " if history and not history["events"] else ""
