@@ -146,7 +146,12 @@ def test_conversation_api_recalculates_budget_after_no_cash_candidate(
             assert revised["context"]["budget_krw"] == 10000
             assert revised["budget_analysis"]["budget_krw"] == 10000
             assert revised["suggested_amount_krw"] is None or revised["suggested_amount_krw"] <= 10000
-            high = send("100000", 5)
+            intermediate = send("99999", 5)
+            assert intermediate["status"] == "answer"
+            assert intermediate["context"]["budget_krw"] == 99999
+            assert intermediate["budget_analysis"]["budget_krw"] == 99999
+            assert intermediate["suggested_amount_krw"] is None or intermediate["suggested_amount_krw"] <= 99999
+            high = send("100000", 6)
             assert high["status"] == "answer"
             assert high["context"]["budget_krw"] == 100000
             assert high["budget_analysis"]["budget_krw"] == 100000
@@ -158,5 +163,67 @@ def test_conversation_api_recalculates_budget_after_no_cash_candidate(
             assert saved.status_code == 200
             assert saved.json()["state"]["budget_krw"] == 100000
             assert saved.json()["state"]["requested_aspects"] == ["amount", expected_aspect]
+    finally:
+        app.dependency_overrides.pop(get_service, None)
+
+
+def test_conversation_api_preserves_work_risk_when_budget_changes(tmp_path, monkeypatch):
+    """저장된 직무 위험 가설은 다음 예산 입력에서도 최종 법률 판단에 반영된다."""
+    from gyeongjosa_ai.dependencies import get_service
+    from gyeongjosa_ai.data import load_data
+    from gyeongjosa_ai.service import ChatService
+    from app import orchestrator
+
+    class WorkRiskGateway:
+        """첫 발화의 직무 위험을 분류하고 추가 질문에는 중립값을 반환한다."""
+
+        def classify(self, context, people_ids, notice_ids):
+            return {"intent": "amount", "person_id": None, "notice_id": None,
+                    "event_type": "장례", "work_risk_hint": "possible"
+                    if "이해관계" in context["question"] else "unknown",
+                    "requested_aspects": ["amount"], "model": "test-model"}
+
+        def generate(self, context, allowed_ids, preferred_model=None):
+            return {"answer": "직무 관련성을 확인한 뒤 결정해 주세요.",
+                    "evidence_ids": sorted(allowed_ids), "model": "test-model",
+                    "suggested_amount_krw": None}
+
+    captured = []
+    original = orchestrator.run
+
+    def capture(**kwargs):
+        captured.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(orchestrator, "run", capture)
+    monkeypatch.setattr(integration_api, "_DB", tmp_path / "conversation.sqlite")
+    app.dependency_overrides[get_service] = lambda: ChatService(load_data(), WorkRiskGateway())
+    try:
+        with TestClient(app) as client:
+            headers = {"X-Demo-User-Id": "U001"}
+            created = client.post("/api/conversations", headers=headers)
+            assert created.status_code == 201
+            cid = created.json()["id"]
+
+            def send(message, index):
+                response = client.post(f"/api/conversations/{cid}/messages", headers=headers,
+                                       json={"requestId": f"risk-{index}", "text": message})
+                assert response.status_code == 200, response.text
+                return response.json()
+
+            first = send("동료와 이해관계가 걱정돼. 장례 조의금 상담", 1)
+            assert first["pending_field"] == "person_id"
+            contact = send("해든기획팀 김도윤", 2)
+            assert contact["pending_field"] == "budget_krw"
+            low = send("999", 3)
+            assert low["context"]["work_risk_hint"] == "possible"
+            assert low["budget_analysis"]["budget_krw"] == 999
+            updated = send("99999", 4)
+            assert updated["context"]["work_risk_hint"] == "possible"
+            assert updated["budget_analysis"]["budget_krw"] == 99999
+            assert all(row["profile_override"]["unconfirmed_high_risk"] for row in captured)
+            state = client.get(f"/api/conversations/{cid}", headers=headers).json()["state"]
+            assert state["work_risk_hint"] == "possible"
+            assert state["budget_krw"] == 99999
     finally:
         app.dependency_overrides.pop(get_service, None)

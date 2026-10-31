@@ -190,7 +190,7 @@ class ChatService:
         attendance = request.get("attendance_with_meal")
         if attendance is None:
             attendance = parse_meal_attendance(question)
-        work_risk_hint = request.get("_work_risk_hint")
+        work_risk_hint = request.get("_work_risk_hint", request.get("work_risk_hint"))
         access = profile_for_recipient(
             store=STORE, data=self.data.dataset, viewer_id=user_id, person_id=person["id"]
         )
@@ -206,7 +206,7 @@ class ChatService:
             semantic_hint=work_risk_hint,
         )
         risk = bool(relation["high_risk_hint"] or work_risk_hint == "possible" or
-                    work_risk_hint is None and re.search(
+                    work_risk_hint in (None, "unknown") and re.search(
                         r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임|교사|인허가", situation))
         profile["sender_ethics_risk"] = relation["sender_ethics_risk"]
         # 일반 자유서술의 의심 단서는 허용 사실로 사용하지 않고 보류 근거로 사용한다.
@@ -221,16 +221,24 @@ class ChatService:
             if received > 10000000:
                 received = None
 
+        # 사용자가 확인한 현재 관계 조건은 과거 메모와 기존 정규식 추출보다 우선한다.
+        closeness = request.get("relationship_closeness")
+        if closeness is None:
+            closeness = int(close.group(1)) if close else (
+                person.get("relationship_context") or {}
+            ).get("closeness_score")
+        recent_received = request.get("recent_received_override")
+        if recent_received is None:
+            recent_received = received
+
         report = run(
             user_id=user_id, person_id=person["id"], identity_confirmed=True,
             event_type=event_type, attendance_with_meal=attendance, budget_krw=budget,
             profile_override=profile, profile_access=access["access"],
             relation_assessment=relation, dataset=self.data.dataset,
-            closeness_override=(person.get("relationship_context") or {}).get("closeness_score")
-            if (person.get("relationship_context") or {}).get("closeness_score") is not None
-            else int(close.group(1)) if close else request.get("relationship_closeness"),
+            closeness_override=closeness,
             special_care=bool(person.get("special") or request.get("relationship_special_care") or re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", situation)),
-            recent_received_override=received if received is not None else request.get("recent_received_override"),
+            recent_received_override=recent_received,
         )
         result = report["result"]
         status = result["status"]
@@ -414,7 +422,7 @@ class ChatService:
         v4_result = try_v4_chat(user_id, question, raw_context, gateway=self.gateway)
         if v4_result is not None:
             return v4_result
-        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field", "relationship_closeness", "relationship_special_care", "recent_received_override", "requested_aspects", "original_question"}
+        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field", "relationship_closeness", "relationship_special_care", "recent_received_override", "requested_aspects", "original_question", "work_risk_hint"}
         context = {key: value for key, value in raw_context.items() if key in keys}
         if not isinstance(context.get("requested_aspects", []), list) or any(
             not isinstance(item, str) or item not in ASPECTS for item in context.get("requested_aspects", [])
@@ -424,6 +432,8 @@ class ChatService:
             not isinstance(context["original_question"], str) or len(context["original_question"]) > 2000
         ):
             return error_result("최초 질문 형식을 확인해 주세요.")
+        if context.get("work_risk_hint") not in (None, "unknown", "possible", "negated"):
+            return error_result("직무 위험 분류 형식을 확인해 주세요.")
         meal_attendance = parse_meal_attendance(question)
         if meal_attendance is not None:
             context["attendance_with_meal"] = meal_attendance
@@ -572,7 +582,7 @@ class ChatService:
                     for field in ("person_id", "notice_id", "person_confirmed", "budget_krw",
                                   "budget_state", "availability", "attendance_with_meal",
                                   "relationship_closeness", "relationship_special_care",
-                                  "recent_received_override"):
+                                  "recent_received_override", "work_risk_hint"):
                         context.pop(field, None)
                 elif previous_intent in MODES and previous_intent != intent:
                     context.pop("budget_krw", None)
@@ -661,6 +671,8 @@ class ChatService:
             if previous_person_id and context.get("person_id"):
                 context.pop("budget_krw", None)
                 context.pop("budget_state", None)
+            if previous_person_id:
+                context.pop("work_risk_hint", None)
             for key in ("relationship_closeness", "relationship_special_care", "recent_received_override"):
                 if key not in {"relationship_closeness" if direct_closeness else "",
                                "relationship_special_care" if re.search(r"특별히|더\s*챙기", question) else "",
@@ -690,6 +702,10 @@ class ChatService:
         ):
             context["relationship_special_care"] = True
 
+        # 직무 위험 가설은 예산만 변경하는 후속 턴에서 재분류하지 않고 유지한다.
+        if not pending and classified.get("work_risk_hint") in ("possible", "negated"):
+            context["work_risk_hint"] = classified["work_risk_hint"]
+
         if intent == "notice" and not context.get("notice_id"):
             if not notices:
                 return {"status": "answer", "message": "현재 이 계정에서 추천할 수 있는 부고가 없습니다.", "intent": intent, "classification_model": classified["model"], "model": None, "evidence": [], "context": {"intent": intent}}
@@ -700,7 +716,7 @@ class ChatService:
         context["intent"] = intent
         context.pop("pending_field", None)
         request_for_chat = {**context, "user_id": user_id, "question": question,
-                            "mode": intent, "_work_risk_hint": classified.get("work_risk_hint")}
+                            "mode": intent, "_work_risk_hint": context.get("work_risk_hint", classified.get("work_risk_hint"))}
         result = self.chat(request_for_chat)
         if result.get("pending_field"):
             context["pending_field"] = result["pending_field"]
