@@ -11,14 +11,14 @@ CATEGORIES = ("결혼", "장례", "부고", "백일", "돌", "생일", "환갑",
 
 def parse_budget(text):
     """예산 표현을 우선 인식하고 과거 수령·지급액을 예산으로 오인하지 않는다."""
-    money = list(re.finditer(r"(?<!\\d)(\\d[\\d,]*)\\s*(만\\s*원?|원)", text))
+    money = list(re.finditer(r"(?<!\d)(\d[\d,]*)\s*(만\s*원?|원)", text))
     if not money:
         return None
 
     def amount(match):
         return int(match.group(1).replace(",", "")) * (10000 if match.group(2).startswith("만") else 1)
 
-    markers = list(re.finditer(r"예산|최대|상한|지출\\s*가능|낼\\s*수\\s*있는", text))
+    markers = list(re.finditer(r"예산|최대|상한|지출\s*가능|낼\s*수\s*있는", text))
     for marker in markers:
         following = [match for match in money if 0 <= match.start() - marker.end() <= 30]
         if following:
