@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Icon, EmptyState } from './ui.jsx'
 import { daysUntil } from './domain.js'
 import './schedule.css'
+import {demoApi} from './IntegratedAIPage.jsx'
 
 const TYPES = ['전체', '결혼식', '장례식', '돌잔치', '생일']
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -25,6 +26,9 @@ function readDate(date) {
 
 export default function SchedulePage({ events = [], people = [], onAddEvent, onOpenEvent, onUpdateEvent }) {
   const today = seoulToday()
+  const [sharedNotices,setSharedNotices]=useState([])
+  const [noticeError,setNoticeError]=useState('')
+  useEffect(()=>{let active=true; const userId=sessionStorage.getItem('rag-demo-user'); if(!userId)return; demoApi('/notices',{userId}).then(r=>{if(active)setSharedNotices(r.items||[])}).catch(e=>{if(active)setNoticeError(e.message)});return()=>{active=false}},[])
   const [month, setMonth] = useState(() => {
     const upcoming = [...events].filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0]
     const date = readDate(upcoming?.date || today)
@@ -64,6 +68,17 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
       <div><span className="schedule-eyebrow">SCHEDULE</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p></div>
       <button className="button button-primary" onClick={onAddEvent}><Icon name="plus" size={17} />일정 등록</button>
     </div>
+    <section className="card" aria-label="공유된 부고 추천" style={{marginBottom:20,padding:20}}>
+      <h2>친구와 친구의 친구가 공유한 부고</h2>
+      <p>공유가 허용된 가상 부고만 표시됩니다. AI 화면에서 가상 계정을 선택하면 해당 계정의 추천을 볼 수 있습니다.</p>
+      {noticeError&&<p role="alert">{noticeError}</p>}
+      {sharedNotices.map(item=><article key={item.notice.id} style={{padding:'12px 0',borderBottom:'1px solid var(--border, #ddd)'}}>
+        <strong>{item.notice.title}</strong><p>{item.notice.start_date} ~ {item.notice.end_date} · {item.notice.region||'지역 미기록'}</p>
+        <p>관계: {item.relation_type==='direct_friend'?'친구':'친구의 친구'} · 공통 친구 {item.mutual_count}명</p>
+        <a href="#ai">AI에게 부고 관련성 질문하기</a>
+      </article>)}
+      {!sharedNotices.length&&!noticeError&&<p>현재 표시할 공유 부고가 없거나 계정을 선택하지 않았습니다.</p>}
+    </section>
     <div className="schedule-layout">
       <section className="card schedule-calendar" aria-label="경조사 달력">
         <div className="schedule-calendar-header">
