@@ -88,8 +88,59 @@ def add_demo_notice_details(data):
         notice.setdefault("publisher_name_visible", notice["id"] == "N001" or notice["publisher_user_id"] in synthetic_users)
 
 
+def add_scenario_fixtures(data, fixtures):
+    """참조와 소유자를 검증한 뒤 가상 시나리오 데이터를 추가한다."""
+    version = fixtures["metadata"]["version"]
+    collections = ("users", "friendships", "people", "private_events", "transactions", "shared_notices")
+    for collection in collections:
+        existing_ids = {item["id"] for item in data[collection]}
+        addition_ids = [item["id"] for item in fixtures[collection]]
+        if len(addition_ids) != len(set(addition_ids)) or existing_ids.intersection(addition_ids):
+            raise ValueError(f"시나리오 데이터의 {collection} 식별자가 중복됩니다.")
+
+    users = {item["id"] for item in data["users"] + fixtures["users"]}
+    people = {item["id"]: item for item in data["people"] + fixtures["people"]}
+    events = {item["id"]: item for item in data["private_events"] + fixtures["private_events"]}
+    for friendship in fixtures["friendships"]:
+        if (friendship["user_a_id"] not in users or friendship["user_b_id"] not in users
+                or friendship["user_a_id"] == friendship["user_b_id"]
+                or friendship["status"] not in {"accepted", "pending"}
+                or type(friendship["allow_connection_for_recommendation"]) is not bool):
+            raise ValueError("시나리오 친구 관계가 올바르지 않습니다.")
+    for person in fixtures["people"]:
+        if person["owner_user_id"] not in users or (person["linked_user_id"] and person["linked_user_id"] not in users):
+            raise ValueError("시나리오 지인의 사용자 참조가 올바르지 않습니다.")
+    for event in fixtures["private_events"]:
+        person = people.get(event["contact_person_id"])
+        if (person is None or person["owner_user_id"] != event["owner_user_id"]
+                or event["category"] not in data["event_categories"]
+                or event["status"] not in {"scheduled", "ongoing", "finished", "cancelled"}
+                or date.fromisoformat(event["start_date"]) > date.fromisoformat(event["end_date"])):
+            raise ValueError("시나리오 행사의 참조 또는 상태가 올바르지 않습니다.")
+    for transaction in fixtures["transactions"]:
+        event = events.get(transaction["private_event_id"])
+        if (event is None or event["owner_user_id"] != transaction["owner_user_id"]
+                or event["contact_person_id"] != transaction["contact_person_id"]
+                or transaction["direction"] not in {"paid", "received"}
+                or type(transaction["amount_krw"]) is not int or transaction["amount_krw"] < 0):
+            raise ValueError("시나리오 거래의 참조 또는 금액이 올바르지 않습니다.")
+    for notice in fixtures["shared_notices"]:
+        if (notice["publisher_user_id"] not in users or notice["category"] not in data["event_categories"]
+                or notice["status"] not in {"scheduled", "ongoing", "finished", "cancelled"}
+                or notice["audience_scope"] not in {"private", "friends_and_friends_of_friends"}
+                or notice["sharing_authorization"] not in {"confirmed", "unknown"}
+                or notice["direct_friend_attendance"] not in {"allowed", "not_allowed", "unknown"}
+                or notice["friend_of_friend_attendance"] not in {"allowed", "not_allowed", "unknown"}
+                or date.fromisoformat(notice["start_date"]) > date.fromisoformat(notice["end_date"])):
+            raise ValueError("시나리오 공유 소식의 참조 또는 상태가 올바르지 않습니다.")
+
+    for collection in collections:
+        data[collection].extend(copy.deepcopy(fixtures[collection]))
+    data["metadata"]["scenario_fixtures_version"] = version
+
+
 def generate_dataset(original):
-    """원본 객체를 변경하지 않고 동일한 추가 데이터 100명분을 만든다."""
+    """원본을 보존하며 고정 시드 데이터와 검토용 사례를 생성한다."""
     data = copy.deepcopy(original)
     for notice in data["shared_notices"]:
         notice.setdefault("direct_friend_attendance", "unknown")
@@ -245,6 +296,8 @@ def generate_dataset(original):
     data["metadata"]["generation_note"] = "추가된 100명과 질문은 허구이며 고정 시드와 작성된 예시 문구로 생성했다."
     data["generated_scenarios"] = generated_scenarios
     add_demo_notice_details(data)
+    fixtures = json.loads((ROOT / "data" / "scenario_fixtures.json").read_text(encoding="utf-8-sig"))
+    add_scenario_fixtures(data, fixtures)
     return data
 
 
