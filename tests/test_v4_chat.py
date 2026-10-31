@@ -44,9 +44,9 @@ def test_budget_change_rechecks_candidates_instead_of_repeating_old_amount():
     first = chat("가상 시나리오: 직장 동료 결혼식에 참석해 식사해요. 예산은 3만원")
     next_result = chat("예산을 2만원으로 바꿔", first["context"])
     assert next_result["context"]["budget_krw"] == 20000
-    assert next_result["v4_analysis"]["status"] == "NO_AFFORDABLE_CANDIDATE"
-    assert next_result["suggested_amount_krw"] is None
-    assert next_result["v4_analysis"]["amount_krw"] is None
+    assert next_result["v4_analysis"]["status"] == "RECOMMENDED"
+    assert next_result["suggested_amount_krw"] == 20000
+    assert next_result["v4_analysis"]["amount_krw"] == 20000
 
 
 def test_public_exception_is_conditional_and_constrained():

@@ -742,6 +742,35 @@
           "base_year": 2020
         }
       ]
+    },
+    {
+      "id": "SKK-FUNERAL-2024",
+      "publisher": "성균관유도회총본부 (연합뉴스 보도)",
+      "source_type": "relationship_guidance",
+      "published_at": "2024-12-18",
+      "sample_size": null,
+      "title": "부의금은 마음의 표시이며 형편에 넘치지 않아야 한다는 상례 권고",
+      "url": "https://www.yna.co.kr/amp/view/AKR20241218111200005",
+      "event_types": [
+        "장례"
+      ],
+      "relationship_tag": "전체",
+      "attendance_condition": "any",
+      "can_anchor_amount": false,
+      "keywords": [
+        "장례",
+        "부의금",
+        "조의금",
+        "형편",
+        "부담",
+        "예산",
+        "상례",
+        "5만원",
+        "만원 단위",
+        "마음"
+      ],
+      "text": "성균관유도회총본부는 2024년 12월 상례 가이드라인에서 조의금이 마음의 표시이므로 개인 형편에 넘치지 않는 것이 좋다고 권고했으며, 5만 원이면 충분하다는 의견을 밝혔다. 이는 특정 단체의 권고이지 전국민의 실제 지출 평균이나 법적 상한이 아니다. 1만원 단위 반올림은 서비스 출력 정책으로서, 이 자료가 문화적으로 의무화된 단위를 증명하지 않는다.",
+      "facts": []
     }
   ]
 }

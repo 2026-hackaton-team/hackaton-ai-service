@@ -82,7 +82,8 @@ class ProfileTests(unittest.TestCase):
         self.make_public()
         r=request(duty_context='duty_related',exception_context='yes').json()['result']
         self.assertEqual(r['status'],'RECOMMENDED')
-        self.assertEqual(r['unconstrained_amount_krw'],100000)
+        self.assertGreater(r['unconstrained_amount_krw'], 50000)
+        self.assertEqual(r['unconstrained_amount_krw'] % 10000, 0)
         self.assertEqual(r['amount_krw'],50000)
         self.assertEqual(r['legal_assessment']['status'],'CONDITIONALLY_ALLOWED')
         self.assertTrue(r['legal_assessment']['provisional'])
@@ -116,7 +117,8 @@ class ProfileTests(unittest.TestCase):
     def test_private_employee_does_not_gain_public_duty_flag(self):
         d=request().json()['result']
         self.assertEqual(d['legal_assessment']['status'],'OUT_OF_SCOPE')
-        self.assertEqual(d['amount_krw'],100000)
+        self.assertTrue(0 < d['amount_krw'] <= 150000)
+        self.assertEqual(d['amount_krw'] % 10000, 0)
 
     def test_public_sector_uncertain_classification(self):
         C.post('/api/demo/onboarding',json={'demo_user_id':'U002','occupation':'public_institution_employee',

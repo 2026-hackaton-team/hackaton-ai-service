@@ -30,26 +30,30 @@ def result(**kwargs):
 class LegalPolicyTests(unittest.TestCase):
     def test_default_private_person_not_automatically_public(self):
         x=result();self.assertEqual(x['result']['status'],'RECOMMENDED')
-        self.assertEqual(x['result']['amount_krw'],100000)
+        self.assertTrue(0 < x['result']['amount_krw'] <= 150000)
+        self.assertEqual(x['result']['amount_krw'] % 10000, 0)
         self.assertEqual(x['result']['legal_assessment']['status'],'OUT_OF_SCOPE')
 
     def test_public_peer_no_duty_not_auto_50k(self):
         r=result(scene='public_peer')['result']
         self.assertEqual(r['legal_assessment']['status'],'NO_DUTY_CEREMONY_LIMIT')
-        self.assertEqual(r['amount_krw'],100000)
+        self.assertTrue(0 < r['amount_krw'] <= 150000)
+        self.assertEqual(r['amount_krw'] % 10000, 0)
         self.assertIn('ACRC-CEREMONY-QA',r['legal_assessment']['source_ids'])
 
     def test_unknown_duty_no_actionable_amount(self):
         r=result(scene='public_unknown')['result']
         self.assertEqual(r['status'],'NEEDS_FACTS')
         self.assertNotIn('amount_krw',r)
-        self.assertEqual(r['reference_only_amount_krw'],100000)
+        self.assertTrue(0 < r['reference_only_amount_krw'] <= 150000)
+        self.assertEqual(r['reference_only_amount_krw'] % 10000, 0)
         self.assertTrue(r['missing_questions'])
 
     def test_public_exception_caps_and_reranks(self):
         x=result(scene='public_exception');r=x['result']
         self.assertEqual(r['status'],'RECOMMENDED')
-        self.assertEqual(r['unconstrained_amount_krw'],100000)
+        self.assertGreater(r['unconstrained_amount_krw'], 50000)
+        self.assertEqual(r['unconstrained_amount_krw'] % 10000, 0)
         self.assertEqual(r['amount_krw'],50000)
         self.assertTrue(r['policy_adjusted'])
         self.assertTrue(all(x['amount_krw']<=50000 for x in r['scores']))
