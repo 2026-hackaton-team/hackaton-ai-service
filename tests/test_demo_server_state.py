@@ -112,3 +112,19 @@ def test_reserved_demo_username_cannot_be_claimed(client):
     assert client.post("/api/account/login", json={
         "username": "test1234", "password": "test1234",
     }).status_code == 200
+
+
+@pytest.mark.parametrize("path", [
+    "frontend/src/App.jsx",
+    "frontend/src/Forms.jsx",
+    "frontend/src/IntegratedAIPage.jsx",
+    "frontend/src/Notifications.jsx",
+    "frontend/src/Social.jsx",
+    "frontend/src/SharedEventsPanel.jsx",
+])
+def test_active_react_views_do_not_access_browser_storage(path):
+    """사용 중인 화면이 브라우저 영속 저장소에 접근하지 않도록 보장한다."""
+    from pathlib import Path
+    source = Path(path).read_text(encoding="utf-8")
+    assert "localStorage" not in source
+    assert "sessionStorage" not in source
