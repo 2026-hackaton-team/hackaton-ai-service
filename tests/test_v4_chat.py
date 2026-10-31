@@ -109,10 +109,15 @@ def test_v4_scenario_choice_is_conversation_scoped_and_validated(monkeypatch):
             cid = client.post("/api/conversations", headers=headers).json()["id"]
             endpoint = f"/api/conversations/{cid}/messages"
             first = client.post(endpoint, headers=headers, json={
-                "requestId": "request-one", "text": "직장 동료 결혼식 예산은 3만원",
+                "requestId": "request-one", "text": "가상 시나리오: 직장 동료 결혼식 예산은 3만원",
             })
             assert first.status_code == 200, first.text
-            assert first.json()["pending_field"] == "v4_scenario"
+            assert first.json()["pending_field"] == "v4_attendance"
+            changed = client.post(endpoint, headers=headers, json={
+                "requestId": "request-switch", "text": "이번엔 계약 심사 거래처의 부친상이야",
+            })
+            assert changed.status_code == 200, changed.text
+            assert changed.json()["pending_field"] == "v4_scenario"
             invalid = client.post(endpoint, headers=headers, json={
                 "requestId": "request-two", "text": "가상 시나리오",
                 "selection": {"field": "v4_scenario", "value": "public_procurement"},
