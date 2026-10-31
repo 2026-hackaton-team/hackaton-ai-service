@@ -8,6 +8,7 @@ from pathlib import Path
 from app.knowledge import KB
 from app.main import RecommendationRequest, recommendation
 from app.special_cases import assess_special
+from .ai import ModelUnavailable
 from .relationship_insights import analyze_relationship_case
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -110,7 +111,38 @@ def _question(message: str, state: dict, field: str, options: list | None = None
     }
 
 
-def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
+def _with_llm_analysis(response: dict, gateway, question: str, scenario: dict,
+                       *, facts: dict, known_amounts: list) -> dict:
+    """서버 판정값은 유지하고 실제 모델의 사례별 해석만 덧붙인다."""
+    details = response["v4_analysis"]
+    details["ai_status"] = "not_configured"
+    if gateway is None or not getattr(gateway, "api_key", None):
+        return response
+    payload = {
+        "question": question,
+        "scenario": scenario["name"],
+        "category": scenario.get("category"),
+        "facts": facts,
+        "decision": {
+            "status": details["status"],
+            "suggested_amount_krw": response["suggested_amount_krw"],
+            "legal_assessment": details.get("legal_assessment"),
+        },
+        "evidence": response["evidence"],
+        "known_amounts_krw": sorted({item for item in known_amounts if type(item) is int}),
+    }
+    try:
+        generated = gateway.explain_scenario(payload)
+    except ModelUnavailable:
+        details["ai_status"] = "unavailable"
+        return response
+    details["ai_status"] = "generated"
+    response["model"] = generated["model"]
+    response["message"] += "\n\nAI 해석: " + generated["analysis"]
+    return response
+
+
+def try_v4_chat(user_id: str, text: str, old_context: dict, gateway=None) -> dict | None:
     """가상 시연임이 명확한 경우에만 등록된 인물과 v4 정책을 사용한다."""
     current = old_context.get("v4_scenario")
     if current not in SCENARIOS:
@@ -248,7 +280,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
                                  "kind": "개인화 추천 규칙", "text": adjustment["reason"],
                                  "decision_role": "personalization"})
         summary = {key: value for key, value in insights.items() if key != "history"}
-        return {
+        response = {
             "status": "answer", "intent": "amount", "message": message,
             "suggested_amount_krw": amount, "evidence": evidence,
             "context": state, "model": None,
@@ -260,6 +292,16 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
                 "relationship_insights": summary, "demo_only": True,
             },
         }
+        return _with_llm_analysis(
+            response, gateway, text, scenario, facts=insights,
+            known_amounts=(
+                [row["amount_krw"] for row in insights["history"]] +
+                [insights["paid_average_krw"], insights["received_average_krw"],
+                 insights["comparison_reference_krw"], state.get("budget_krw"),
+                 state.get("recent_received_override"), amount,
+                 result.get("baseline_amount_krw") if money is not None else None]
+            ),
+        )
 
     if current == "duplicate_mourner" and state.get("v4_person") not in {"P001", "P002"}:
         return _question(
@@ -357,7 +399,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         message = f"[가상 시연: {scenario['name']}] 금액 조건만 검토했습니다. {explanation}"
     else:
         message = f"[가상 시연: {scenario['name']}] 행동 금액 추천을 보류합니다. {explanation}"
-    return {
+    response = {
         "status": "answer", "intent": "amount", "message": message,
         "suggested_amount_krw": amount, "evidence": evidence,
         "context": state, "model": None,
@@ -368,3 +410,10 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             "evidence_trace": result.get("evidence_trace"), "demo_only": True,
         },
     }
+
+    return _with_llm_analysis(
+        response, gateway, text, scenario,
+        facts={"explanation": explanation, "event_type": event_type, "status": status},
+        known_amounts=[state.get("budget_krw"), state.get("cash_krw"),
+                       state.get("wreath_krw"), amount],
+    )
