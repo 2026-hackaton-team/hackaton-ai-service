@@ -56,10 +56,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
-    <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
+    <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>내 기록과 공개된 기준을 바탕으로 함께 고민해요. 대화는 프로필별로 저장돼요.</p></div></div>
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
-        <label>가상 계정 <select className="input" aria-label="가상 계정" value={userId} onChange={e=>setUserId(e.target.value)}>
+        <label>프로필 <select className="input" aria-label="프로필" value={userId} onChange={e=>setUserId(e.target.value)}>
           <option value="">계정 선택</option>{users.map(u=><option key={u.id} value={u.id}>{u.name} · {u.affiliation||u.id}</option>)}
         </select></label>
         <button className="button" type="button" disabled={!userId||busy} onClick={newConversation}>새 대화</button>
@@ -69,7 +69,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
-        {scenarioExamples.length>0&&!messages.length&&<div aria-label="가상 분석 시연 선택" style={{padding:12}}>
+        {scenarioExamples.length>0&&!messages.length&&<div aria-label="분석 예시 선택" style={{padding:12}}>
           {[{category:'safety',title:'법률·직무 10개'},{category:'relationship',title:'감정·관계 10개'}].map(group=>
             <details key={group.category} open={group.category==='relationship'}>
               <summary>{group.title}</summary>
@@ -96,7 +96,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
               {m.result.v4_analysis.relationship_adjustments?.map((item,j)=><p key={j}>조정 근거: {item.reason}</p>)}
               {m.result.v4_analysis.legal_assessment?.reason&&<p>{m.result.v4_analysis.legal_assessment.reason}</p>}
               {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
-              <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
+              <small>공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
             </div>}
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&<p><strong>참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</strong></p>}
             {m.role==='assistant'&&Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<details><summary>근거 보기</summary>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</details>}
@@ -115,7 +115,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
           placeholder="예: 친구 결혼식인데 예산은 3만원이야" maxLength={2000}/>
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
-      </form><p className="ai-disclaimer">가상 계정을 사용하는 로컬 시연입니다. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
+      </form><p className="ai-disclaimer">AI 제안은 참고용이에요. 법적 적법성이나 금액을 확정하지 않습니다.</p></div>
     </section>
   </div>
 }

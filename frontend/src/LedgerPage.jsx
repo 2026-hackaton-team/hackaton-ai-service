@@ -28,7 +28,7 @@ export default function LedgerPage({ people, events, records, onAddRecord, onEdi
   const visibleRecords = useMemo(() => periodRecords.filter(record => {
     const person = people.find(item => item.id === record.personId);
     const event = events.find(item => item.id === record.eventId);
-    return (direction === '전체' || record.direction === direction) && (type === '전체' || record.type === type) && `${person?.name || ''} ${person?.relation || ''} ${record.memo || ''} ${record.type} ${event?.title || ''}`.toLowerCase().includes(query.toLowerCase());
+    return (direction === '전체' || record.direction === direction) && (type === '전체' || record.type === type || (type === '기타' && !['결혼식', '장례식', '돌잔치', '생일'].includes(record.type))) && `${person?.name || ''} ${person?.relation || ''} ${record.memo || ''} ${record.type} ${event?.title || ''}`.toLowerCase().includes(query.toLowerCase());
   }).sort((a, b) => b.date.localeCompare(a.date)), [periodRecords, people, events, direction, type, query]);
   const monthly = monthSpending(records, Number(year));
   const yearly = [...years].sort((a, b) => a - b).map(item => ({ label: `${item}년`, amount: records.filter(record => record.date.startsWith(String(item)) && record.direction === '보낸 마음').reduce((sum, record) => sum + Number(record.amount), 0) }));

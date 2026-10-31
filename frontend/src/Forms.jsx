@@ -6,6 +6,8 @@ import PersonSearch from './PersonSearch.jsx'
 import { findAccount, normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, publicProfile, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
+const CUSTOM_TYPE = '__custom'
+const CUSTOM_TYPE_SUGGESTIONS = ['환갑', '칠순', '팔순', '졸업', '집들이']
 const ACCOUNTS_KEY = 'maeum-demo-accounts-v1'
 const PBKDF2_ITERATIONS = 210000
 
@@ -36,54 +38,88 @@ function FormActions({ onClose, children, disabled = false }) {
   </div>
 }
 
-export function EventForm({ people = [], onSave, onClose }) {
+export function EventForm({ people = [], onSave, onClose, user = null }) {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    personId: '', personName: '', title: '', type: '결혼식', date: todayInSeoul(),
+    owner: 'other', personId: '', personName: '', title: '', type: '결혼식', date: todayInSeoul(),
     time: '14:00', location: '', attendance: '참석', reminderDays: 1,
+    shareScope: 'private', shareMessage: '', consent: false, customType: '',
   })
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }))
   const selectedPerson = people.find((person) => person.id === form.personId)
+  const mine = form.owner === 'me'
+  const myName = user?.name || '나'
+  const custom = form.type === CUSTOM_TYPE
+  const type = custom ? form.customType.trim() : form.type
 
   function submit(event) {
     event.preventDefault()
-    if (!selectedPerson && form.personId !== '__new') { setError('검색 결과에서 인맥을 선택해 주세요.'); return }
-    const name = selectedPerson?.name || form.personName.trim()
-    if (!name) { setError('누구의 경조사인지 선택하거나 이름을 입력해 주세요.'); return }
-    if (!form.type || !form.date || !form.time || !form.location.trim()) {
+    if (custom && !type) { setError('행사 유형을 직접 입력해 주세요. 예) 칠순, 졸업'); return }
+    if (!type || !form.date || !form.time || !form.location.trim()) {
       setError('행사 유형, 날짜, 시간, 장소를 모두 확인해 주세요.')
       return
     }
+    if (mine) {
+      if (form.shareScope !== 'private' && !user) { setError('친구에게 보내려면 먼저 로그인해 주세요.'); return }
+      if (form.shareScope !== 'private' && type === '장례식' && !form.consent) { setError('장례 소식은 유족(가족)의 공유 동의를 확인한 뒤 보낼 수 있어요.'); return }
+      onSave({
+        owner: 'me', personId: '', title: form.title.trim() || `${myName}의 ${type}`,
+        type, date: form.date, time: form.time, location: form.location.trim(),
+        attendance: '참석', reminderDays: Number(form.reminderDays), memo: form.shareMessage.trim(),
+        shareScope: form.shareScope, shareMessage: form.shareMessage.trim(),
+      })
+      return
+    }
+    if (!selectedPerson && form.personId !== '__new') { setError('검색 결과에서 인맥을 선택해 주세요.'); return }
+    const name = selectedPerson?.name || form.personName.trim()
+    if (!name) { setError('누구의 경조사인지 선택하거나 이름을 입력해 주세요.'); return }
     onSave({
       personId: selectedPerson?.id || '',
       ...(selectedPerson ? {} : { personName: name }),
-      title: form.title.trim() || `${name} ${form.type}`,
-      type: form.type, date: form.date, time: form.time, location: form.location.trim(),
+      title: form.title.trim() || `${name} ${type}`,
+      type, date: form.date, time: form.time, location: form.location.trim(),
       attendance: form.attendance, reminderDays: Number(form.reminderDays),
     })
   }
 
-  return <Modal title="새로운 마음을 챙겨요" subtitle="경조사를 등록하고, 마음을 전할 때를 기억하세요." onClose={onClose} wide>
+  return <Modal title="새로운 마음을 챙겨요" subtitle={mine ? '내 경조사를 등록하고, 소중한 사람들에게 알려요.' : '경조사를 등록하고, 마음을 전할 때를 기억하세요.'} onClose={onClose} wide>
     <form onSubmit={submit} className="app-form">
       <div className="form-grid">
-        <PersonSearch people={people} value={form.personId} onChange={value => update('personId', value)} />
-        {form.personId === '__new' && <Field label="이름" required full hint="새 인맥으로 함께 저장됩니다. 관계는 인맥 관리에서 수정할 수 있어요.">
+        <div className="owner-toggle" role="group" aria-label="누구의 경조사인가요?">
+          <button type="button" aria-pressed={!mine} onMouseDown={event => event.preventDefault()} onClick={() => { update('owner', 'other'); setError('') }}><Icon name="UsersRound" size={16} />지인의 경조사</button>
+          <button type="button" aria-pressed={mine} onMouseDown={event => event.preventDefault()} onClick={() => { update('owner', 'me'); setError('') }}><Icon name="Heart" size={16} />내 경조사</button>
+        </div>
+        {!mine && <PersonSearch people={people} value={form.personId} onChange={value => update('personId', value)} />}
+        {!mine && form.personId === '__new' && <Field label="이름" required full hint="새 인맥으로 함께 저장됩니다. 관계는 인맥 관리에서 수정할 수 있어요.">
           <input className="input" value={form.personName} onChange={(event) => update('personName', event.target.value)} placeholder="이름을 입력해 주세요" maxLength={40} required />
         </Field>}
-        <Field label="행사 유형" required>
+        <Field label="행사 유형" required full={mine}>
           <select className="input" value={form.type} onChange={(event) => update('type', event.target.value)} required>
-            <option value="" disabled>유형 선택</option>{EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
+            <option value="" disabled>유형 선택</option>{EVENT_TYPES.map((item) => <option key={item}>{item}</option>)}<option value={CUSTOM_TYPE}>직접 입력</option>
           </select>
         </Field>
-        <Field label="참석 여부">
+        {custom && <Field label="행사 유형 직접 입력" required full hint="환갑·칠순·팔순, 졸업, 집들이처럼 목록에 없는 행사를 적어 주세요.">
+          <input className="input" value={form.customType} onChange={(event) => update('customType', event.target.value)} placeholder="예) 칠순" maxLength={20} autoFocus required />
+          <span className="custom-type-chips">{CUSTOM_TYPE_SUGGESTIONS.map((item) => <button type="button" key={item} className={`filter-chip ${form.customType === item ? 'active' : ''}`} onClick={() => update('customType', item)}>{item}</button>)}</span>
+        </Field>}
+        {!mine && <Field label="참석 여부">
           <select className="input" value={form.attendance} onChange={(event) => update('attendance', event.target.value)}>
             {['참석', '불참'].map((value) => <option key={value}>{value}</option>)}
           </select>
-        </Field>
+        </Field>}
         <Field label="날짜" required><input className="input" type="date" value={form.date} onChange={(event) => update('date', event.target.value)} min="1900-01-01" max="2099-12-31" required /></Field>
         <Field label="시간" required><input className="input" type="time" value={form.time} onChange={(event) => update('time', event.target.value)} required /></Field>
-        <Field label="장소" required full><input className="input" value={form.location} onChange={(event) => update('location', event.target.value)} placeholder="예) 그린 웨딩홀 3층 그랜드홀" maxLength={150} required /></Field>
-        <Field label="일정 이름" full hint="비워 두면 이름과 행사 유형으로 만들어 드려요."><input className="input" value={form.title} onChange={(event) => update('title', event.target.value)} placeholder={`${selectedPerson?.name || form.personName || '김도윤'} ${form.type || '결혼식'}`} maxLength={80} /></Field>
+        <Field label="장소" required full><input className="input" value={form.location} onChange={(event) => update('location', event.target.value)} placeholder={mine && type === '장례식' ? '예) 서울 마음빛 장례식장 1호실' : '예) 그린 웨딩홀 3층 그랜드홀'} maxLength={150} required /></Field>
+        <Field label="일정 이름" full hint={mine ? '비워 두면 내 이름과 행사 유형으로 만들어 드려요.' : '비워 두면 이름과 행사 유형으로 만들어 드려요.'}><input className="input" value={form.title} onChange={(event) => update('title', event.target.value)} placeholder={mine ? `${myName}의 ${type || '결혼식'}` : `${selectedPerson?.name || form.personName || '김도윤'} ${type || '결혼식'}`} maxLength={80} /></Field>
+        {mine && <>
+          <Field label="친구에게 알리기" full hint={!user ? '로그인하면 마음결 친구에게 일정을 보낼 수 있어요.' : form.shareScope === 'friends_of_friends' ? '보낼 친구를 고른 뒤, 내 친구와 친구인 사람들에게도 소식이 보여요.' : form.shareScope === 'friends' ? '등록 후 일정을 받을 친구를 고를 수 있어요.' : '나만 볼 수 있어요. 나중에 일정 상세에서 보낼 수도 있어요.'}>
+            <select className="input" value={form.shareScope} onChange={(event) => update('shareScope', event.target.value)} disabled={!user}>
+              <option value="private">나만 보기</option><option value="friends">친구에게 보내기</option><option value="friends_of_friends">친구의 친구까지 알리기</option>
+            </select>
+          </Field>
+          {form.shareScope !== 'private' && <Field label="전할 말" full><textarea className="input" rows={2} maxLength={300} value={form.shareMessage} onChange={(event) => update('shareMessage', event.target.value)} placeholder={type === '장례식' ? '예) 갑작스러운 소식 전합니다. 마음으로 함께해 주세요.' : '예) 소중한 날에 함께해 주시면 기쁘겠습니다.'} /></Field>}
+          {form.shareScope !== 'private' && type === '장례식' && <label className="social-consent field-full"><input type="checkbox" checked={form.consent} onChange={(event) => update('consent', event.target.checked)} /><span>유족(가족)에게 소식 공유 동의를 받았어요.</span></label>}
+        </>}
         <Field label="행사 전 알림" full hint="알림함에서 확인할 수 있어요. 브라우저 알림은 알림 설정에서 켤 수 있습니다.">
           <select className="input" value={form.reminderDays} onChange={(event) => update('reminderDays', event.target.value)}>
             <option value={0}>행사 당일</option><option value={1}>1일 전</option><option value={3}>3일 전</option><option value={7}>7일 전</option>
@@ -91,7 +127,7 @@ export function EventForm({ people = [], onSave, onClose }) {
         </Field>
       </div>
       <FormError message={error} />
-      <FormActions onClose={onClose}><Icon name="Plus" size={17} />일정 등록하기</FormActions>
+      <FormActions onClose={onClose}><Icon name={mine && form.shareScope !== 'private' ? 'Send' : 'Plus'} size={17} />{mine && form.shareScope !== 'private' ? '등록하고 친구 고르기' : '일정 등록하기'}</FormActions>
     </form>
   </Modal>
 }
@@ -127,7 +163,7 @@ export function PersonForm({ onSave, onClose }) {
 export function RecordForm({ people = [], events = [], onSave, onClose, initialPersonId = '', initialEventId = '', initialRecord = null }) {
   const [error, setError] = useState('')
   const editing = !!initialRecord
-  const recordTypes = [...new Set([...EVENT_TYPES, '기타', initialRecord?.type].filter(Boolean))]
+  const recordTypes = [...new Set([...EVENT_TYPES, '기타', initialRecord?.type, ...events.map((event) => event.type)].filter(Boolean))]
   const [form, setForm] = useState(() => {
     const selectedPersonId = initialRecord?.personId || initialPersonId
     const selectedEventId = initialRecord?.eventId || initialEventId
@@ -254,7 +290,7 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
         onSuccess(publicProfile(account))
       } else {
         const account = findAccount(accounts, form.username)
-        if (!account?.salt || !account?.hash) { setError('아이디와 비밀번호를 확인해 주세요. 처음이라면 체험 계정을 만들어 주세요.'); return }
+        if (!account?.salt || !account?.hash) { setError('아이디와 비밀번호를 확인해 주세요. 처음이라면 회원가입을 해 주세요.'); return }
         const hash = await hashPassword(form.password, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
         if (hash !== account.hash) { setError('아이디와 비밀번호를 확인해 주세요.'); return }
         onSuccess(publicProfile(account))
@@ -267,7 +303,6 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   }
 
   return <Modal title={signup ? '함께 마음을 이어가요' : '다시 만나 반가워요'} subtitle={signup ? '소중한 관계를 챙기는 작은 습관, 지금 시작해요.' : '기억해 둔 마음을 다시 만나 보세요.'} onClose={pending ? () => {} : onClose} wide={signup}>
-    <div className="auth-demo-note"><Icon name="LockKeyhole" size={16} /><span>체험 계정 · 이 브라우저에 저장됩니다</span></div>
     <form onSubmit={submit} className="app-form auth-form">
       {signup ? <div className="form-grid">
         <Field label="아이디" required hint="영문·숫자·밑줄 4~20자, 대소문자를 구분하지 않아요."><input className="input" aria-label="아이디" value={form.username} onChange={event => update('username', event.target.value)} minLength={4} maxLength={20} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field>
@@ -282,10 +317,9 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
         <Field label="비밀번호" required><input className="input" aria-label="비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} maxLength={128} autoComplete="current-password" required disabled={pending}/></Field>
       </div>}
       <FormError message={error} />
-      <button className="button button-primary auth-submit" type="submit" disabled={pending}>{pending && <span className="form-spinner" aria-hidden="true" />}{pending ? (signup ? '계정을 만드는 중…' : '확인하는 중…') : (signup ? '체험 계정 만들기' : '로그인')}<Icon name="ArrowRight" size={17} /></button>
+      <button className="button button-primary auth-submit" type="submit" disabled={pending}>{pending && <span className="form-spinner" aria-hidden="true" />}{pending ? (signup ? '계정을 만드는 중…' : '확인하는 중…') : (signup ? '회원가입' : '로그인')}<Icon name="ArrowRight" size={17} /></button>
     </form>
     <p className="auth-switch">{signup ? '이미 계정이 있나요?' : '아직 계정이 없나요?'} <button type="button" onClick={() => onSwitch(signup ? 'login' : 'signup')} disabled={pending}>{signup ? '로그인' : '회원가입'}</button></p>
-    <p className="auth-storage-info">실제 서비스 계정과 연동되지 않는 체험 기능입니다.<br />일정과 인맥 기록은 이 브라우저의 체험 데이터로 유지됩니다.</p>
   </Modal>
 }
 
