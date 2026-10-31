@@ -76,3 +76,14 @@
 - 알림함에서 U001 계정을 선택해 실제 시연 API의 부고 카드 2개가 표시됨을 확인했다. 상세·목록 복귀·읽음 표시를 검수했다.
 - 알림에서 U002로 바꾼 계정이 AI에 반영되고, AI에서 U001로 바꾼 계정이 알림에 반영되는 것을 확인했다. U001의 읽음 상태도 유지됐다.
 - 백엔드 발송·Web Push·실제 친구 요청은 이번 변경에 포함하지 않는다.
+
+## PR 준비: 최신 develop 반영 후 검증
+
+- 새 브랜치: `feat/maeum-local-demo-ui-20261031`, 병합 대상 `develop`.
+- `origin/develop`의 `1864884`까지 반영했다. AI 화면 충돌은 최신 시나리오 선택·분석 표시와 이번 계정 동기화를 함께 유지하도록 해결했다.
+- 재검증: 프런트 단위 테스트 **50 passed**, Vite 빌드 통과, 실행기 테스트 **4 passed**.
+- Windows / Python 3.14.4 / UTF-8 모드 전체 회귀: **266 passed, 6 failed, 39 subtests passed**, 경고 1건. 위의 과거 164/5 결과보다 이 검증을 우선한다.
+- 남은 실패: `test_source_contracts.py::SourceContractTests::test_original_frontend_has_v4_fields`의 오래된 `frontend/app.js` 경로 1건, 임시 SQLite 파일 정리 시 `WinError 32` 5건 (`test_private_conversations_persist_and_are_account_scoped`, `test_legacy_migration_preserves_profiles`, `test_natural_text_never_persists`, `test_v4_scenario_choice_is_conversation_scoped_and_validated`, `test_budget_followup_via_conversation_api_without_llm`).
+- 이전 데이터 체크섬 실패는 최신 develop 반영 후 재현되지 않았다. 테스트를 삭제하거나 건너뛰지 않았다.
+- 실행 중인 사용자 서버는 재시작하지 않았다. 최신 Python 시나리오 API를 로컬에서 확인하려면 실행 창에서 정상 종료 후 `start.cmd`로 다시 실행한다.
+- 로컬 `.env`, 시연 SQLite/프로필 DB, `.venv`, `node_modules`, 빌드 결과는 커밋하지 않는다.
