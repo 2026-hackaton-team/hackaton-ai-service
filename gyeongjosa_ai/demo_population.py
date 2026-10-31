@@ -181,7 +181,6 @@ def _ensure_two_hop(store):
     from .demo_state import _invalidate_recommendation_cache
 
     with account_db(store) as db:
-        db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT revision, payload FROM social_state WHERE id=1").fetchone()
         social = json.loads(row["payload"])
         friends = social["friendships"]
