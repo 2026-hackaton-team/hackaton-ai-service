@@ -51,6 +51,7 @@ def person_option(person):
         "name": person["name"],
         "relationship": person["relationship"],
         "affiliation": person["fictional_affiliation"],
+        "label": f"{person['name']} · {person['fictional_affiliation'] or '소속 미기록'} · {person['relationship']}",
     }
 
 
