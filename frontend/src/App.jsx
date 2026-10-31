@@ -161,8 +161,9 @@ export default function App() {
     finally { setWorkspaceBusy(false); }
   }
   async function updatePerson(id, patch) {
-    if (await commitData(people.map(person => person.id === id ? {...person,...patch} : person), events, records))
-      notify('관계 기록을 저장했어요.');
+    const saved = await commitData(people.map(person => person.id === id ? {...person,...patch} : person), events, records);
+    if (saved) notify('관계 기록을 저장했어요.');
+    return saved;
   }
   async function updateEvent(id, patch) {
     if (await commitData(people, events.map(event => event.id === id ? {...event,...patch} : event), records))
