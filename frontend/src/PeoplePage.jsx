@@ -84,12 +84,13 @@ function PersonDetail({ person, events, records, onUpdate, onAddRecord, onClose 
   const sent = records.filter(record => record.direction === '보낸 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const received = records.filter(record => record.direction === '받은 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const interactions = [...(person.interactions || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  function savePerson(event) {
+  async function savePerson(event) {
     event.preventDefault();
     if (!draft.name.trim()) return;
     const { customRelation, ...values } = draft;
-    onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() });
-    setEditing(false);
+    if (await onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() })) {
+      setEditing(false);
+    }
   }
   function addInteraction(event) {
     event.preventDefault();
