@@ -144,6 +144,16 @@ def test_api_exposes_grouped_twenty_presets_only_to_demo_account():
         assert client.get("/api/demo/v4-scenarios", headers={"X-Demo-User-Id": "U002"}).json()["items"] == []
 
 
+def test_original_dashboard_is_not_inflated_by_relationship_fixtures():
+    data = load_data()
+    assert data.dashboard("U001")["paid_total_krw"] == 420000
+    history = data.history("U001", "V4P011")
+    assert history is not None
+    assert len(history["transactions"]) == 8
+    assert history["paid_total_krw"] == 400000
+    assert history["received_total_krw"] == 200000
+
+
 def test_existing_dataset_bytes_remain_unmodified():
     root = Path(__file__).resolve().parents[1] / "data"
     original = json.loads((root / "original_demo.json").read_text(encoding="utf-8"))
