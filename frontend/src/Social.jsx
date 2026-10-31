@@ -6,6 +6,7 @@ import { SHARE_SCOPES, friendsOf, incomingRequests, outgoingRequests, searchMemb
 import './feature-preview.css';
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, normalizeImportance, relationDraft } from './relationships.js';
 import { PRIORITY_RELATIONS } from './services/relationshipPriority.js';
+import { recommendFriends, FRIEND_RECOMMENDATION_WEIGHTS } from './services/friendRecommendations.js';
 import './social.css';
 
 /*
@@ -44,24 +45,38 @@ function MemberCard({ member, children, note }) {
 
 /* ---------- 인맥 관리 › 친구 찾기 ---------- */
 export function FriendFinder() {
-  const { user, social, members, mutate } = useSocial();
+  const { user, social, members, mutate, people = [] } = useSocial();
   const [query, setQuery] = useState('');
   if (!user) return <LoginNeeded title="로그인하고 마음결 친구를 찾아보세요" description="친구가 되면 서로의 경조사 일정을 주고받을 수 있어요." />;
   const me = user.username;
+  const searching = Boolean(query.trim());
+  const minimumScore = FRIEND_RECOMMENDATION_WEIGHTS.threshold;
   const list = searchMembers(social, members, me, query);
+  const recommendations = recommendFriends(social, members, me, people);
+  const recommendedByUsername = new Map(recommendations.map(member => [member.username, member.recommendation]));
   const friends = list.filter(member => member.status === 'friend');
-  const others = list.filter(member => member.status !== 'friend');
-  const nameOf = username => members.find(item => item.username === username)?.name || username;
+  // 직접 검색은 추천 점수와 별개로 유지해 친구 요청·취소·수락 동작을 보존한다.
+  const others = searching ? list.filter(member => member.status !== 'friend').map(member => ({
+    ...member, recommendation: recommendedByUsername.get(member.username),
+  })) : recommendations;
+  const nameOf = username => members.find(item => String(item.username).trim().toLowerCase() === username)?.name || username;
+  const noteFor = member => {
+    const bridge = member.recommendation?.connections[0];
+    if (bridge) return `${nameOf(bridge.username)}님(${bridge.relation} · ${bridge.importance})을 통해 연결돼 있어요.`;
+    return member.mutual.length ? `${member.mutual.map(nameOf).slice(0, 2).join(', ')}님과 함께 아는 사이예요.` : '새로운 인연을 이어 보세요.';
+  };
   return <div className="social-panel">
-    <div className="feature-section-heading"><div><h2>함께 아는 인연에서 시작해요</h2><p>아이디나 이름으로 마음결 회원을 찾아 친구 요청을 보내세요. 비공개 회원은 아이디를 정확히 입력해야 보여요.</p></div></div>
-    <label className="pl-search feature-search"><Icon name="Search" size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="이름, 아이디, 소속으로 검색" aria-label="회원 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery('')}><Icon name="X" size={16} /></button>}</label>
+    <div className="feature-section-heading"><div><h2>함께 아는 인연에서 시작해요</h2><p>내가 기록한 관계·중요도와 함께 아는 친구를 반영해, 추천 점수가 {minimumScore}점 이상인 회원만 보여 드려요.</p></div></div>
+    <label className="pl-search feature-search"><Icon name="Search" size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="이름, 아이디, 소속으로 회원 검색" aria-label="회원 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery('')}><Icon name="X" size={16} /></button>}</label>
+    <p className="friend-recommendation-help">친구 카드의 ‘내 인맥과 연결’에서 연결한 인맥의 관계·중요도를 추천에 반영해요. 회원을 직접 검색할 때는 점수와 관계없이 찾을 수 있고, 비공개 회원은 정확한 아이디로만 검색돼요.</p>
     {friends.length > 0 && <section className="social-section"><h3>내 친구 <span>{friends.length}</span></h3><div className="feature-member-grid">{friends.map(member => <MemberCard key={member.username} member={member} note="일정을 보내고 받을 수 있는 친구예요."><span className="social-status friend"><Icon name="Check" size={15} />친구</span><PersonLinker member={member} /></MemberCard>)}</div></section>}
-    <section className="social-section"><h3>{friends.length ? '다른 회원' : '마음결 회원'} <span>{others.length}</span></h3>
-      {others.length ? <div className="feature-member-grid">{others.map(member => <MemberCard key={member.username} member={member} note={member.mutual.length ? `${member.mutual.map(nameOf).slice(0, 2).join(', ')}님과 함께 아는 사이예요.` : '새로운 인연을 이어 보세요.'}>
+    <section className="social-section"><h3>{searching ? '회원 검색 결과' : '추천 친구'} <span>{others.length}</span></h3>
+      {others.length ? <div className="feature-member-grid">{others.map(member => <MemberCard key={member.username} member={member} note={noteFor(member)}>
+        {member.recommendation && <span className="friend-recommendation-score"><Icon name="Sparkles" size={14} />추천 {member.recommendation.score}점</span>}
         {member.status === 'none' && <button type="button" className="button button-primary" onClick={() => mutate(state => requestFriend(state, me, member.username), `${member.name}님에게 친구 요청을 보냈어요.`)}><Icon name="UserPlus" size={16} />친구 요청</button>}
         {member.status === 'requested' && <><span className="social-status">요청을 보냈어요</span><button type="button" className="button button-secondary" onClick={() => mutate(state => cancelFriendRequest(state, me, member.username), '친구 요청을 취소했어요.')}>요청 취소</button></>}
         {member.status === 'incoming' && <button type="button" className="button button-primary" onClick={() => mutate(state => requestFriend(state, me, member.username), `${member.name}님과 친구가 되었어요.`)}><Icon name="Check" size={16} />요청 수락</button>}
-      </MemberCard>)}</div> : <div className="card feature-empty"><EmptyState icon="UsersRound" title={query ? '검색에 맞는 회원이 없어요' : '아직 다른 회원이 없어요'} description={query ? '이름이나 아이디를 다시 확인해 주세요.' : '친구가 회원가입하면 이곳에서 찾을 수 있어요.'} /></div>}
+      </MemberCard>)}</div> : <div className="card feature-empty"><EmptyState icon="UsersRound" title={searching ? '검색에 맞는 회원이 없어요' : '아직 추천할 친구가 없어요'} description={searching ? '이름이나 아이디를 다시 확인해 주세요.' : `추천 점수가 ${minimumScore}점 이상인 회원이 생기면 보여 드려요. 내 친구를 인맥과 연결하고 관계·중요도를 설정해 보세요.`} /></div>}
     </section>
   </div>;
 }
