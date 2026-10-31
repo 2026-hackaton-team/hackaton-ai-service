@@ -122,6 +122,16 @@ export default function App() {
     }
   }
 
+  // 옮길 브라우저 기록이 없으면 묻지 않고 빈 서버 공간으로 시작한다.
+  const hasLocalRecords = localPeople.length + localEvents.length + localRecords.length > 0;
+  const autoStarted = useRef('');
+  useEffect(() => {
+    if (!linked || hasLocalRecords || workspace.owner !== workspaceOwner || workspace.status !== 'migration') return;
+    if (autoStarted.current === workspaceOwner) return;
+    autoStarted.current = workspaceOwner;
+    initializeServer({ people: [], events: [], records: [] }).catch(error => notify(error.message || '서버 기록을 시작하지 못했어요.'));
+  }, [linked, hasLocalRecords, workspace.owner, workspace.status, workspaceOwner]);
+
   async function initializeWorkspace(importLocal) {
     try {
       await initializeServer(importLocal
@@ -342,19 +352,14 @@ export default function App() {
     <div className="app-content">
       <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} aria-label="메뉴 열기"><Icon name="Menu" /></button></div><div className="topbar-actions"><span className="today-label"><span />{hasUrgentFuneral ? '조용히 위로를 전할 때예요' : dark ? '차분하게 마음을 살피는 하루예요' : '마음을 챙기기 좋은 하루예요'}</span><div className="theme-control"><button className="theme-toggle" aria-label="화면 분위기 설정" aria-expanded={themeOpen} onClick={() => { setThemeOpen(!themeOpen); setAccountOpen(false); }}><Icon name={dark ? 'Moon' : 'Sun'} size={15} /><span>{themeMode === 'auto' ? '자동 분위기' : dark ? '차분한 분위기' : '따뜻한 분위기'}</span><Icon name="ChevronDown" size={12} /></button>{themeOpen && <><div className="popover-scrim" onClick={() => setThemeOpen(false)} /><div className="theme-popover"><strong>마음에 맞는 분위기</strong>{[{ value: 'auto', name: '상황에 따라 자동', icon: 'Monitor', text: '3일 이내 조사가 있으면 차분하게' }, { value: 'light', name: '따뜻한 마음', icon: 'Sun', text: '한지 아이보리와 쪽빛' }, { value: 'dark', name: '차분한 마음', icon: 'Moon', text: '깊은 먹빛으로 전하는 위로' }].map(item => <button key={item.value} onClick={() => { setThemeMode(item.value); setThemeOpen(false); }}><Icon name={item.icon} size={17} /><span>{item.name}<small>{item.text}</small></span>{themeMode === item.value && <Icon name="Check" size={16} />}</button>)}</div></>}</div><span className="topbar-divider" /><button className="notification-trigger icon-button" aria-label={`알림 ${unreadCount}개`} onClick={() => setNotificationsOpen(true)}><Icon name="Bell" size={20} />{unreadCount > 0 && <span className="notification-dot" />}</button><div className="account-control"><button className="topbar-avatar" aria-label="계정 관리" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); setThemeOpen(false); }}><Icon name="UserRound" size={17} /></button>{accountOpen && <><div className="popover-scrim" onClick={() => setAccountOpen(false)} /><div className="account-popover">{user ? <><strong>{user.name}님</strong><small>@{user.username || user.email}{user.workplace ? ` · ${user.workplace}` : ''}</small><button onClick={() => { setAccountOpen(false); setModal({ type: 'profile' }); }}><Icon name="UserRound" size={16} />정보 수정</button><button onClick={() => { logoutAccount(); setUser(null); setAccountOpen(false); notify('로그아웃했어요.'); }}><Icon name="LogOut" size={16} />로그아웃</button></> : <><strong>나의 마음 기록</strong><button onClick={() => { setAccountOpen(false); setModal({type:'login'}); }}><Icon name="LogIn" size={16} />로그인</button><button onClick={() => { setAccountOpen(false); setModal({type:'signup'}); }}><Icon name="UserPlus" size={16} />회원가입</button></>}</div></>}</div></div></header>
       <main id="main" className={`main-content ${page === 'home' ? 'home-main' : ''}`} key={page}>
-        <section className="card" aria-live="polite" style={{ marginBottom: 12, padding: 12 }}>
-          {!linked
-            ? <p>서버 기록을 사용하려면 로그인하거나 마음결 AI에서 가상 계정을 선택해 주세요. 현재 인맥·장부는 기존 브라우저 백업 보기이며 새 기록은 저장되지 않습니다.</p>
-            : workspace.owner !== workspaceOwner || workspace.status === 'loading'
-              ? <p>서버 인맥·일정·장부를 불러오는 중입니다.</p>
-              : workspace.status === 'migration'
-              ? <><p>현재 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
-                <button className="button button-primary" onClick={() => initializeWorkspace(true)}>기존 브라우저 기록 서버로 이전</button>
-                <button className="button button-secondary" onClick={() => initializeWorkspace(false)}>빈 서버 공간 시작</button></>
-              : workspace.status === 'error'
-                  ? <p role="alert">서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
-                  : <p>서버 작업공간 연결됨 · {sharedInbox.userId ? `가상 계정 ${sharedInbox.userId} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.` : `내 계정 @${user?.username} · 인맥·일정·장부를 서버 SQLite에 저장합니다.`}</p>}
-        </section>
+        {linked && workspace.owner === workspaceOwner && workspace.status === 'migration' && hasLocalRecords && <section className="card" aria-live="polite" style={{ marginBottom: 12, padding: 12 }}>
+          <p>이 브라우저에 예전 기록이 있어요. 서버로 옮기거나 빈 상태로 시작해 주세요. 브라우저 원본은 삭제하지 않습니다.</p>
+          <button className="button button-primary" onClick={() => initializeWorkspace(true)}>기존 브라우저 기록 서버로 이전</button>
+          <button className="button button-secondary" onClick={() => initializeWorkspace(false)}>빈 서버 공간 시작</button>
+        </section>}
+        {linked && workspace.owner === workspaceOwner && workspace.status === 'error' && <section className="card" role="alert" style={{ marginBottom: 12, padding: 12 }}>
+          <p>서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
+        </section>}
         {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} onOpenReceived={() => setModal({ type: 'received' })} receivedCount={newReceivedCount} />}
         {page === 'people' && <PeoplePage key={peopleTab.nonce} initialTab={peopleTab.tab} people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}

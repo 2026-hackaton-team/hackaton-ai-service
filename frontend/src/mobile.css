@@ -1,0 +1,51 @@
+/* 모바일(760px 이하) 글자 크기 하한. 다른 스타일보다 늦게 불러와 덮어쓴다.
+   - 본문·보조 문구 12~13px, 배지·숫자 12px 이상
+   - 입력칸은 16px: iOS Safari가 입력할 때 화면을 확대하지 않게 한다. */
+@media (max-width: 760px) {
+  :root .app main :is(input, select, textarea),
+  :root .app main .ai-chat-header > label .input,
+  :root .app main :is(.schedule-agenda-card, .schedule-agenda-event) select,
+  :root .app .modal :is(input, select, textarea) { font-size: 16px; }
+
+  :root .app main :is(
+    .page-heading p, .pl-page-heading p, .schedule-page-heading p,
+    .ledger-card-heading p, .people-gentle-note p,
+    .ai-assistant-content > p, .home-overview .ai-assistant-content > p
+  ) { font-size: 13px; line-height: 1.7; }
+
+  :root .app main :is(
+    .eyebrow, .schedule-eyebrow, .pl-eyebrow, .schedule-agenda-eyebrow,
+    .badge, .count-badge, .att-pill, .event-date small,
+    .schedule-agenda-date > span, .schedule-agenda-date > small,
+    .schedule-month-title > span, .schedule-type-filter > span, .schedule-day-select > span,
+    .schedule-agenda-heading h2 > span, .ledger-card-heading h2 > span,
+    .people-relation-filters .filter-chip span, .people-person-money strong,
+    .ledger-bar-value, .ledger-bar-label, .ledger-chart-gridlines span,
+    .ledger-donut span, .ledger-donut small,
+    .ledger-table-memo, .ledger-table .badge, .ledger-record-footer span,
+    .ledger-table-person small, .ledger-table-person .avatar, .ledger-period-bar .muted,
+    .ledger-file-management small, .etiquette-sources, .etiquette-sources a,
+    .ai-disclaimer, .home-overview .ai-disclaimer, .home-overview .ai-privacy-note
+  ) { font-size: 12px; }
+
+  :root .app main :is(.ledger-table-person strong, .button) { font-size: 13px; }
+  :root .app :is(.page-footer span, .footer-separator, .sidebar-footer) { font-size: 12px; }
+
+  /* 팝업(일정·인맥·금액 등록, 로그인 등) */
+  :root .app .modal .modal-header p { font-size: 13px; line-height: 1.6; }
+  :root .app .modal :is(.field-hint, .field-hint *) { font-size: 12px; }
+  :root .app .modal .button { font-size: 14px; }
+
+  /* 홈·AI 화면의 AI 카드: 제목이 한 글자씩 세로로 깨지고 '새 대화' 버튼이 화면 밖으로 나가던 문제 */
+  :root .app main .ai-chat-header { flex-wrap: wrap; row-gap: 10px; }
+  :root .app main .ai-chat-brand strong,
+  :root .app main .home-overview .ai-chat-brand strong { font-size: 14px; white-space: nowrap; }
+  :root .app main .ai-chat-header > label { flex: 1 1 100%; min-width: 0; }
+  :root .app main .ai-chat-header > label .input { width: 100%; max-width: none; }
+  :root .app main :is(.home-overview .ai-composer > input, .ai-composer > input) { font-size: 16px; }
+  :root .app main .home-overview .ai-suggestion-chips > button { font-size: 12px; padding: 6px 10px; }
+  :root .app main .home-overview :is(.event-title) { font-size: 15px; }
+  :root .app main .home-overview :is(.event-meta, .event-relationship) { font-size: 12px; }
+  :root .app main .home-overview .d-day { font-size: 12px; }
+  :root .app main .home-overview .ai-service-option strong { font-size: 12px; }
+}
