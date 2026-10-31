@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>마음 잇기 · 경조사 AI 가상 시연</title>
+  <style>
+    :root { color-scheme: light; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: #21322a; background: #f3f5f0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 22px max(24px, calc((100vw - 1260px)/2)); background: #193a2e; color: #fff; }
+    header h1 { margin: 4px 0; font-size: 25px; letter-spacing: -0.04em; }
+    header p { margin: 0; font-size: 13px; color: #c4d9ce; }
+    main { max-width: 1260px; margin: 24px auto; padding: 0 24px; display: grid; grid-template-columns: 330px minmax(0,1fr); gap: 20px; }
+    .panel { background: #fff; border: 1px solid #e1e8df; border-radius: 16px; box-shadow: 0 7px 24px #254e3610; }
+    aside { padding: 22px; align-self: start; }
+    h2 { margin: 0 0 14px; font-size: 17px; }
+    h3 { margin: 22px 0 10px; font-size: 15px; }
+    label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
+    select, textarea { width: 100%; border: 1px solid #cedbd1; border-radius: 9px; padding: 10px 12px; color: #21322a; background: #fff; font: inherit; }
+    select:focus, textarea:focus { outline: 2px solid #79aa8f; border-color: transparent; }
+    .note { margin: 12px 0 0; color: #63756b; font-size: 12px; line-height: 1.6; }
+    .summary { display: flex; justify-content: space-between; gap: 8px; padding: 12px; background: #f2f6f2; border-radius: 10px; font-size: 13px; }
+    .notices { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
+    .notice { width: 100%; text-align: left; padding: 12px; border: 1px solid #e0e9e1; border-radius: 10px; background: #fff; cursor: pointer; color: inherit; }
+    .notice:hover, .notice.selected { border-color: #558c6c; background: #f3f8f3; }
+    .notice strong, .notice span { display: block; }
+    .notice span { margin-top: 5px; color: #627569; font-size: 12px; line-height: 1.5; }
+    .conversation { min-height: 630px; display: flex; flex-direction: column; overflow: hidden; }
+    .conversation-head { padding: 20px 22px; border-bottom: 1px solid #edf1ec; }
+    .conversation-head h2 { margin-bottom: 5px; }
+    .conversation-head p { margin: 0; color: #66786d; font-size: 13px; }
+    #selected-notice { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #f2f6f2; color: #2c7450; font-size: 13px; line-height: 1.55; }
+    #selected-notice strong { display: block; margin-bottom: 3px; }
+    .messages { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 14px; min-height: 420px; max-height: 660px; overflow-y: auto; }
+    .message { max-width: 86%; padding: 13px 15px; border-radius: 13px; line-height: 1.65; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .message.user { align-self: flex-end; background: #dceee1; }
+    .message.assistant { align-self: flex-start; background: #f2f5f1; }
+    .message.error { background: #fff0ed; color: #8b4034; }
+    .meta { margin-top: 8px; color: #6b7e72; font-size: 11px; }
+    .evidence { margin-top: 10px; padding-top: 8px; border-top: 1px solid #dce6dc; color: #4e6556; font-size: 12px; }
+    .evidence p { margin: 3px 0; }
+    .options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .choice { border: 1px solid #b7d1bd; background: #fff; color: #285c3c; border-radius: 8px; padding: 7px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+    form { padding: 18px 22px; border-top: 1px solid #edf1ec; display: flex; gap: 10px; align-items: end; }
+    textarea { resize: vertical; min-height: 48px; max-height: 140px; }
+    .send { border: 0; border-radius: 9px; background: #286647; color: #fff; font: inherit; font-weight: 700; padding: 13px 20px; cursor: pointer; white-space: nowrap; }
+    .send:disabled { opacity: .5; cursor: wait; }
+    @media (max-width: 760px) { main { grid-template-columns: 1fr; padding: 0 14px; margin: 14px auto; } aside { padding: 16px; } .conversation { min-height: 530px; } .messages { min-height: 340px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <p>마음을 전하는 기준을 함께 살펴봅니다</p>
+    <h1>마음 잇기 AI</h1>
+    <p>모든 인물과 기록은 허구인 로컬 시제품입니다 · 시연 기준일 2026.10.30</p>
+  </header>
+  <main>
+    <aside class="panel">
+      <h2>가상 계정</h2>
+      <label for="user-select">시연할 사람을 선택해 주세요</label>
+      <select id="user-select"></select>
+      <p class="note">계정 전환은 시연 기능이며 실제 로그인이나 인증이 아닙니다.</p>
+      <h3>내 기록</h3>
+      <div id="summary" class="summary">불러오는 중입니다.</div>
+      <h3>확인할 부고</h3>
+      <div id="notices" class="notices"></div>
+      <p class="note">공유·참석이 허용된 소식만 표시합니다. 상주와 지인이 같은 사람인지는 직접 확인해 주세요.</p>
+    </aside>
+    <section class="panel conversation">
+      <div class="conversation-head">
+        <h2>내 기록을 바탕으로 물어보세요</h2>
+        <p>경조사 이력, 금액, 참석과 인사말을 자연어로 질문할 수 있습니다.</p>
+        <div id="selected-notice">선택한 부고가 없습니다.</div>
+      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="chat-form">
+        <textarea id="question" rows="2" maxlength="2000" placeholder="예: 해든기획팀 김도윤과 주고받은 기록을 알려줘" aria-label="질문"></textarea>
+        <button id="send" class="send" type="submit">질문하기</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    const state = { userId: null, context: {}, history: [], notices: [], epoch: 0, busy: false };
+    const userSelect = document.getElementById('user-select');
+    const noticesBox = document.getElementById('notices');
+    const summary = document.getElementById('summary');
+    const messages = document.getElementById('messages');
+    const question = document.getElementById('question');
+    const sendButton = document.getElementById('send');
+    const selectedNotice = document.getElementById('selected-notice');
+
+    function node(tag, text, className) {
+      const item = document.createElement(tag);
+      if (text !== undefined) item.textContent = text;
+      if (className) item.className = className;
+      return item;
+    }
+
+    async function readJson(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) throw new Error('서버 응답을 확인할 수 없습니다.');
+      return response.json();
+    }
+
+    function appendMessage(role, text, result) {
+      const box = node('div', undefined, `message ${role}`);
+      box.appendChild(node('div', text));
+      if (result && (result.classification_model || result.model)) {
+        const label = `질문 분류: ${result.classification_model || '없음'} · 답변: ${result.model || '추가 확인'}`;
+        box.appendChild(node('div', label, 'meta'));
+      }
+      if (result && result.evidence && result.evidence.length) {
+        const evidence = node('div', undefined, 'evidence');
+        evidence.appendChild(node('strong', '확인한 근거'));
+        result.evidence.forEach(item => evidence.appendChild(node('p', `${item.id} · ${item.kind} · ${item.text}`)));
+        box.appendChild(evidence);
+      }
+      if (result && result.pending_field === 'person_id') {
+        const options = node('div', undefined, 'options');
+        (result.options || []).forEach(person => {
+          const match = person.affiliation_match === true ? ' · 상주 소속 일치' : person.affiliation_match === false ? ' · 상주 소속 다름' : '';
+          const button = node('button', `${person.name} · ${person.relationship} · ${person.affiliation}${match}`, 'choice');
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            if (state.context.person_id !== person.id) delete state.context.person_confirmed;
+            state.context.person_id = person.id;
+            sendQuestion(`${person.affiliation} ${person.relationship} ${person.name}입니다.`);
+          });
+          options.appendChild(button);
+        });
+        if (result.allow_unknown) {
+          [['모르겠어요', '모르겠어요'], ['해당 지인이 없어요', '해당 지인이 없어요']].forEach(([reply, label]) => {
+            const button = node('button', label, 'choice');
+            button.type = 'button';
+            button.addEventListener('click', () => sendQuestion(reply));
+            options.appendChild(button);
+          });
+        }
+        box.appendChild(options);
+      }
+      if (result && result.pending_field === 'notice_id' && result.options && result.options.length) {
+        const options = node('div', undefined, 'options');
+        result.options.forEach(notice => {
+          const button = node('button', `${notice.title} · ${notice.region} (${notice.id})`, 'choice');
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            state.context.notice_id = notice.id;
+            const selected = state.notices.find(item => item.notice.id === notice.id);
+            if (selected) renderSelectedNotice(selected);
+            renderNotices();
+            sendQuestion(`${notice.title} ${notice.id} 소식을 확인해 주세요.`);
+          });
+          options.appendChild(button);
+        });
+        box.appendChild(options);
+      }
+      if (result && result.pending_field === 'budget_clarification') {
+        const options = node('div', undefined, 'options');
+        (result.options || []).forEach(option => {
+          const button = node('button', option.label, 'choice');
+          button.type = 'button';
+          button.addEventListener('click', () => sendQuestion(option.reply));
+          options.appendChild(button);
+        });
+        box.appendChild(options);
+      }
+      if (result && result.pending_field === 'person_confirmed') {
+        const options = node('div', undefined, 'options');
+        const choices = [['네, 같은 사람입니다.', '같은 사람이에요'], ['아니요, 다른 사람입니다.', '다른 사람이에요']];
+        if (result.allow_unknown) choices.push(['모르겠어요', '모르겠어요']);
+        choices.forEach(([reply, label]) => {
+          const button = node('button', label, 'choice');
+          button.type = 'button';
+          button.addEventListener('click', () => sendQuestion(reply));
+          options.appendChild(button);
+        });
+        box.appendChild(options);
+      }
+      if (result && result.requires_identity_confirmation && result.identity_candidates && result.identity_candidates.length) {
+        const options = node('div', undefined, 'options');
+        result.identity_candidates.forEach(person => {
+          const match = person.affiliation_match === true ? '소속 일치' : person.affiliation_match === false ? '소속 다름' : '상주 소속 미기록';
+          const button = node('button', `상주 확인: ${person.name} · ${person.relationship} · ${person.affiliation} · ${match}`, 'choice');
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            const warning = person.affiliation_match === false ? '부고의 상주 소속과 다릅니다. ' : '';
+            const confirmed = window.confirm(`${warning}${person.affiliation} ${person.name} 님이 선택한 부고의 상주와 같은 사람인가요?`);
+            if (!confirmed) return;
+            state.context.person_id = person.id;
+            state.context.person_confirmed = true;
+            appendMessage('assistant', `${person.name} 님이 상주와 같은 사람이라고 직접 확인했습니다. 이제 관련 이력을 질문할 수 있습니다.`);
+          });
+          options.appendChild(button);
+        });
+        box.appendChild(options);
+      }
+      messages.appendChild(box);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function renderSelectedNotice(item) {
+      const notice = item.notice;
+      const mourner = notice.mourner || {};
+      const relation = item.relation_type === 'direct_friend' ? '직접 친구' : '친구의 친구';
+      selectedNotice.replaceChildren();
+      selectedNotice.appendChild(node('strong', `선택한 부고: ${notice.title} (${notice.id})`));
+      [
+        `상주: ${mourner.name || '미기록'} · 소속: ${mourner.affiliation || '미기록'} · 고인과의 관계: ${mourner.deceased_relation || '미기록'}`,
+        `공유자: ${item.publisher_name || '이름 공개 미확인'} · 공유자와의 관계: ${relation} · 공통 친구 ${item.mutual_count}명`,
+        `기간: ${notice.start_date}~${notice.end_date} · 지역: ${notice.region || '미기록'}`,
+        `장소: ${notice.venue || '미기록'} · 주소: ${notice.address || '미기록'} · 빈소: ${notice.room || '미기록'}`,
+        `조문 시간: ${notice.visiting_hours || '미기록'}`,
+        `추천 점수 ${item.score}점은 관계·지역·종류·날짜를 합산한 값입니다.`,
+      ].forEach(line => selectedNotice.appendChild(node('div', line)));
+    }
+
+    function renderNotices() {
+      noticesBox.replaceChildren();
+      if (!state.notices.length) {
+        noticesBox.appendChild(node('p', '현재 추천할 수 있는 부고가 없습니다.', 'note'));
+        return;
+      }
+      state.notices.forEach(item => {
+        const notice = item.notice;
+        const button = node('button', undefined, `notice${state.context.notice_id === notice.id ? ' selected' : ''}`);
+        button.type = 'button';
+        const relation = item.relation_type === 'direct_friend' ? '직접 친구' : '친구의 친구';
+        button.appendChild(node('strong', `${notice.title} · ${notice.id}`));
+        button.appendChild(node('span', `${notice.start_date}~${notice.end_date} · ${notice.region}`));
+        button.appendChild(node('span', `상주 ${notice.mourner?.name || '미기록'} · 소속 ${notice.mourner?.affiliation || '미기록'}`));
+        button.appendChild(node('span', `공유자와의 관계: ${relation} · 공통 친구 ${item.mutual_count}명 · 추천 ${item.score}점`));
+        button.addEventListener('click', () => {
+          state.epoch += 1;
+          state.context = { notice_id: notice.id };
+          state.history = [];
+          state.busy = false;
+          sendButton.disabled = false;
+          renderSelectedNotice(item);
+          renderNotices();
+          question.focus();
+        });
+        noticesBox.appendChild(button);
+      });
+    }
+
+    async function changeUser() {
+      state.epoch += 1;
+      const epoch = state.epoch;
+      state.userId = userSelect.value;
+      state.context = {};
+      state.history = [];
+      state.busy = false;
+      sendButton.disabled = false;
+      messages.replaceChildren();
+      selectedNotice.textContent = '선택한 부고가 없습니다.';
+      appendMessage('assistant', '안녕하세요. 기록과 공유된 부고를 바탕으로 함께 살펴볼게요. 궁금한 내용을 자유롭게 입력해 주세요.');
+      try {
+        const [list, totals] = await Promise.all([
+          readJson(`/api/users/${encodeURIComponent(state.userId)}/notices`),
+          readJson(`/api/users/${encodeURIComponent(state.userId)}/dashboard`),
+        ]);
+        if (epoch !== state.epoch) return;
+        state.notices = list.notices;
+        summary.textContent = `받음 ${totals.received_total_krw.toLocaleString()}원 · 냄 ${totals.paid_total_krw.toLocaleString()}원`;
+        renderNotices();
+      } catch (error) {
+        if (epoch === state.epoch) appendMessage('error', '가상 기록을 불러오지 못했습니다.');
+      }
+    }
+
+    async function sendQuestion(text) {
+      const value = text.trim();
+      if (!value || !state.userId || state.busy) return;
+      const epoch = state.epoch;
+      const previousHistory = state.history.slice(-4);
+      appendMessage('user', value);
+      question.value = '';
+      state.busy = true;
+      sendButton.disabled = true;
+      try {
+        const result = await readJson('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: state.userId, question: value, context: state.context, history: previousHistory }),
+        });
+        if (epoch !== state.epoch) return;
+        if (result.context) state.context = result.context;
+        appendMessage(result.status === 'error' ? 'error' : 'assistant', result.message, result);
+        state.history.push({ role: 'user', content: value }, { role: 'assistant', content: result.message });
+      } catch (error) {
+        if (epoch === state.epoch) appendMessage('error', '요청을 처리하지 못했습니다. 서버 상태를 확인해 주세요.');
+      } finally {
+        if (epoch === state.epoch) { state.busy = false; sendButton.disabled = false; }
+      }
+    }
+
+    document.getElementById('chat-form').addEventListener('submit', event => { event.preventDefault(); sendQuestion(question.value); });
+    question.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendQuestion(question.value); } });
+    userSelect.addEventListener('change', changeUser);
+    readJson('/api/users').then(data => {
+      data.users.forEach(user => {
+        const option = node('option', `${user.name} · ${user.affiliation} (${user.id})`);
+        option.value = user.id;
+        userSelect.appendChild(option);
+      });
+      return changeUser();
+    }).catch(() => appendMessage('error', '가상 계정을 불러오지 못했습니다.'));
+  </script>
+</body>
+</html>

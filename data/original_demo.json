@@ -1,0 +1,2074 @@
+{
+  "metadata": {
+    "dataset_name": "경조사 AI 서비스 가상 시연 데이터",
+    "version": "1.0",
+    "reference_date": "2026-10-30",
+    "timezone": "Asia/Seoul",
+    "synthetic_data_notice": "모든 사람, 소속, 관계, 행사, 부고, 금액 및 사례는 테스트를 위한 허구다.",
+    "usage": "시연과 기능 검증에 사용하며 실제 사람들의 경조사 관습이나 적정 금액을 대표하지 않는다.",
+    "demo_accounts": "데모 계정의 아이디는 데이터 연결을 위한 예시이며 비밀번호와 실제 인증 기능은 포함하지 않는다.",
+    "recommendation_priority": [
+      "공통 친구 수",
+      "설정 지역과의 일치",
+      "관심 행사 종류",
+      "행사 날짜"
+    ],
+    "recommendation_weights": null,
+    "recommendation_policy": "수락되고 추천 활용이 허용된 관계로 연결된 친구의 친구를 기준으로 하며 공개, 참석 허용, 공유 허용과 행사 상태를 함께 확인한다.",
+    "identity_policy": "상주 이름이나 소속이 일치해도 사람을 확정하지 않고 사용자가 확인한다.",
+    "financial_policy": "거래가 없으면 금액 미기록이며, 0원 거래가 명시된 경우와 구별한다. 거래 건수에는 명시적 0원도 포함한다.",
+    "attendance_policy": "개인 참석 계획과 실제 참석 여부를 구분하며 개인 선택은 등록자에게 전달하지 않는다.",
+    "api_key_included": false,
+    "access_policy": "이 파일에는 여러 가상 계정의 개인 이력과 비공개 소식이 함께 있으므로 서버 측 시드와 검증에 사용한다. 실제 서비스에서는 계정별 소유권과 공유 조건을 검사한 결과만 사용자와 AI에 제공해야 한다."
+  },
+  "event_categories": [
+    "결혼",
+    "장례",
+    "백일",
+    "돌",
+    "생일",
+    "환갑",
+    "칠순",
+    "팔순"
+  ],
+  "users": [
+    {
+      "id": "U001",
+      "name": "윤서진",
+      "login_id": "demo_seojin",
+      "demo_account": true,
+      "fictional_affiliation": "해든기획팀",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "결혼",
+        "장례"
+      ]
+    },
+    {
+      "id": "U002",
+      "name": "김도윤",
+      "login_id": "demo_doyoon",
+      "demo_account": true,
+      "fictional_affiliation": "해든기획팀",
+      "preferred_region": "서울",
+      "preferred_event_types": [
+        "장례",
+        "돌"
+      ]
+    },
+    {
+      "id": "U003",
+      "name": "이수빈",
+      "login_id": "demo_subin",
+      "demo_account": true,
+      "fictional_affiliation": "해든기획팀",
+      "preferred_region": "인천",
+      "preferred_event_types": [
+        "결혼",
+        "백일"
+      ]
+    },
+    {
+      "id": "U004",
+      "name": "박하은",
+      "login_id": "demo_haeun",
+      "demo_account": true,
+      "fictional_affiliation": "달빛음악모임",
+      "preferred_region": "부산",
+      "preferred_event_types": null
+    },
+    {
+      "id": "U005",
+      "name": "김도윤",
+      "login_id": "fiction_doyoon",
+      "demo_account": false,
+      "fictional_affiliation": "솔빛독서모임",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U006",
+      "name": "정유림",
+      "login_id": "fiction_yurim",
+      "demo_account": false,
+      "fictional_affiliation": "나래디자인실",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U007",
+      "name": "이주원",
+      "login_id": "fiction_juwon",
+      "demo_account": false,
+      "fictional_affiliation": "둥근숲연구회",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U008",
+      "name": "한지우",
+      "login_id": "fiction_jiwoo",
+      "demo_account": false,
+      "fictional_affiliation": "작은물결모임",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U009",
+      "name": "최다인",
+      "login_id": "fiction_dain",
+      "demo_account": false,
+      "fictional_affiliation": "파란구름산책모임",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U010",
+      "name": "장윤서",
+      "login_id": "fiction_yoonseo",
+      "demo_account": false,
+      "fictional_affiliation": "하늘숲기획팀",
+      "preferred_region": null,
+      "preferred_event_types": null
+    },
+    {
+      "id": "U011",
+      "name": "오가은",
+      "login_id": "fiction_gaeun",
+      "demo_account": false,
+      "fictional_affiliation": "좋은하루모임",
+      "preferred_region": null,
+      "preferred_event_types": null
+    }
+  ],
+  "friendships": [
+    {
+      "id": "F001",
+      "user_a_id": "U001",
+      "user_b_id": "U002",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F002",
+      "user_a_id": "U001",
+      "user_b_id": "U005",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F003",
+      "user_a_id": "U001",
+      "user_b_id": "U006",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F004",
+      "user_a_id": "U001",
+      "user_b_id": "U007",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F005",
+      "user_a_id": "U001",
+      "user_b_id": "U008",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F006",
+      "user_a_id": "U001",
+      "user_b_id": "U009",
+      "status": "accepted",
+      "allow_connection_for_recommendation": false
+    },
+    {
+      "id": "F007",
+      "user_a_id": "U002",
+      "user_b_id": "U003",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F008",
+      "user_a_id": "U002",
+      "user_b_id": "U005",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F009",
+      "user_a_id": "U002",
+      "user_b_id": "U006",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F010",
+      "user_a_id": "U002",
+      "user_b_id": "U007",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F011",
+      "user_a_id": "U002",
+      "user_b_id": "U010",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F012",
+      "user_a_id": "U003",
+      "user_b_id": "U005",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F013",
+      "user_a_id": "U003",
+      "user_b_id": "U008",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F014",
+      "user_a_id": "U003",
+      "user_b_id": "U009",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F015",
+      "user_a_id": "U003",
+      "user_b_id": "U010",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F016",
+      "user_a_id": "U003",
+      "user_b_id": "U011",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F017",
+      "user_a_id": "U004",
+      "user_b_id": "U005",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F018",
+      "user_a_id": "U004",
+      "user_b_id": "U006",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F019",
+      "user_a_id": "U004",
+      "user_b_id": "U007",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F020",
+      "user_a_id": "U004",
+      "user_b_id": "U008",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F021",
+      "user_a_id": "U004",
+      "user_b_id": "U009",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F022",
+      "user_a_id": "U004",
+      "user_b_id": "U010",
+      "status": "accepted",
+      "allow_connection_for_recommendation": true
+    },
+    {
+      "id": "F023",
+      "user_a_id": "U001",
+      "user_b_id": "U011",
+      "status": "pending",
+      "allow_connection_for_recommendation": false
+    }
+  ],
+  "people": [
+    {
+      "id": "P001",
+      "owner_user_id": "U001",
+      "linked_user_id": "U002",
+      "name": "김도윤",
+      "relationship": "직장 동료",
+      "fictional_affiliation": "해든기획팀"
+    },
+    {
+      "id": "P002",
+      "owner_user_id": "U001",
+      "linked_user_id": "U005",
+      "name": "김도윤",
+      "relationship": "독서 모임 지인",
+      "fictional_affiliation": "솔빛독서모임"
+    },
+    {
+      "id": "P003",
+      "owner_user_id": "U001",
+      "linked_user_id": "U006",
+      "name": "정유림",
+      "relationship": "지인",
+      "fictional_affiliation": "나래디자인실"
+    },
+    {
+      "id": "P004",
+      "owner_user_id": "U001",
+      "linked_user_id": "U007",
+      "name": "이주원",
+      "relationship": "지인",
+      "fictional_affiliation": "둥근숲연구회"
+    },
+    {
+      "id": "P005",
+      "owner_user_id": "U001",
+      "linked_user_id": "U008",
+      "name": "한지우",
+      "relationship": "지인",
+      "fictional_affiliation": "작은물결모임"
+    },
+    {
+      "id": "P006",
+      "owner_user_id": "U001",
+      "linked_user_id": "U009",
+      "name": "최다인",
+      "relationship": "지인",
+      "fictional_affiliation": "파란구름산책모임"
+    },
+    {
+      "id": "P007",
+      "owner_user_id": "U002",
+      "linked_user_id": "U001",
+      "name": "윤서진",
+      "relationship": "직장 동료",
+      "fictional_affiliation": "해든기획팀"
+    },
+    {
+      "id": "P008",
+      "owner_user_id": "U002",
+      "linked_user_id": "U003",
+      "name": "이수빈",
+      "relationship": "직장 동료",
+      "fictional_affiliation": "해든기획팀"
+    },
+    {
+      "id": "P009",
+      "owner_user_id": "U002",
+      "linked_user_id": "U005",
+      "name": "김도윤",
+      "relationship": "지인",
+      "fictional_affiliation": "솔빛독서모임"
+    },
+    {
+      "id": "P010",
+      "owner_user_id": "U002",
+      "linked_user_id": "U006",
+      "name": "정유림",
+      "relationship": "지인",
+      "fictional_affiliation": "나래디자인실"
+    },
+    {
+      "id": "P011",
+      "owner_user_id": "U002",
+      "linked_user_id": "U007",
+      "name": "이주원",
+      "relationship": "지인",
+      "fictional_affiliation": "둥근숲연구회"
+    },
+    {
+      "id": "P012",
+      "owner_user_id": "U002",
+      "linked_user_id": "U010",
+      "name": "장윤서",
+      "relationship": "지인",
+      "fictional_affiliation": "하늘숲기획팀"
+    },
+    {
+      "id": "P013",
+      "owner_user_id": "U003",
+      "linked_user_id": "U002",
+      "name": "김도윤",
+      "relationship": "직장 동료",
+      "fictional_affiliation": "해든기획팀"
+    },
+    {
+      "id": "P014",
+      "owner_user_id": "U003",
+      "linked_user_id": "U005",
+      "name": "김도윤",
+      "relationship": "지인",
+      "fictional_affiliation": "솔빛독서모임"
+    },
+    {
+      "id": "P015",
+      "owner_user_id": "U003",
+      "linked_user_id": "U008",
+      "name": "한지우",
+      "relationship": "지인",
+      "fictional_affiliation": "작은물결모임"
+    },
+    {
+      "id": "P016",
+      "owner_user_id": "U003",
+      "linked_user_id": "U009",
+      "name": "최다인",
+      "relationship": "지인",
+      "fictional_affiliation": "파란구름산책모임"
+    },
+    {
+      "id": "P017",
+      "owner_user_id": "U003",
+      "linked_user_id": "U010",
+      "name": "장윤서",
+      "relationship": "지인",
+      "fictional_affiliation": "하늘숲기획팀"
+    },
+    {
+      "id": "P018",
+      "owner_user_id": "U003",
+      "linked_user_id": "U011",
+      "name": "오가은",
+      "relationship": "지인",
+      "fictional_affiliation": "좋은하루모임"
+    },
+    {
+      "id": "P019",
+      "owner_user_id": "U004",
+      "linked_user_id": "U005",
+      "name": "김도윤",
+      "relationship": "취미 모임 지인",
+      "fictional_affiliation": "솔빛독서모임"
+    },
+    {
+      "id": "P020",
+      "owner_user_id": "U004",
+      "linked_user_id": "U006",
+      "name": "정유림",
+      "relationship": "지인",
+      "fictional_affiliation": "나래디자인실"
+    },
+    {
+      "id": "P021",
+      "owner_user_id": "U004",
+      "linked_user_id": "U007",
+      "name": "이주원",
+      "relationship": "지인",
+      "fictional_affiliation": "둥근숲연구회"
+    },
+    {
+      "id": "P022",
+      "owner_user_id": "U004",
+      "linked_user_id": "U008",
+      "name": "한지우",
+      "relationship": "지인",
+      "fictional_affiliation": "작은물결모임"
+    },
+    {
+      "id": "P023",
+      "owner_user_id": "U004",
+      "linked_user_id": "U009",
+      "name": "최다인",
+      "relationship": "지인",
+      "fictional_affiliation": "파란구름산책모임"
+    },
+    {
+      "id": "P024",
+      "owner_user_id": "U004",
+      "linked_user_id": "U010",
+      "name": "장윤서",
+      "relationship": "지인",
+      "fictional_affiliation": "하늘숲기획팀"
+    }
+  ],
+  "private_events": [
+    {
+      "id": "E001",
+      "owner_user_id": "U001",
+      "contact_person_id": "P001",
+      "category": "결혼",
+      "title": "본인 결혼 행사",
+      "subject_relation": "본인",
+      "start_date": "2024-05-18",
+      "end_date": "2024-05-18",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O001"
+    },
+    {
+      "id": "E002",
+      "owner_user_id": "U001",
+      "contact_person_id": "P001",
+      "category": "칠순",
+      "title": "지인 가족 칠순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-04-12",
+      "end_date": "2025-04-12",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O002"
+    },
+    {
+      "id": "E003",
+      "owner_user_id": "U001",
+      "contact_person_id": "P002",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2023-05-20",
+      "end_date": "2023-05-20",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O006"
+    },
+    {
+      "id": "E004",
+      "owner_user_id": "U001",
+      "contact_person_id": "P003",
+      "category": "장례",
+      "title": "지인 가족 장례 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-12-01",
+      "end_date": "2024-12-03",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E005",
+      "owner_user_id": "U001",
+      "contact_person_id": "P004",
+      "category": "백일",
+      "title": "지인 가족 백일 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-07-06",
+      "end_date": "2025-07-06",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E006",
+      "owner_user_id": "U001",
+      "contact_person_id": "P005",
+      "category": "돌",
+      "title": "지인 가족 돌 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-09-14",
+      "end_date": "2025-09-14",
+      "region": "경기",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E007",
+      "owner_user_id": "U001",
+      "contact_person_id": "P006",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-01-12",
+      "end_date": "2026-01-12",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E008",
+      "owner_user_id": "U001",
+      "contact_person_id": "P003",
+      "category": "환갑",
+      "title": "지인 가족 환갑 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2026-03-22",
+      "end_date": "2026-03-22",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E009",
+      "owner_user_id": "U001",
+      "contact_person_id": "P004",
+      "category": "팔순",
+      "title": "지인 가족 팔순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2026-06-14",
+      "end_date": "2026-06-14",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E010",
+      "owner_user_id": "U001",
+      "contact_person_id": "P002",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-11-24",
+      "end_date": "2026-11-24",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": "considering",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E011",
+      "owner_user_id": "U002",
+      "contact_person_id": "P007",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2024-05-18",
+      "end_date": "2024-05-18",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O001"
+    },
+    {
+      "id": "E012",
+      "owner_user_id": "U002",
+      "contact_person_id": "P007",
+      "category": "칠순",
+      "title": "본인 가족 칠순 행사",
+      "subject_relation": "본인 가족",
+      "start_date": "2025-04-12",
+      "end_date": "2025-04-12",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O002"
+    },
+    {
+      "id": "E013",
+      "owner_user_id": "U002",
+      "contact_person_id": "P008",
+      "category": "장례",
+      "title": "지인 가족 장례 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-02-12",
+      "end_date": "2024-02-14",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E014",
+      "owner_user_id": "U002",
+      "contact_person_id": "P009",
+      "category": "백일",
+      "title": "지인 가족 백일 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-01-18",
+      "end_date": "2025-01-18",
+      "region": "경기",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E015",
+      "owner_user_id": "U002",
+      "contact_person_id": "P010",
+      "category": "돌",
+      "title": "지인 가족 돌 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-03-15",
+      "end_date": "2025-03-15",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E016",
+      "owner_user_id": "U002",
+      "contact_person_id": "P011",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2025-06-10",
+      "end_date": "2025-06-10",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E017",
+      "owner_user_id": "U002",
+      "contact_person_id": "P012",
+      "category": "환갑",
+      "title": "지인 가족 환갑 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-11-22",
+      "end_date": "2025-11-22",
+      "region": "부산",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E018",
+      "owner_user_id": "U002",
+      "contact_person_id": "P009",
+      "category": "팔순",
+      "title": "지인 가족 팔순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2026-02-21",
+      "end_date": "2026-02-21",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E019",
+      "owner_user_id": "U002",
+      "contact_person_id": "P010",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2023-04-15",
+      "end_date": "2023-04-15",
+      "region": "부산",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O008"
+    },
+    {
+      "id": "E020",
+      "owner_user_id": "U002",
+      "contact_person_id": "P008",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-11-18",
+      "end_date": "2026-11-18",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": "undecided",
+      "shared_occurrence_id": "O005"
+    },
+    {
+      "id": "E021",
+      "owner_user_id": "U003",
+      "contact_person_id": "P013",
+      "category": "장례",
+      "title": "지인 가족 장례 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2023-11-21",
+      "end_date": "2023-11-23",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E022",
+      "owner_user_id": "U003",
+      "contact_person_id": "P014",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2023-05-20",
+      "end_date": "2023-05-20",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O006"
+    },
+    {
+      "id": "E023",
+      "owner_user_id": "U003",
+      "contact_person_id": "P015",
+      "category": "백일",
+      "title": "지인 가족 백일 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-06-10",
+      "end_date": "2024-06-10",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E024",
+      "owner_user_id": "U003",
+      "contact_person_id": "P016",
+      "category": "돌",
+      "title": "지인 가족 돌 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-07-20",
+      "end_date": "2024-07-20",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E025",
+      "owner_user_id": "U003",
+      "contact_person_id": "P017",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2024-11-11",
+      "end_date": "2024-11-11",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O003"
+    },
+    {
+      "id": "E026",
+      "owner_user_id": "U003",
+      "contact_person_id": "P018",
+      "category": "환갑",
+      "title": "지인 가족 환갑 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-02-15",
+      "end_date": "2025-02-15",
+      "region": "경기",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E027",
+      "owner_user_id": "U003",
+      "contact_person_id": "P014",
+      "category": "칠순",
+      "title": "지인 가족 칠순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-08-30",
+      "end_date": "2025-08-30",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E028",
+      "owner_user_id": "U003",
+      "contact_person_id": "P015",
+      "category": "팔순",
+      "title": "지인 가족 팔순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-11-12",
+      "end_date": "2025-11-12",
+      "region": "인천",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E029",
+      "owner_user_id": "U003",
+      "contact_person_id": "P016",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-01",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O007"
+    },
+    {
+      "id": "E030",
+      "owner_user_id": "U003",
+      "contact_person_id": "P017",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-11-11",
+      "end_date": "2026-11-11",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": "undecided",
+      "shared_occurrence_id": "O004"
+    },
+    {
+      "id": "E031",
+      "owner_user_id": "U004",
+      "contact_person_id": "P020",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2023-04-15",
+      "end_date": "2023-04-15",
+      "region": "부산",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O008"
+    },
+    {
+      "id": "E032",
+      "owner_user_id": "U004",
+      "contact_person_id": "P021",
+      "category": "장례",
+      "title": "지인 가족 장례 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2023-10-10",
+      "end_date": "2023-10-12",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E033",
+      "owner_user_id": "U004",
+      "contact_person_id": "P022",
+      "category": "백일",
+      "title": "지인 가족 백일 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-05-05",
+      "end_date": "2024-05-05",
+      "region": "경기",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E034",
+      "owner_user_id": "U004",
+      "contact_person_id": "P023",
+      "category": "돌",
+      "title": "지인 가족 돌 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2024-09-07",
+      "end_date": "2024-09-07",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E035",
+      "owner_user_id": "U004",
+      "contact_person_id": "P024",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2024-11-11",
+      "end_date": "2024-11-11",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O003"
+    },
+    {
+      "id": "E036",
+      "owner_user_id": "U004",
+      "contact_person_id": "P020",
+      "category": "환갑",
+      "title": "지인 가족 환갑 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-03-29",
+      "end_date": "2025-03-29",
+      "region": "부산",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E037",
+      "owner_user_id": "U004",
+      "contact_person_id": "P021",
+      "category": "칠순",
+      "title": "지인 가족 칠순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-08-16",
+      "end_date": "2025-08-16",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E038",
+      "owner_user_id": "U004",
+      "contact_person_id": "P022",
+      "category": "팔순",
+      "title": "지인 가족 팔순 행사",
+      "subject_relation": "지인 가족",
+      "start_date": "2025-12-20",
+      "end_date": "2025-12-20",
+      "region": "경기",
+      "status": "finished",
+      "actual_attendance": "not_attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "E039",
+      "owner_user_id": "U004",
+      "contact_person_id": "P023",
+      "category": "결혼",
+      "title": "지인 결혼 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-01",
+      "region": "서울",
+      "status": "finished",
+      "actual_attendance": "attended",
+      "personal_attendance_plan": null,
+      "shared_occurrence_id": "O007"
+    },
+    {
+      "id": "E040",
+      "owner_user_id": "U004",
+      "contact_person_id": "P024",
+      "category": "생일",
+      "title": "지인 생일 행사",
+      "subject_relation": "지인",
+      "start_date": "2026-11-11",
+      "end_date": "2026-11-11",
+      "region": "서울",
+      "status": "scheduled",
+      "actual_attendance": "unknown",
+      "personal_attendance_plan": "undecided",
+      "shared_occurrence_id": "O004"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "T001",
+      "owner_user_id": "U001",
+      "private_event_id": "E001",
+      "contact_person_id": "P001",
+      "direction": "received",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T002",
+      "owner_user_id": "U001",
+      "private_event_id": "E002",
+      "contact_person_id": "P001",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T003",
+      "owner_user_id": "U001",
+      "private_event_id": "E003",
+      "contact_person_id": "P002",
+      "direction": "paid",
+      "amount_krw": 70000,
+      "note": null
+    },
+    {
+      "id": "T004",
+      "owner_user_id": "U001",
+      "private_event_id": "E004",
+      "contact_person_id": "P003",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T005",
+      "owner_user_id": "U001",
+      "private_event_id": "E005",
+      "contact_person_id": "P004",
+      "direction": "paid",
+      "amount_krw": 0,
+      "note": "실제 금전 전달이 없었다고 사용자가 0원으로 명시한 가상 기록"
+    },
+    {
+      "id": "T006",
+      "owner_user_id": "U001",
+      "private_event_id": "E006",
+      "contact_person_id": "P005",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T007",
+      "owner_user_id": "U001",
+      "private_event_id": "E008",
+      "contact_person_id": "P003",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T008",
+      "owner_user_id": "U001",
+      "private_event_id": "E009",
+      "contact_person_id": "P004",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T009",
+      "owner_user_id": "U002",
+      "private_event_id": "E011",
+      "contact_person_id": "P007",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T010",
+      "owner_user_id": "U002",
+      "private_event_id": "E012",
+      "contact_person_id": "P007",
+      "direction": "received",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T011",
+      "owner_user_id": "U002",
+      "private_event_id": "E013",
+      "contact_person_id": "P008",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T012",
+      "owner_user_id": "U002",
+      "private_event_id": "E014",
+      "contact_person_id": "P009",
+      "direction": "paid",
+      "amount_krw": 30000,
+      "note": null
+    },
+    {
+      "id": "T013",
+      "owner_user_id": "U002",
+      "private_event_id": "E015",
+      "contact_person_id": "P010",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T014",
+      "owner_user_id": "U002",
+      "private_event_id": "E017",
+      "contact_person_id": "P012",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T015",
+      "owner_user_id": "U002",
+      "private_event_id": "E018",
+      "contact_person_id": "P009",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T016",
+      "owner_user_id": "U002",
+      "private_event_id": "E019",
+      "contact_person_id": "P010",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T017",
+      "owner_user_id": "U003",
+      "private_event_id": "E021",
+      "contact_person_id": "P013",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T018",
+      "owner_user_id": "U003",
+      "private_event_id": "E022",
+      "contact_person_id": "P014",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T019",
+      "owner_user_id": "U003",
+      "private_event_id": "E023",
+      "contact_person_id": "P015",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T020",
+      "owner_user_id": "U003",
+      "private_event_id": "E024",
+      "contact_person_id": "P016",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T021",
+      "owner_user_id": "U003",
+      "private_event_id": "E026",
+      "contact_person_id": "P018",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T022",
+      "owner_user_id": "U003",
+      "private_event_id": "E027",
+      "contact_person_id": "P014",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T023",
+      "owner_user_id": "U003",
+      "private_event_id": "E028",
+      "contact_person_id": "P015",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T024",
+      "owner_user_id": "U003",
+      "private_event_id": "E029",
+      "contact_person_id": "P016",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T025",
+      "owner_user_id": "U004",
+      "private_event_id": "E031",
+      "contact_person_id": "P020",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T026",
+      "owner_user_id": "U004",
+      "private_event_id": "E032",
+      "contact_person_id": "P021",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T027",
+      "owner_user_id": "U004",
+      "private_event_id": "E033",
+      "contact_person_id": "P022",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T028",
+      "owner_user_id": "U004",
+      "private_event_id": "E034",
+      "contact_person_id": "P023",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T029",
+      "owner_user_id": "U004",
+      "private_event_id": "E036",
+      "contact_person_id": "P020",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    },
+    {
+      "id": "T030",
+      "owner_user_id": "U004",
+      "private_event_id": "E037",
+      "contact_person_id": "P021",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T031",
+      "owner_user_id": "U004",
+      "private_event_id": "E038",
+      "contact_person_id": "P022",
+      "direction": "paid",
+      "amount_krw": 50000,
+      "note": null
+    },
+    {
+      "id": "T032",
+      "owner_user_id": "U004",
+      "private_event_id": "E039",
+      "contact_person_id": "P023",
+      "direction": "paid",
+      "amount_krw": 100000,
+      "note": null
+    }
+  ],
+  "shared_notices": [
+    {
+      "id": "N001",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "장례",
+      "title": "동료 가족의 부고",
+      "start_date": "2026-10-30",
+      "end_date": "2026-11-01",
+      "region": "서울",
+      "status": "ongoing",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": {
+        "name": "김도윤",
+        "affiliation": "해든기획팀",
+        "deceased_relation": "부친"
+      },
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N002",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "장례",
+      "title": "상주 확인이 필요한 부고",
+      "start_date": "2026-10-30",
+      "end_date": "2026-11-01",
+      "region": "서울",
+      "status": "ongoing",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": {
+        "name": "김도윤",
+        "affiliation": null,
+        "deceased_relation": "가족"
+      },
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N003",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "장례",
+      "title": "공유가 제한된 부고",
+      "start_date": "2026-10-30",
+      "end_date": "2026-11-01",
+      "region": "서울",
+      "status": "ongoing",
+      "audience_scope": "private",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": {
+        "name": "가상 상주",
+        "affiliation": null,
+        "deceased_relation": "가족"
+      },
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N004",
+      "publisher_user_id": "U003",
+      "source_type": "self",
+      "category": "결혼",
+      "title": "참석 범위가 제한된 결혼식",
+      "start_date": "2026-11-08",
+      "end_date": "2026-11-08",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "not_allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N005",
+      "publisher_user_id": "U003",
+      "source_type": "self",
+      "category": "생일",
+      "title": "취소된 생일 행사",
+      "start_date": "2026-11-09",
+      "end_date": "2026-11-09",
+      "region": "서울",
+      "status": "cancelled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N006",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "장례",
+      "title": "이미 종료된 부고",
+      "start_date": "2026-10-26",
+      "end_date": "2026-10-28",
+      "region": "서울",
+      "status": "finished",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": {
+        "name": "가상 상주",
+        "affiliation": null,
+        "deceased_relation": "가족"
+      },
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N007",
+      "publisher_user_id": "U003",
+      "source_type": "self",
+      "category": "결혼",
+      "title": "수빈의 결혼식",
+      "start_date": "2026-11-21",
+      "end_date": "2026-11-21",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N008",
+      "publisher_user_id": "U011",
+      "source_type": "self",
+      "category": "결혼",
+      "title": "관계 연결을 확인할 수 없는 결혼식",
+      "start_date": "2026-11-07",
+      "end_date": "2026-11-07",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N009",
+      "publisher_user_id": "U010",
+      "source_type": "third_party",
+      "category": "돌",
+      "title": "지인 가족의 돌잔치",
+      "start_date": "2026-11-14",
+      "end_date": "2026-11-14",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N010",
+      "publisher_user_id": "U010",
+      "source_type": "self",
+      "category": "생일",
+      "title": "윤서의 생일 행사",
+      "start_date": "2026-11-11",
+      "end_date": "2026-11-11",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": "O004"
+    },
+    {
+      "id": "N011",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "백일",
+      "title": "지인 가족의 백일 행사",
+      "start_date": "2026-11-20",
+      "end_date": "2026-11-20",
+      "region": "인천",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N012",
+      "publisher_user_id": "U010",
+      "source_type": "third_party",
+      "category": "환갑",
+      "title": "지인 가족의 환갑 행사",
+      "start_date": "2026-12-06",
+      "end_date": "2026-12-06",
+      "region": "부산",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N013",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "칠순",
+      "title": "지인 가족의 칠순 행사",
+      "start_date": "2026-12-12",
+      "end_date": "2026-12-12",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N014",
+      "publisher_user_id": "U010",
+      "source_type": "third_party",
+      "category": "팔순",
+      "title": "지인 가족의 팔순 행사",
+      "start_date": "2026-12-18",
+      "end_date": "2026-12-18",
+      "region": "대전",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    },
+    {
+      "id": "N015",
+      "publisher_user_id": "U003",
+      "source_type": "self",
+      "category": "생일",
+      "title": "참석 가능 여부가 미확인된 생일 행사",
+      "start_date": "2026-11-18",
+      "end_date": "2026-11-18",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "unknown",
+      "sharing_authorization": "confirmed",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": "O005"
+    },
+    {
+      "id": "N016",
+      "publisher_user_id": "U003",
+      "source_type": "third_party",
+      "category": "결혼",
+      "title": "공유 허용 여부가 미확인된 결혼식",
+      "start_date": "2026-11-17",
+      "end_date": "2026-11-17",
+      "region": "서울",
+      "status": "scheduled",
+      "audience_scope": "friends_and_friends_of_friends",
+      "friend_of_friend_attendance": "allowed",
+      "sharing_authorization": "unknown",
+      "mourner": null,
+      "registered_at": "2026-10-30T09:00:00+09:00",
+      "shared_occurrence_id": null
+    }
+  ],
+  "personal_choices": [
+    {
+      "id": "C001",
+      "owner_user_id": "U001",
+      "shared_notice_id": "N007",
+      "choice": "considering",
+      "actual_attendance": "unknown",
+      "sent_to_publisher": false
+    }
+  ],
+  "verification_examples": {
+    "candidate_notices_by_demo_user": {
+      "U001": [
+        {
+          "notice_id": "N001",
+          "shareable_mutual_friend_ids": [
+            "U002",
+            "U005",
+            "U008"
+          ]
+        },
+        {
+          "notice_id": "N002",
+          "shareable_mutual_friend_ids": [
+            "U002",
+            "U005",
+            "U008"
+          ]
+        },
+        {
+          "notice_id": "N007",
+          "shareable_mutual_friend_ids": [
+            "U002",
+            "U005",
+            "U008"
+          ]
+        },
+        {
+          "notice_id": "N009",
+          "shareable_mutual_friend_ids": [
+            "U002"
+          ]
+        },
+        {
+          "notice_id": "N010",
+          "shareable_mutual_friend_ids": [
+            "U002"
+          ]
+        },
+        {
+          "notice_id": "N011",
+          "shareable_mutual_friend_ids": [
+            "U002",
+            "U005",
+            "U008"
+          ]
+        },
+        {
+          "notice_id": "N012",
+          "shareable_mutual_friend_ids": [
+            "U002"
+          ]
+        },
+        {
+          "notice_id": "N013",
+          "shareable_mutual_friend_ids": [
+            "U002",
+            "U005",
+            "U008"
+          ]
+        },
+        {
+          "notice_id": "N014",
+          "shareable_mutual_friend_ids": [
+            "U002"
+          ]
+        }
+      ],
+      "U002": [
+        {
+          "notice_id": "N008",
+          "shareable_mutual_friend_ids": [
+            "U003"
+          ]
+        }
+      ],
+      "U003": [],
+      "U004": [
+        {
+          "notice_id": "N001",
+          "shareable_mutual_friend_ids": [
+            "U005",
+            "U008",
+            "U009",
+            "U010"
+          ]
+        },
+        {
+          "notice_id": "N002",
+          "shareable_mutual_friend_ids": [
+            "U005",
+            "U008",
+            "U009",
+            "U010"
+          ]
+        },
+        {
+          "notice_id": "N007",
+          "shareable_mutual_friend_ids": [
+            "U005",
+            "U008",
+            "U009",
+            "U010"
+          ]
+        },
+        {
+          "notice_id": "N011",
+          "shareable_mutual_friend_ids": [
+            "U005",
+            "U008",
+            "U009",
+            "U010"
+          ]
+        },
+        {
+          "notice_id": "N013",
+          "shareable_mutual_friend_ids": [
+            "U005",
+            "U008",
+            "U009",
+            "U010"
+          ]
+        }
+      ]
+    },
+    "dashboard_expected_by_demo_user": {
+      "U001": {
+        "received_total_krw": 100000,
+        "paid_total_krw": 420000,
+        "received_entry_count": 1,
+        "paid_entry_count": 7,
+        "explicit_zero_entry_count": 1
+      },
+      "U002": {
+        "received_total_krw": 50000,
+        "paid_total_krw": 530000,
+        "received_entry_count": 1,
+        "paid_entry_count": 7,
+        "explicit_zero_entry_count": 0
+      },
+      "U003": {
+        "received_total_krw": 0,
+        "paid_total_krw": 550000,
+        "received_entry_count": 0,
+        "paid_entry_count": 8,
+        "explicit_zero_entry_count": 0
+      },
+      "U004": {
+        "received_total_krw": 0,
+        "paid_total_krw": 550000,
+        "received_entry_count": 0,
+        "paid_entry_count": 8,
+        "explicit_zero_entry_count": 0
+      }
+    },
+    "ai_questions_and_expected_evidence": [
+      {
+        "id": "Q001",
+        "user_id": "U001",
+        "question": "공유된 부고의 상주 김도윤이 제 직장 동료인가요?",
+        "input_context": {
+          "notice_id": "N001"
+        },
+        "expected": {
+          "possible_person_ids": [
+            "P001"
+          ],
+          "notice_id": "N001",
+          "must_ask_user_to_confirm_identity": true,
+          "basis": [
+            "상주 이름",
+            "소속"
+          ],
+          "must_not_confuse_mourner_with_deceased": true
+        }
+      },
+      {
+        "id": "Q002",
+        "user_id": "U001",
+        "question": "김도윤과 주고받은 이력을 알려줘.",
+        "input_context": {},
+        "expected": {
+          "possible_person_ids": [
+            "P001",
+            "P002"
+          ],
+          "must_ask_which_person": true
+        }
+      },
+      {
+        "id": "Q003",
+        "user_id": "U001",
+        "question": "해든기획팀 김도윤과 주고받은 이력을 알려줘.",
+        "input_context": {
+          "selected_person_id": "P001"
+        },
+        "expected": {
+          "private_event_ids": [
+            "E001",
+            "E002"
+          ],
+          "transaction_ids": [
+            "T001",
+            "T002"
+          ],
+          "received_total_krw": 100000,
+          "paid_total_krw": 50000
+        }
+      },
+      {
+        "id": "Q004",
+        "user_id": "U001",
+        "question": "확인한 직장 동료 김도윤의 가족 장례식에 부의금을 얼마 내면 좋을까? 예산은 최대 8만 원이야.",
+        "input_context": {
+          "selected_person_id": "P001",
+          "budget_krw": 80000,
+          "notice_id": "N001",
+          "person_relation_confirmed": true
+        },
+        "expected": {
+          "transaction_ids": [
+            "T001",
+            "T002"
+          ],
+          "budget_krw": 80000,
+          "must_not_present_a_single_amount_as_obligatory": true,
+          "must_distinguish_user_budget_from_transaction_history": true,
+          "notice_id": "N001"
+        }
+      },
+      {
+        "id": "Q005",
+        "user_id": "U004",
+        "question": "솔빛독서모임 김도윤에게 얼마를 내면 좋을까?",
+        "input_context": {
+          "selected_person_id": "P019"
+        },
+        "expected": {
+          "private_event_ids": [],
+          "transaction_ids": [],
+          "must_explain_no_history": true,
+          "must_ask_for_more_information_or_defer": true
+        }
+      },
+      {
+        "id": "Q006",
+        "user_id": "U001",
+        "question": "공유된 부고에 조문하러 가는 게 좋을까?",
+        "input_context": {
+          "notice_id": "N001"
+        },
+        "expected": {
+          "must_ask_about_schedule_or_availability": true,
+          "must_not_record_advice_as_actual_attendance": true
+        }
+      },
+      {
+        "id": "Q007",
+        "user_id": "U001",
+        "question": "동료에게 전할 부고 위로 문구를 작성해줘.",
+        "input_context": {
+          "notice_id": "N001",
+          "selected_person_id": "P001",
+          "person_relation_confirmed": true
+        },
+        "expected": {
+          "must_not_invent_personal_history": true,
+          "must_not_send_message": true,
+          "output_type": "사용자가 검토할 수 있는 문구 초안"
+        }
+      },
+      {
+        "id": "Q008",
+        "user_id": "U001",
+        "question": "나에게 추천할 수 있는 소식을 보여줘.",
+        "input_context": {},
+        "expected": {
+          "candidate_notice_ids": [
+            "N001",
+            "N002",
+            "N007",
+            "N009",
+            "N010",
+            "N011",
+            "N012",
+            "N013",
+            "N014"
+          ],
+          "excluded_notice_ids": [
+            "N003",
+            "N004",
+            "N005",
+            "N006",
+            "N008",
+            "N015",
+            "N016"
+          ],
+          "must_not_reveal_excluded_notice_content": true
+        }
+      },
+      {
+        "id": "Q009",
+        "user_id": "U001",
+        "question": "2026년 11월 서울에서 참석할 수 있는 친구의 친구 결혼식을 알려줘.",
+        "input_context": {
+          "year": 2026,
+          "month": 11,
+          "region": "서울",
+          "category": "결혼"
+        },
+        "expected": {
+          "notice_ids": [
+            "N007"
+          ],
+          "must_not_include_notice_ids": [
+            "N004",
+            "N008",
+            "N016"
+          ]
+        }
+      },
+      {
+        "id": "Q010",
+        "user_id": "U001",
+        "question": "완료된 백일 행사와 생일 행사에서 0원 기록과 금액 미기록을 구분해줘.",
+        "input_context": {
+          "private_event_ids": [
+            "E005",
+            "E007"
+          ]
+        },
+        "expected": {
+          "explicit_zero_transaction_id": "T005",
+          "explicit_zero_event_id": "E005",
+          "no_transaction_event_id": "E007",
+          "must_not_create_zero_transaction_for_missing": true
+        }
+      },
+      {
+        "id": "Q011",
+        "user_id": "U002",
+        "question": "서진과 주고받은 금액을 알려줘.",
+        "input_context": {
+          "selected_person_id": "P007"
+        },
+        "expected": {
+          "received_total_krw": 50000,
+          "paid_total_krw": 100000,
+          "must_only_use_current_user_records": true
+        }
+      },
+      {
+        "id": "Q012",
+        "user_id": "U004",
+        "question": "공유된 부고의 상주가 내가 아는 김도윤인가요?",
+        "input_context": {
+          "notice_id": "N001"
+        },
+        "expected": {
+          "same_name_person_id": "P019",
+          "affiliation_matches": false,
+          "must_not_confirm_identity": true,
+          "must_not_use_another_users_personal_history": true
+        }
+      },
+      {
+        "id": "Q013",
+        "user_id": "U001",
+        "question": "제주에서 참석할 수 있는 결혼식을 알려줘.",
+        "input_context": {
+          "category": "결혼",
+          "region": "제주"
+        },
+        "expected": {
+          "notice_ids": [],
+          "must_report_no_matching_events": true,
+          "must_not_invent_events": true
+        }
+      }
+    ]
+  }
+}
