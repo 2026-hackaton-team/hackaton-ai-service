@@ -1,5 +1,6 @@
 // 예산은 목표액이 아니라 상한이며, 차이와 상한 작용 여부를 구분한다.
 export function compareBudget(result, fallbackBudget) {
+  if (!result || result.status !== 'answer') return null
   const budget = result?.budget_analysis?.budget_krw ?? result?.context?.budget_krw ?? fallbackBudget
   if (!Number.isSafeInteger(budget) || budget < 0) return null
   const amount = result?.suggested_amount_krw
