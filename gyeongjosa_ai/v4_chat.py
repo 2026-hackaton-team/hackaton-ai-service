@@ -1,8 +1,6 @@
 """사전 등록된 스무 가지 가상 상황을 자유 상담에서 분석한다."""
 from __future__ import annotations
 
-import re
-
 from app.knowledge import KB
 from app.main import RecommendationRequest, recommendation
 from app.special_cases import assess_special
@@ -18,12 +16,78 @@ DEMO_MARKERS = ("가상", "시나리오", "시연", "데모")
 RISK_TERMS = ("계약", "입찰", "심사", "평가", "거래처", "발주", "이해충돌")
 PUBLIC_TERMS = ("공직자", "공무원", "부조 예외", "청탁금지법", "직무 관련")
 GENERAL_TERMS = ("직장 동료", "직장동료", "동료 결혼", "김도윤")
-MONEY = re.compile(r"(\d[\d,]*)\s*(만\s*원?|원)")
-BUDGET_REPLY = re.compile(r"\s*\d[\d,]*\s*(?:만\s*원?|원)(?:\s*(?:이요|이에요|입니다|정도))?\s*[.!?]?\s*")
-BUDGET = re.compile(r"예산|최대|상한|낼\s*수\s*있는|지출\s*가능|금액\s*수정")
-CHANGE = re.compile(r"바꿔|바꿀|수정|줄여|높여|올려|낮춰")
-TOPIC = re.compile(r"예산|원|참석|식사|부의|조의|조화|화환|결혼|장례|다시|근거|얼마|추천|상대|법적|부친상|돌잔치|계약|관계|서운|받|내|도움|친밀|친구|감사|보답|의미|부담|걱정|왜")
+BUDGET_TERMS = ("예산", "최대", "상한", "낼 수 있는", "지출 가능", "금액 수정")
+CHANGE_TERMS = ("바꿔", "바꿀", "수정", "줄여", "높여", "올려", "낮춰")
+TOPIC_TERMS = ("예산", "원", "참석", "식사", "부의", "조의", "조화", "화환", "결혼",
+               "장례", "다시", "근거", "얼마", "추천", "상대", "법적", "부친상",
+               "돌잔치", "계약", "관계", "서운", "받", "내", "도움", "친밀",
+               "친구", "감사", "보답", "의미", "부담", "걱정", "왜")
 
+
+def _money_spans(text: str) -> list[tuple[int, int, int]]:
+    """정규식 없이 원·만원 표현의 위치와 정수 금액을 추출한다."""
+    spans = []
+    index = 0
+    while index < len(text):
+        if not text[index].isdigit():
+            index += 1
+            continue
+        start = index
+        while index < len(text) and (text[index].isdigit() or
+                                     text[index] == "," and index + 1 < len(text) and text[index + 1].isdigit()):
+            index += 1
+        number = int(text[start:index].replace(",", ""))
+        end = index
+        while end < len(text) and text[end].isspace():
+            end += 1
+        if end < len(text) and text[end] == "만":
+            end += 1
+            while end < len(text) and text[end].isspace():
+                end += 1
+            if end < len(text) and text[end] == "원":
+                end += 1
+            spans.append((start, end, number * 10000))
+        elif end < len(text) and text[end] == "원":
+            spans.append((start, end + 1, number))
+    return spans
+
+
+def _budget_reply(text: str) -> bool:
+    """후속 답변의 숫자·단위·종결 어미만 허용한다."""
+    value = text.strip().rstrip(".!?").strip()
+    for suffix in ("이에요", "입니다", "이요", "정도"):
+        if value.endswith(suffix):
+            value = value[:-len(suffix)].strip()
+            break
+    for unit in ("만원", "만 원", "만", "원"):
+        if value.endswith(unit):
+            value = value[:-len(unit)].strip()
+            break
+    return bool(value) and value.replace(",", "").isdigit()
+
+
+def _closeness(text: str) -> int | None:
+    """명시적인 친밀도 점수만 가상 시연 조건으로 사용한다."""
+    compact = "".join(text.split())
+    marker = compact.find("친밀도")
+    if marker < 0:
+        return None
+    tail = compact[marker + len("친밀도"):]
+    if tail[:1] in ("는", "가", "를"):
+        tail = tail[1:]
+    if tail[:1] in ("1", "2", "3", "4", "5") and tail[1:].startswith(("점", "/5")):
+        return int(tail[0])
+    return None
+
+
+def _recent_received(text: str) -> int | None:
+    """최근에 받았다고 명시한 금액만 시연용 변경 값으로 취급한다."""
+    for start, end, value in _money_spans(text):
+        previous = text[max(0, start - 40):start]
+        following = text[end:end + 8]
+        if any(term in previous for term in ("최근", "지난번")) and "받" in following and value <= 10000000:
+            return value
+    return None
 
 def _detected(text: str) -> str | None:
     """관계 사례와 특수 법적 사례의 고유 표현을 우선 분류한다."""
@@ -66,38 +130,35 @@ def _detected(text: str) -> str | None:
 
 
 def _amount(text: str, *, followup: bool) -> int | None:
-    """이전 거래액·모임 관행을 사용자의 예산으로 혼동하지 않는다."""
-    amounts = list(MONEY.finditer(text))
-    if not amounts:
-        return None
-    markers = list(BUDGET.finditer(text))
+    """예산 표시가 있는 금액이나 명시적인 후속 예산만 채택한다."""
+    amounts = _money_spans(text)
+    markers = [(at, at + len(term)) for term in BUDGET_TERMS
+               for at in range(len(text)) if text.startswith(term, at)]
     if markers:
-        forward = [(match.start() - marker.end(), match)
-                   for marker in markers for match in amounts
-                   if 0 <= match.start() - marker.end() <= 35]
+        forward = [(start - end, value)
+                   for _, end in markers for start, _, value in amounts
+                   if 0 <= start - end <= 35]
         if forward:
-            match = min(forward, key=lambda item: item[0])[1]
-        else:
-            before = [(marker.start() - match.end(), match)
-                      for marker in markers for match in amounts
-                      if 0 <= marker.start() - match.end() <= 12]
-            if not before:
-                return None
-            match = min(before, key=lambda item: item[0])[1]
-    elif followup and (CHANGE.search(text) or BUDGET_REPLY.fullmatch(text)):
-        match = amounts[-1]
-    else:
-        return None
-    return int(match.group(1).replace(",", "")) * (10000 if match.group(2).startswith("만") else 1)
+            return min(forward, key=lambda item: item[0])[1]
+        before = [(start - end, value)
+                  for start, _ in markers for _, end, value in amounts
+                  if 0 <= start - end <= 12]
+        return min(before, key=lambda item: item[0])[1] if before else None
+    if followup and _budget_reply(text):
+        if amounts:
+            return amounts[-1][2]
+        return int(text.strip().rstrip(".!?").strip().replace(",", ""))
+    if followup and any(term in text for term in CHANGE_TERMS) and amounts:
+        return amounts[-1][2]
+    return None
 
 
 def _gift_amount(text: str, kinds: tuple[str, ...]) -> int | None:
-    """현금과 조화 금액을 각각 추출한다."""
-    pattern = r"(?:" + "|".join(kinds) + r")\s*(\d[\d,]*)\s*(만)?\s*원"
-    match = re.search(pattern, text)
-    if not match:
-        return None
-    return int(match.group(1).replace(",", "")) * (10000 if match.group(2) else 1)
+    """현금·조화 명칭 바로 뒤에 적힌 금액만 분리한다."""
+    for start, _, value in _money_spans(text):
+        if any(text[max(0, start - len(kind) - 2):start].strip().endswith(kind) for kind in kinds):
+            return value
+    return None
 
 
 def _question(message: str, state: dict, field: str, options: list | None = None) -> dict:
@@ -159,8 +220,8 @@ def try_v4_chat(user_id: str, text: str, old_context: dict, gateway=None) -> dic
             )
         current = None
         old_context = {}
-    if (current and candidate is None and not TOPIC.search(text)
-            and not BUDGET_REPLY.fullmatch(text)
+    if (current and candidate is None and not any(term in text for term in TOPIC_TERMS)
+            and not _budget_reply(text)
             and old_context.get("pending_field") not in ("v4_person", "v4_scenario")):
         return None
     if not current and not candidate:
@@ -205,16 +266,14 @@ def try_v4_chat(user_id: str, text: str, old_context: dict, gateway=None) -> dic
 
     if current.startswith("relation_"):
         # 현재 대화의 직접 입력은 가상 기록과 구분해 임시 개인화 조건으로 사용한다.
-        closeness_match = re.search(r"친밀도(?:는|가|를)?\s*([1-5])\s*(?:점|/5)", text)
-        if closeness_match:
-            state["relationship_closeness"] = int(closeness_match.group(1))
-        if re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", text):
+        closeness = _closeness(text)
+        if closeness is not None:
+            state["relationship_closeness"] = closeness
+        if any(term in "".join(text.split()) for term in ("특별히챙기", "더챙기", "특별하게보답")):
             state["relationship_special_care"] = True
-        recent = re.search(r"(?:최근|지난번)[^\n]{0,35}?(\d[\d,]*)\s*(만\s*원?|원)(?:을|이나)?\s*받", text)
-        if recent:
-            claimed = int(recent.group(1).replace(",", "")) * (10000 if recent.group(2).startswith("만") else 1)
-            if claimed <= 10000000:
-                state["recent_received_override"] = claimed
+        recent = _recent_received(text)
+        if recent is not None:
+            state["recent_received_override"] = recent
         scenario = SCENARIOS[current]
         person_id = scenario["person_id"]
         insights = analyze_relationship_case(
