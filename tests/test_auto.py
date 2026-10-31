@@ -471,3 +471,21 @@ def test_person_name_followup_keeps_amount_intent_when_classifier_is_uncertain()
     assert result["intent"] == "amount"
     assert result["context"]["person_id"] == "P001"
     assert result["status"] == "answer"
+
+
+def test_funeral_type_survives_budget_followup_without_notice():
+    """부친상 질문은 예산 입력 뒤에도 행사 종류를 다시 묻지 않는다."""
+    gateway = AspectGateway("amount", ["amount", "funeral_etiquette"], "P001")
+    service = ChatService(load_data(), gateway)
+    first = service.chat_auto({
+        "user_id": "U001", "question": "회사 동료 부친상, 조의금과 조문 예절이 궁금해",
+        "context": {"person_id": "P001"},
+    })
+    assert first["pending_field"] == "budget_krw"
+    reply = service.chat_auto({
+        "user_id": "U001", "question": "50000", "context": first["context"],
+    })
+    assert reply["status"] == "answer"
+    assert reply["context"].get("pending_field") is None
+    assert gateway.answers[-1][0]["event_type"] == "장례"
+    assert "조문 예절" in reply["message"]
