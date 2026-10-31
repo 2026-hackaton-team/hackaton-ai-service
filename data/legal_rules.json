@@ -1,0 +1,56 @@
+{
+  "version": "2026-10-31",
+  "notice": "공식 근거 문서가 조회·검증되며 개인 상황이 일치해야만 적용되는 예시 규칙. 법적 자문이 아님.",
+  "rules": [
+    {
+      "id": "PUBLIC_DUTY_EXCEPTION_CASH",
+      "source_ids": [
+        "ACRC-CEREMONY-QA"
+      ],
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "yes",
+      "conflict": "none",
+      "status": "CONDITIONALLY_ALLOWED",
+      "cash_limit_krw": 50000,
+      "reason": "직무 관련성과 부조 목적 예외 성립을 가정하므로 현금 경조사비 5만 원 가액 범위 내에서 재평가합니다."
+    },
+    {
+      "id": "PUBLIC_DUTY_NO_EXCEPTION",
+      "source_ids": [
+        "ACRC-CEREMONY-QA"
+      ],
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "no",
+      "conflict": "high",
+      "status": "POTENTIALLY_PROHIBITED",
+      "reason": "계약 심사 관련 이해관계와 부조 예외 미성립 가정이 있으므로 송금 추천을 보류합니다."
+    },
+    {
+      "id": "PUBLIC_PEER_NO_DUTY",
+      "source_ids": [
+        "ACRC-CEREMONY-QA"
+      ],
+      "event_types": [
+        "결혼",
+        "장례"
+      ],
+      "covered": "yes",
+      "duty_related": "no",
+      "status": "NO_DUTY_CEREMONY_LIMIT",
+      "reason": "특별한 직무관련성이 없다는 가상 조건에서 직무 관련 부조 예외의 5만 원 기준을 일률 적용하지 않습니다."
+    }
+  ],
+  "source_checksums": {
+    "ACRC-CEREMONY-QA": "410f5662068963bb9bc41b8a484e823dd287c2432a9f82d2415164f2bead64ee"
+  }
+}

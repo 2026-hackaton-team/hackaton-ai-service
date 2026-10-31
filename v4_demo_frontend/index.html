@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>온마음 | 경조사 AI 추천 프로토타입</title>
+  <link rel="stylesheet" href="/v4/style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><span class="brand-mark">온</span><span>온마음 <small>RAG + LLM LAB</small></span></div>
+      <div class="top-right"><span id="apiBadge" class="status">연결 확인 중</span><span class="demo-tag">SYNTHETIC DEMO</span></div>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">CEREMONY INTELLIGENCE / PROTOTYPE 0.4</p>
+        <h1>마음을 전할 금액,<br><em>근거 있게</em> 제안합니다.</h1>
+        <p>공개된 경조사 통계와 가상 개인 이력을 결합해 추천 후보를 계산합니다. AI는 결과를 설명하며, 최종 결정은 사용자에게 있습니다.</p>
+      </section>
+      <section class="panel onboard-panel" aria-labelledby="onboardTitle">
+  <div class="panel-header"><div><span class="step">00 / PROFILE</span><h2 id="onboardTitle">회원가입·직업정보 공개 범위 시연</h2></div><span class="pill">본인 프로필만 편집</span></div>
+  <p class="help">선택된 데모 계정의 직업을 등록합니다. 실제 로그인이나 신분 검증이 아니며, 동의 철회 시 상대방 추천에 즉시 사용되지 않습니다.</p>
+  <form id="onboardingForm" class="onboard-grid">
+    <div class="field"><label for="myOccupation">직업</label><select id="myOccupation"><option value="unknown">미입력</option><option value="private_employee">민간기업 직원</option><option value="civil_servant">공무원</option><option value="public_institution_employee">공공기관 직원</option><option value="school_teacher">교직원</option><option value="journalist">언론인</option><option value="other">기타</option></select></div>
+    <div class="field"><label for="myInstitution">기관 유형</label><select id="myInstitution"><option value="unknown">미확인</option><option value="private_company">민간기업</option><option value="government">국가기관·지자체</option><option value="public_institution">공공기관</option><option value="school">학교</option><option value="press">언론기관</option><option value="other">기타</option></select></div>
+    <div class="field"><label for="myDutyRole">내 담당 업무 분야</label><select id="myDutyRole">
+    <option value="unknown">선택 안 함</option><option value="general">일반 업무</option>
+    <option value="procurement">계약·구매·입찰</option><option value="licensing">인허가</option>
+    <option value="evaluation">심사·평가</option><option value="supervision">감독</option>
+    <option value="audit">감사</option><option value="hr">인사</option></select></div>
+    <div class="field"><label for="myVisibility">추천 목적 공유 대상</label><select id="myVisibility"><option value="none">비공개</option><option value="accepted_contacts">승인된 친구만</option></select></div>
+    <label class="check"><input id="myConsent" type="checkbox"><span>경조사 추천에서 제 직업 분류 이용을 허용합니다(철회 가능).</span></label>
+    <button type="submit" class="mini">프로필·동의 설정 저장</button>
+  </form><p id="onboardingStatus" class="help" role="status"></p>
+</section>
+<div class="workspace">
+        <section class="panel form-panel" aria-labelledby="inputTitle">
+          <div class="panel-header"><div><span class="step">01 / INPUT</span><h2 id="inputTitle">추천 조건 입력</h2></div><span class="pill">가상 데이터</span></div>
+          <div class="quick">
+            <span>빠른 시연</span>
+            <button type="button" class="mini" data-preset="funeral">직장 동료 부친상</button>
+            <button type="button" class="mini" data-preset="wedding">직장 동료 결혼식</button>
+            <button type="button" class="mini" data-preset="public_exception">공직자 부조 예외 (가정)</button>
+            <button type="button" class="mini" data-preset="public_procurement">계약 심사 이해충돌 (가정)</button>
+          </div>
+          <form id="form">
+            <div class="field"><label for="demoUser">데모 계정</label><select id="demoUser" required></select></div>
+            <div class="field"><label for="person">추천 대상자</label><select id="person" required></select><div id="personDescription" class="help"></div></div>
+            <label class="check"><input id="confirmed" type="checkbox"> <span>동명이인 여부를 확인했고 이 사람이 맞습니다.</span></label>
+            <div class="field"><label for="scenario">법적 검토용 합성 프로필</label><select id="scenario"></select><div class="help">수령자의 확인된 직업·직무 관계에서 자동 판정합니다. 시나리오 선택은 법적 위험 체크가 아닌 별도 가상 사실관계입니다.</div></div>
+            <div class="field-grid">
+              <div class="field"><label for="event">행사 유형</label><select id="event"><option value="결혼">결혼</option><option value="장례" selected>장례</option><option value="돌">돌</option><option value="백일">백일</option><option value="생일">생일</option><option value="환갑">환갑</option><option value="칠순">칠순</option><option value="팔순">팔순</option></select></div>
+              <div class="field"><label for="attendance">참석·식사 여부</label><select id="attendance"><option value="unknown">미정 / 해당 없음</option><option value="yes">참석 + 식사</option><option value="no">불참 / 식사 안 함</option></select></div>
+            </div>
+            <div class="field"><label for="budget">지출 가능한 최대 예산 <span class="help inline">(원, 선택)</span></label><input id="budget" type="number" min="0" max="10000000" step="1000" value="80000" placeholder="예: 80000"></div>
+            <div class="field"><label for="accessStatus">상대방 직업정보 조회 상태</label><p id="accessStatus" class="help">연결·동의 상태 확인 중</p></div>
+            <div class="field"><label for="relationshipText">직무 관계를 자연어로 설명해 주세요 (선택)</label>
+              <textarea id="relationshipText" maxlength="400" rows="3" placeholder="예: 저는 시청 계약 담당자이고, 상대는 제가 계약을 심사하는 업체의 담당자예요."></textarea>
+              <div class="help">입력 문장은 DB에 저장하지 않습니다. 직무 관련 단서를 찾아 확인할 질문을 만듭니다.</div></div>
+            <label class="check"><input id="factsConfirmed" type="checkbox"><span>위 설명은 제가 확인한 실제 업무 관계입니다. (미체크 시 AI 추정으로만 처리)</span></label>
+            <label class="check"><input id="allowLLMAnalysis" type="checkbox"><span>선택: 제가 작성한 관계 설명을 외부 LLM에 전송해 분석합니다. 이름·개인정보를 쓰지 마세요.</span></label>
+            <div class="field"><label for="dutyContext">상대방과 나의 직무 관련성 (내가 확인한 사실)</label><select id="dutyContext"><option value="unknown">모름 / 확인 필요</option><option value="none">특별한 직무 관련성 없음</option><option value="duty_related">직무 관련성 있음</option><option value="contract_active">계약·심사 등 밀접한 이해관계 있음</option></select></div>
+            <div class="field"><label for="exceptionContext">부조 목적 예외 요건 확인 상태</label><select id="exceptionContext"><option value="unknown">미확인</option><option value="yes">부조 목적·예외 요건 충족 가정 (데모)</option><option value="no">충족되지 않음</option></select><p class="help">직업만으로 직무 관련성·법적 예외를 자동 확정하지 않습니다. 입력된 사실은 미검증 가정입니다.</p></div>
+            <div class="field"><label for="mode">AI 설명 방식</label><select id="mode"><option value="auto">자동 (키 있으면 LLM 사용)</option><option value="offline">오프라인 설명만</option><option value="llm">LLM 요청 (키 필요)</option></select></div>
+
+            <button id="submit" type="submit" class="primary">추천 계산하고 근거 보기 <span aria-hidden="true">↗</span></button>
+          </form>
+          <p class="footnote">데모 계정 전환은 인증이 아닙니다. 이 로컬 프로토타입을 공개 인터넷에 배포하지 마세요.</p>
+        </section>
+        <section class="panel result-panel" aria-labelledby="resultTitle">
+          <div class="panel-header"><div><span class="step">02 / RESULT</span><h2 id="resultTitle">개인화 추천 결과</h2></div><span id="llmState" class="pill neutral">대기 중</span></div>
+          <div id="emptyResult" class="empty"><div class="empty-icon">₩</div><h3>조건을 선택해 보세요</h3><p>설문 근거, 개인 이력, 추천 점수를 함께 확인할 수 있습니다.</p></div>
+          <div id="results" hidden>
+            <div id="errorMessage" class="alert" hidden></div>
+            <section id="relationDetail" class="policy-detail" hidden>
+              <h3>양방향 직업·관계 분석</h3><p id="relationStatus" class="help"></p>
+              <p id="relationQuestions" class="help"></p>
+            </section>
+            <section id="policyDetail" class="policy-detail" hidden>
+              <h3>자동 법률 적용성 판단</h3>
+              <div id="policyStatus" class="policy-status"></div>
+              <p id="policyReason" class="explanation"></p>
+              <p id="policyContext" class="help"></p>
+              <div id="policyQuestions" class="help"></div>
+              <div id="referenceAmount" class="help"></div>
+            </section>
+            <div id="recoDetail" hidden>
+              <div class="amount-label">추천 금액 <span id="evidenceLevel" class="small-tag"></span></div>
+              <div class="amount" id="recommendedAmount"></div>
+              <div class="secondary-row"><span>다른 후보</span><strong id="alternatives"></strong></div>
+              <div class="divider"></div>
+              <h3>추천 이유</h3><p id="explanation" class="explanation"></p>
+              <h3>상위 후보 점수 <span class="help inline">(학습된 확률 아님)</span></h3><div id="scores" class="scores"></div>
+              <h3>개인 거래 근거</h3><div id="history" class="stat-grid"></div>
+              <h3>실제 적용된 신호</h3><div id="weights" class="chips"></div>
+            </div>
+            <div class="divider"></div>
+            <div class="ref-head"><h3>검색된 공개 자료</h3><small>RAG 근거</small></div>
+            <div id="evidence" class="evidence-list"></div>
+            <div id="queryPlan" class="help"></div>
+            <p class="help">적용된 근거와 참고·제외된 근거를 구분해 표시합니다. 검색 유사도만으로 법적 허용 여부를 결정하지 않습니다.</p>
+            <p id="disclaimer" class="disclaimer"></p>
+          </div>
+        </section>
+      </div>
+      <section class="inspector panel">
+        <div class="inspector-info"><span class="step">03 / RAG INSPECTOR</span><h2>공개 지식베이스 검색</h2><p>한글 문자 n-그램 검색으로 공개자료를 검색합니다. 개인 데이터는 이 인덱스에 포함되지 않습니다.</p></div>
+        <form id="searchForm" class="search-form"><input id="query" maxlength="200" required placeholder="예: 직장 동료 결혼식 축의금"><button type="submit">근거 검색</button></form>
+        <div id="searchResults" class="evidence-list"></div>
+      </section>
+      <footer>온마음 · 48시간 해커톤 기술 검증용 · 가상의 사람/거래와 공개 통계 요약 · <a href="/v4/api/docs" target="_blank" rel="noopener noreferrer">API 문서</a></footer>
+    </main>
+  </div>
+  <script src="/v4/app.js" defer></script>
+</body>
+</html>
