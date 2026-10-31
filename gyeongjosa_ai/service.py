@@ -196,7 +196,7 @@ class ChatService:
             profile_override=profile, profile_access=access["access"],
             relation_assessment=relation, dataset=self.data.dataset,
             closeness_override=int(close.group(1)) if close else request.get("relationship_closeness"),
-            special_care=bool(request.get("relationship_special_care") or re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question)),
+            special_care=bool(person.get("special") or request.get("relationship_special_care") or re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", question)),
             recent_received_override=received if received is not None else request.get("recent_received_override"),
         )
         result = report["result"]
