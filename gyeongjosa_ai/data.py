@@ -13,7 +13,11 @@ REFERENCE_DATE = date(2026, 10, 30)
 def load_data(path=None):
     """고정된 시연 데이터를 읽어 조회 객체로 만든다."""
     source = Path(path) if path is not None else ROOT / "data" / "demo.json"
-    return DemoData(json.loads(source.read_text(encoding="utf-8-sig")))
+    dataset = json.loads(source.read_text(encoding="utf-8-sig"))
+    if path is None:
+        from .special_fixtures import merge_special_fixtures
+        dataset = merge_special_fixtures(dataset)
+    return DemoData(dataset)
 
 
 class DemoData:
