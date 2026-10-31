@@ -1,4 +1,4 @@
-"""사전 등록된 열 가지 가상 상황을 자유 상담에서 v4 엔진으로 연결한다."""
+"""사전 등록된 스무 가지 가상 상황을 자유 상담에서 분석한다."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from pathlib import Path
 from app.knowledge import KB
 from app.main import RecommendationRequest, recommendation
 from app.special_cases import assess_special
+from .relationship_insights import analyze_relationship_case
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = {
@@ -21,11 +22,16 @@ GENERAL_TERMS = ("직장 동료", "직장동료", "동료 결혼", "김도윤")
 MONEY = re.compile(r"(\d[\d,]*)\s*(만)?\s*원")
 BUDGET = re.compile(r"예산|최대|상한|낼\s*수\s*있는|지출\s*가능|금액\s*수정")
 CHANGE = re.compile(r"바꿔|바꿀|수정|줄여|높여|올려|낮춰")
-TOPIC = re.compile(r"예산|원|참석|식사|부의|조의|조화|화환|결혼|장례|다시|근거|얼마|추천|상대|법적|부친상|돌잔치|계약")
+TOPIC = re.compile(r"예산|원|참석|식사|부의|조의|조화|화환|결혼|장례|다시|근거|얼마|추천|상대|법적|부친상|돌잔치|계약|관계|서운|받|내|도움|친밀|친구|감사|보답|의미|부담|걱정|왜")
 
 
 def _detected(text: str) -> str | None:
-    """특별 사례의 고유 단서를 기존 일반 키워드보다 먼저 적용한다."""
+    """관계 사례와 특수 법적 사례의 고유 표현을 우선 분류한다."""
+    for identifier in SCENARIOS:
+        if identifier.startswith("relation_") and any(
+            word in text for word in SCENARIOS[identifier]["keywords"]
+        ):
+            return identifier
     for identifier in (
         "teacher_parent", "sender_public", "private_occupation", "cash_and_wreath",
         "public_dol", "duplicate_mourner", "ended_contract",
@@ -54,13 +60,27 @@ def _detected(text: str) -> str | None:
 
 
 def _amount(text: str, *, followup: bool) -> int | None:
-    """단순 법적 기준 숫자가 예산으로 오인되지 않도록 한다."""
-    match = MONEY.search(text)
-    if not match:
+    """이전 거래액·모임 관행을 사용자의 예산으로 혼동하지 않는다."""
+    amounts = list(MONEY.finditer(text))
+    if not amounts:
         return None
-    if not BUDGET.search(text) and not (
-        followup and (CHANGE.search(text) or MONEY.fullmatch(text.strip()))
-    ):
+    markers = list(BUDGET.finditer(text))
+    if markers:
+        forward = [(match.start() - marker.end(), match)
+                   for marker in markers for match in amounts
+                   if 0 <= match.start() - marker.end() <= 35]
+        if forward:
+            match = min(forward, key=lambda item: item[0])[1]
+        else:
+            before = [(marker.start() - match.end(), match)
+                      for marker in markers for match in amounts
+                      if 0 <= marker.start() - match.end() <= 12]
+            if not before:
+                return None
+            match = min(before, key=lambda item: item[0])[1]
+    elif followup and (CHANGE.search(text) or MONEY.fullmatch(text.strip())):
+        match = amounts[-1]
+    else:
         return None
     return int(match.group(1).replace(",", "")) * (10000 if match.group(2) else 1)
 
@@ -99,7 +119,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             )
         current = None
         old_context = {}
-    if current and candidate is None and not TOPIC.search(text) and old_context.get("pending_field") != "v4_person":
+    if current and candidate is None and not TOPIC.search(text) and old_context.get("pending_field") not in ("v4_person", "v4_scenario"):
         return None
     if not current and not candidate:
         return None
@@ -138,6 +158,61 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         state["event_type"] = "장례"
     elif "결혼" in text:
         state["event_type"] = "결혼"
+
+    if current.startswith("relation_"):
+        scenario = SCENARIOS[current]
+        person_id = scenario["person_id"]
+        insights = analyze_relationship_case(
+            user_id=user_id, person_id=person_id, scenario_id=current
+        )
+        money = state.get("budget_krw")
+        amount = None
+        legal = None
+        if money is not None:
+            request = RecommendationRequest(
+                demo_user_id=user_id, person_id=person_id,
+                identity_confirmed=True, event_type=scenario["event_type"],
+                budget_krw=money, scenario_id="default", explanation_mode="offline",
+                allow_llm_analysis=False,
+            )
+            report = recommendation(request)
+            result = report["result"]
+            status = result["status"]
+            legal = result.get("legal_assessment")
+            amount = result.get("amount_krw") if status == "RECOMMENDED" else None
+            if amount is not None and amount > money:
+                raise ValueError("추천액이 사용자 예산을 초과했습니다.")
+        else:
+            status = "RELATIONSHIP_INSIGHT"
+        if money is None:
+            conclusion = "예산을 알려 주시면 기존 추천 엔진으로 상한을 지키는 참고 금액을 계산할 수 있습니다."
+        elif amount is not None:
+            conclusion = f"이번 예산 {money:,}원 안의 참고액은 {amount:,}원입니다. 과거 거래액과 같게 돌려줄 의무는 없습니다."
+        else:
+            conclusion = f"이번 예산 {money:,}원과 확인 가능한 근거에서는 행동 금액 추천을 보류합니다."
+        message = f"[가상 관계 시연: {scenario['name']}] " + " ".join(insights["messages"]) + " " + conclusion
+        evidence = [
+            {"id": row["id"], "kind": "사용자 소유 가상 거래",
+             "text": f"{row['date']} · {'낸 금액' if row['direction']=='paid' else '받은 금액'} {row['amount_krw']:,}원",
+             "decision_role": "personal_history"}
+            for row in insights["history"]
+        ]
+        if insights["relationship_note"]:
+            evidence.append({
+                "id": "note:" + person_id, "kind": "사용자 입력 관계 메모",
+                "text": insights["relationship_note"], "decision_role": "user_recorded",
+            })
+        summary = {key: value for key, value in insights.items() if key != "history"}
+        return {
+            "status": "answer", "intent": "amount", "message": message,
+            "suggested_amount_krw": amount, "evidence": evidence,
+            "context": state, "model": None,
+            "v4_analysis": {
+                "scenario": current, "person_id": person_id, "status": status,
+                "amount_krw": amount, "legal_assessment": legal,
+                "relationship_insights": summary, "demo_only": True,
+            },
+        }
 
     if current == "duplicate_mourner" and state.get("v4_person") not in {"P001", "P002"}:
         return _question(
