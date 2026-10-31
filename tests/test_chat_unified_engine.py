@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import pytest
 
+from gyeongjosa_ai.ai import ModelUnavailable
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.service import ChatService, parse_budget
 from gyeongjosa_ai.workspace_adapter import data_for_chat
@@ -129,6 +130,7 @@ def test_contract_risk_withholds_numeric_suggestion(tmp_path, monkeypatch):
     assert result["v4_analysis"]["status"] != "RECOMMENDED"
     assert "보류" in result["message"]
     assert not gateway.contexts
+    assert result["v4_analysis"]["ai_status"] == "not_requested"
 
 
 def test_unmarked_legal_question_does_not_enter_fictional_scenario():
@@ -175,3 +177,59 @@ def test_conversation_api_reads_updated_workspace_each_turn(tmp_path, monkeypatc
             assert second.json()["suggested_amount_krw"] <= 100000
     finally:
         app.dependency_overrides.pop(get_service, None)
+
+
+def test_amount_with_history_displays_generated_ai_explanation(tmp_path, monkeypatch):
+    """개인 거래가 있어도 실제 모델이 반환한 해석을 사용자 답변에 포함한다."""
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "data.sqlite3"))
+    save_workspace("U001", _workspace(50000))
+    gateway = FixedGateway()
+    result = ChatService(data_for_chat(load_data(), "U001"), gateway).chat({
+        "user_id": "U001", "mode": "amount", "question": "장례 예산은 10만원",
+        "person_id": "p1", "event_type": "장례", "budget_krw": 100000,
+    })
+    assert result["v4_analysis"]["ai_status"] == "generated"
+    assert result["model"] == "fixed-model"
+    assert "AI 해석: 설명만 제공합니다." in result["message"]
+    assert result["suggested_amount_krw"] <= 100000
+    assert len(gateway.contexts) == 1
+
+
+def test_unconfigured_amount_keeps_rule_result_without_calling_model(tmp_path, monkeypatch):
+    """API 키가 없으면 규칙 결과만 제공하고 호출 실패로 표시하지 않는다."""
+    class UnconfiguredGateway(FixedGateway):
+        api_key = ""
+
+        def generate(self, *args, **kwargs):
+            raise AssertionError("API 키 없이 모델을 호출하면 안 됩니다.")
+
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "data.sqlite3"))
+    save_workspace("U001", _workspace(50000))
+    result = ChatService(data_for_chat(load_data(), "U001"), UnconfiguredGateway()).chat({
+        "user_id": "U001", "mode": "amount", "question": "장례 예산은 10만원",
+        "person_id": "p1", "event_type": "장례", "budget_krw": 100000,
+    })
+    assert result["v4_analysis"]["ai_status"] == "not_configured"
+    assert result["model"] is None
+    assert "AI 해석:" not in result["message"]
+    assert result["suggested_amount_krw"] <= 100000
+
+
+def test_failed_amount_analysis_is_not_reported_as_missing_key(tmp_path, monkeypatch):
+    """설정된 모델이 실패해도 참고액은 유지하며 실패 상태를 정확히 반환한다."""
+    class FailingGateway(FixedGateway):
+        api_key = "test-key"
+
+        def generate(self, *args, **kwargs):
+            raise ModelUnavailable("모델 호출 실패")
+
+    monkeypatch.setenv("GYEONGJOSA_WORKSPACE_DB", str(tmp_path / "data.sqlite3"))
+    save_workspace("U001", _workspace(50000))
+    result = ChatService(data_for_chat(load_data(), "U001"), FailingGateway()).chat({
+        "user_id": "U001", "mode": "amount", "question": "장례 예산은 10만원",
+        "person_id": "p1", "event_type": "장례", "budget_krw": 100000,
+    })
+    assert result["v4_analysis"]["ai_status"] == "unavailable"
+    assert result["model"] is None
+    assert "AI 해석:" not in result["message"]
+    assert result["suggested_amount_krw"] <= 100000
