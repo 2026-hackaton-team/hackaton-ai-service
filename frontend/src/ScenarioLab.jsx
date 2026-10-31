@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {demoApi} from './services/demoApi.js'
 import {evaluateScenario, summarizeScenarios} from './scenarioEvaluation.js'
+import HistoryStats from './HistoryStats.jsx'
 
 const money = value => value == null ? '보류 또는 미제시' : value.toLocaleString('ko-KR') + '원'
 
@@ -97,7 +98,13 @@ export default function ScenarioLab({userId, onQuestion}) {
           const assessment=evaluateScenario(item,entry)
           return <tr key={item.id} style={{borderTop:'1px solid var(--border, #ddd)',verticalAlign:'top'}}>
             <td style={{padding:'8px 6px'}}><strong>{item.name}</strong><p>{item.title}</p><small>예산 {money(item.budget_krw)}</small></td>
-            <td style={{padding:'8px 6px'}}><strong>{entry.error?'실패':money(amount)}</strong><p>{result?.status||''}</p></td>
+            <td style={{padding:'8px 6px'}}><strong>{entry.error?'실패':money(amount)}</strong><p>{result?.status||''}</p>
+              {result?.history_stats&&<div style={{fontSize:12}}>
+                <p>낸 평균: {money(result.history_stats.paid?.average_krw)}</p>
+                <p>받은 평균: {money(result.history_stats.received?.average_krw)}</p>
+                {(result.history_stats.paid?.recent_spike||result.history_stats.received?.recent_spike)&&<strong>최근 금액 급증</strong>}
+              </div>}
+            </td>
             <td style={{padding:'8px 6px'}}><strong>{assessment.status}</strong>
               {assessment.reasons.map((reason,index)=><p key={index}>{reason}</p>)}
               <p>{result?.v4_analysis?.status||'분석 상태 없음'}</p>
@@ -107,6 +114,7 @@ export default function ScenarioLab({userId, onQuestion}) {
             <td style={{padding:'8px 6px'}}>
               {entry.error?<span role="alert">{entry.error}</span>:<details>
                 <summary>AI 답변과 근거 {result?.evidence?.length||0}건 보기</summary>
+                <HistoryStats stats={result?.history_stats}/>
                 <p style={{whiteSpace:'pre-wrap'}}>{result?.message}</p>
                 {result?.v4_analysis?.relationship_adjustments?.map((adj,index)=><p key={index}>관계 조정: {adj.reason}</p>)}
                 {result?.evidence?.map((ev,index)=><p key={index}>{ev.kind}: {ev.text}{ev.url&&<> · <a href={ev.url} target="_blank" rel="noopener noreferrer">출처</a></>}</p>)}

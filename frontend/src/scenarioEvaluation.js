@@ -41,6 +41,16 @@ export function evaluateScenario(item, entry) {
   if (amount != null && (!result.v4_analysis || result.v4_analysis.amount_krw !== amount)) {
     failures.push('추천 엔진 금액과 응답 금액이 다릅니다.')
   }
+  const hasRecords = evidence.some(row=>row.kind==='개인 거래')
+  if (hasRecords && (!result.history_stats?.paid || !result.history_stats?.received)) {
+    reviews.push('지급·수령 평균과 중앙값 통계가 누락됐습니다.')
+  }
+  if (['recent_large','outlier','recent_paid'].includes(item.focus)) {
+    const direction = item.focus==='recent_paid' ? 'paid' : 'received'
+    if (result.history_stats && !result.history_stats[direction]?.recent_spike) {
+      reviews.push('최근 금액 급증을 통계 근거에서 확인하지 못했습니다.')
+    }
+  }
   const expectedSignal = requiredSignals[item.focus]
   if (expectedSignal && !result.v4_analysis?.relationship_adjustments?.some(row=>row.signal===expectedSignal)) {
     reviews.push('관계 변화 신호가 조정 근거에 나타나지 않았습니다: ' + expectedSignal)
