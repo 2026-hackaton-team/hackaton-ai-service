@@ -1,17 +1,8 @@
-// 기존 통합 화면의 API 호출 계약을 유지한다. 로그인 토큰이 있으면 함께 보낸다.
-const AUTH_TOKEN_KEY = 'maeum-auth-token-v1';
-
-function authHeader() {
-  try {
-    const token = globalThis.localStorage?.getItem(AUTH_TOKEN_KEY);
-    return token ? { Authorization: 'Bearer ' + token } : {};
-  } catch { return {}; }
-}
-
+// 기존 통합 화면의 API 호출 계약을 유지한다. 로그인 세션은 HttpOnly 쿠키로만 주고받는다.
 export async function demoApi(path, { userId, method = 'GET', body, signal } = {}) {
   const response = await fetch('/api' + path, {
-    method, signal,
-    headers: { ...authHeader(), ...(userId ? { 'X-Demo-User-Id': userId } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    method, signal, credentials: 'same-origin',
+    headers: { ...(userId ? { 'X-Demo-User-Id': userId } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (response.status === 204) return {};

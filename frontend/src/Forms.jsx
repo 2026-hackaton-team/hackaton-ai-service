@@ -3,10 +3,10 @@ import { Modal, Icon } from './ui.jsx'
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, resolveRelation } from './relationships.js'
 import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
-import { normalizeUsername, signupError, profileUpdateError, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
-import { TEST_USERNAME } from './services/testAccountDemo.js'
-import { loginAccount, signupAccount, updateAccount } from './services/authApi.js'
+import { demoApi } from './services/demoApi.js'
+import { normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
 
+const TEST_USERNAME = 'test1234'
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const CUSTOM_TYPE = '__custom'
 const CUSTOM_TYPE_SUGGESTIONS = ['환갑', '칠순', '팔순', '졸업', '집들이']
@@ -51,7 +51,6 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
   const myName = user?.name || '나'
   const custom = form.type === CUSTOM_TYPE
   const type = custom ? form.customType.trim() : form.type
-
   function submit(event) {
     event.preventDefault()
     if (custom && !type) { setError('행사 유형을 직접 입력해 주세요. 예) 칠순, 졸업'); return }
@@ -234,10 +233,6 @@ function WorkFields({ form, update, disabled }) {
   </>
 }
 
-function accountErrorMessage(cause) {
-  return cause?.status ? cause.message : '서버에 연결하지 못했어요. 서버가 실행 중인지 확인해 주세요.'
-}
-
 export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   const signup = mode === 'signup'
   const [form, setForm] = useState(emptyAuthForm)
@@ -259,9 +254,17 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
     setPending(true)
     setError('')
     try {
-      onSuccess(await (signup ? signupAccount(form) : loginAccount(form)))
+      const result = await demoApi(signup ? '/auth/signup' : '/auth/login', {
+        method: 'POST',
+        body: signup
+          ? { username: normalizeUsername(form.username), name: form.name.trim(), password: form.password,
+              phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(),
+              organization: form.organization.trim(), workType: form.workType, visibility: form.visibility }
+          : { username: normalizeUsername(form.username), password: form.password },
+      })
+      onSuccess(result.profile, result.userId)
     } catch (cause) {
-      setError(accountErrorMessage(cause))
+      setError(cause.message || '서버 로그인에 실패했습니다.')
     } finally {
       setPending(false)
     }
@@ -303,11 +306,20 @@ export function ProfileEditModal({ user, onClose, onSave }) {
     setPending(true)
     setError('')
     try {
-      const error = profileUpdateError(form)
+      const error = profileUpdateError(form, [], user.username)
       if (error) { setError(error); return }
-      onSave(await updateAccount(form), Boolean(form.password))
+      const result = await demoApi('/auth/me', {
+        method: 'PUT',
+        body: {
+          phone: normalizePhone(form.phone), email: normalizeEmail(form.email),
+          workplace: form.workplace.trim(), organization: form.organization.trim(),
+          workType: form.workType, visibility: form.visibility,
+          password: form.password, currentPassword: form.currentPassword,
+        },
+      })
+      onSave(result.profile, Boolean(form.password))
     } catch (cause) {
-      setError(accountErrorMessage(cause))
+      setError(cause.message || '서버 정보를 저장하지 못했습니다.')
     } finally {
       setPending(false)
     }

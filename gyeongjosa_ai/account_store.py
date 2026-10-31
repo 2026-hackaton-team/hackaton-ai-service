@@ -23,6 +23,8 @@ SESSION_DAYS = 30
 # 작업공간 소유자 ID. 가상 AI 프로필 ID(U001 등)와 겹치지 않는다.
 WORKSPACE_PREFIX = "ACC:"
 TEST_USERNAME = "test1234"
+DEMO_IDENTITIES = {TEST_USERNAME: "TEST1234", "kim_scenario": "SCENARIO_KIM"}
+SESSION_COOKIE = "maeum_session"
 WORK_TYPES = ("일반 회사원", "공무원", "공공기관 직원", "교직원", "언론인", "자영업·프리랜서", "학생", "기타")
 VISIBILITY_OPTIONS = ("전체 공개", "친구에게만 공개", "비공개")
 PUBLIC_FIELDS = ("username", "name", "phone", "email", "workplace", "organization", "workType", "visibility")
@@ -44,8 +46,12 @@ def normalize_email(value):
 
 
 def workspace_owner(username):
-    """계정의 서버 작업공간 소유자 ID."""
-    return WORKSPACE_PREFIX + normalize_username(username)
+    """계정의 서버 사용자 ID. 인맥·일정·장부·AI 상담·알림이 모두 이 ID를 쓴다.
+
+    test1234처럼 합성 데이터에 이미 있는 시연 계정은 그 ID에, 나머지 회원은 ACC:아이디에 연결한다.
+    """
+    username = normalize_username(username)
+    return DEMO_IDENTITIES.get(username, WORKSPACE_PREFIX + username)
 
 
 class ContactInput(BaseModel):
@@ -111,6 +117,7 @@ class AccountStore:
         db = sqlite3.connect(self.path, timeout=15)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA foreign_keys = ON")
+        self._set_aside_legacy_tables(db)
         db.executescript("""
             CREATE TABLE IF NOT EXISTS accounts (
                 username TEXT PRIMARY KEY,
@@ -136,6 +143,22 @@ class AccountStore:
             CREATE INDEX IF NOT EXISTS sessions_username ON sessions (username);
         """)
         return db
+
+    @staticmethod
+    def _set_aside_legacy_tables(db):
+        """예전 develop 시연 DB(프로필을 JSON 한 칸에 저장하던 계정 표)가 같은 파일에 있으면 지우지 않고 이름만 바꿔 둔다."""
+        for table, required in (("accounts", "work_type"), ("sessions", "created_at")):
+            columns = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
+            if columns and required not in columns:
+                db.execute(f"ALTER TABLE {table} RENAME TO {table}_legacy_{secrets.token_hex(3)}")
+        db.commit()
+
+    def members(self):
+        """친구 찾기용 공개 정보만 돌려준다. 연락처·비밀번호는 내보내지 않는다."""
+        with closing(self._connect()) as db:
+            return [{"username": row["username"], "name": row["name"], "workplace": row["workplace"],
+                     "organization": row["organization"], "workType": row["work_type"], "visibility": row["visibility"]}
+                    for row in db.execute("SELECT * FROM accounts ORDER BY created_at, username")]
 
     @staticmethod
     def _profile(row):

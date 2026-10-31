@@ -88,3 +88,6 @@ from .account_api import router as account_router
 app.include_router(integration_router)
 app.include_router(account_router)
 
+from .demo_state import router as demo_state_router
+app.include_router(demo_state_router)
+
