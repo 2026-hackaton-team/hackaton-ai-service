@@ -528,6 +528,9 @@ class ChatService:
                                   "relationship_closeness", "relationship_special_care",
                                   "recent_received_override"):
                         context.pop(field, None)
+                elif previous_intent in MODES and previous_intent != intent:
+                    context.pop("budget_krw", None)
+                    context.pop("budget_state", None)
                 context["requested_aspects"] = aspects
                 context["original_question"] = question
             elif "original_question" not in context and not pending:
