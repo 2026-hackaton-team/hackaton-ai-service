@@ -80,18 +80,16 @@ function PersonDetail({ person, events, records, onUpdate, onAddRecord, onClose 
   const sent = records.filter(record => record.direction === '보낸 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const received = records.filter(record => record.direction === '받은 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const interactions = [...(person.interactions || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  function savePerson(event) {
+  async function savePerson(event) {
     event.preventDefault();
     if (!draft.name.trim()) return;
     const { customRelation, ...values } = draft;
-    onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() });
-    setEditing(false);
+    if (await onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() })) setEditing(false);
   }
-  function addInteraction(event) {
+  async function addInteraction(event) {
     event.preventDefault();
     if (!interaction.note.trim()) return;
-    onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet });
-    setInteraction(current => ({ ...current, note: '' }));
+    if (await onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet })) setInteraction(current => ({ ...current, note: '' }));
   }
   return <Modal title={`${person.name}님의 관계 기록`} onClose={onClose} wide>
     <div className="person-detail-header"><div className="avatar people-avatar">{person.name.slice(0, 1)}</div><div><h2>{person.name}<span className="badge green">{person.relation}</span><span className="badge">{normalizeImportance(person.importance)}</span></h2><p>{person.group || '소속 그룹 없음'} · 마지막 만남 {displayDate(person.lastMet)}</p></div><button className="button button-secondary" onClick={() => { setDraft(personDraft(person)); setEditing(value => !value); }}><Icon name="pencil" size={15} />{editing ? '편집 닫기' : '관계 편집'}</button></div>

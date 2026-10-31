@@ -12,6 +12,7 @@ import Notifications, { useSharedNoticeInbox, sharedNoticeId } from './Notificat
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './services/workspaceStorage.js';
 import { normalizePerson } from './relationships.js';
+import { demoApi } from './services/demoApi.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js';
 
@@ -38,9 +39,12 @@ function useStored(key, initial, normalize = value => value) {
 }
 
 export default function App() {
-  const [people, setPeople] = useStored(STORAGE_KEYS.people, initialPeople, items => items.map(normalizePerson));
-  const [events, setEvents] = useStored(STORAGE_KEYS.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
-  const [records, setRecords] = useStored(STORAGE_KEYS.records, initialRecords);
+  const localPeople = () => readStored(STORAGE_KEYS.people, initialPeople, items => items.map(normalizePerson));
+  const localEvents = () => readStored(STORAGE_KEYS.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
+  const localRecords = () => readStored(STORAGE_KEYS.records, initialRecords);
+  const [people, setPeople] = useState(localPeople);
+  const [events, setEvents] = useState(localEvents);
+  const [records, setRecords] = useState(localRecords);
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [user, setUser] = useStored(STORAGE_KEYS.session, null);
   const [readIds, setReadIds] = useStored(STORAGE_KEYS.readIds, []);
@@ -48,6 +52,32 @@ export default function App() {
   const [notificationSettings, setNotificationSettings] = useStored(STORAGE_KEYS.notifications, { browser: false });
   const [demoUserId, setDemoUserId] = useState(getDemoAccount);
   useEffect(() => { const sync = () => setDemoUserId(getDemoAccount()); window.addEventListener(DEMO_ACCOUNT_EVENT, sync); return () => window.removeEventListener(DEMO_ACCOUNT_EVENT, sync); }, []);
+  const [workspaceReady, setWorkspaceReady] = useState(!demoUserId);
+  const [workspaceInitialized, setWorkspaceInitialized] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const workspaceRevision = useRef(0);
+  const workspaceUser = useRef(demoUserId);
+  useEffect(() => {
+    workspaceUser.current = demoUserId;
+    if (!demoUserId) {
+      setPeople(localPeople()); setEvents(localEvents()); setRecords(localRecords());
+      workspaceRevision.current = 0;
+      setWorkspaceReady(true); setWorkspaceInitialized(false);
+      return;
+    }
+    const controller = new AbortController();
+    setWorkspaceReady(false); setWorkspaceInitialized(false);
+    setPeople([]); setEvents([]); setRecords([]);
+    demoApi('/workspace/personal', {userId:demoUserId, signal:controller.signal})
+      .then(result => {
+        if (controller.signal.aborted) return;
+        workspaceRevision.current = result.revision;
+        setPeople(result.people); setEvents(result.events); setRecords(result.records);
+        setWorkspaceInitialized(result.initialized); setWorkspaceReady(true);
+      })
+      .catch(error => { if (!controller.signal.aborted) { setWorkspaceReady(false); setToast(error.message); } });
+    return () => controller.abort();
+  }, [demoUserId]);
   const [page, setPage] = useState(() => navigation.some(item => item.id === location.hash.slice(1)) ? location.hash.slice(1) : 'home');
   const [aiPersonId, setAiPersonId] = useState('');
   const [modal, setModal] = useState(null);
@@ -87,48 +117,99 @@ export default function App() {
     sendReminders(); const timer = setInterval(sendReminders, 60000); return () => clearInterval(timer);
   }, [notificationSettings.browser, upcoming, today]);
 
-  function updatePerson(id, patch) { setPeople(current => current.map(person => person.id === id ? { ...person, ...patch } : person)); notify('관계 기록을 저장했어요.'); }
-  function updateEvent(id, patch) { setEvents(current => current.map(event => event.id === id ? { ...event, ...patch } : event)); notify('일정을 업데이트했어요.'); }
-  function saveEvent(values) {
+  async function commitData(nextPeople, nextEvents, nextRecords) {
+    if (demoUserId && (!workspaceReady || !workspaceInitialized || workspaceBusy)) {
+      notify('가상 계정의 서버 기록을 먼저 불러오거나 이전해 주세요.');
+      return false;
+    }
+    if (!demoUserId) {
+      try { commitWorkspace({ people:nextPeople, events:nextEvents, records:nextRecords }); }
+      catch { notify('브라우저 기록을 저장하지 못했어요.'); return false; }
+      setPeople(nextPeople); setEvents(nextEvents); setRecords(nextRecords);
+      return true;
+    }
+    setWorkspaceBusy(true);
+    try {
+      const saved = await demoApi('/workspace/personal', {userId:demoUserId, method:'PUT',
+        body:{revision:workspaceRevision.current,people:nextPeople,events:nextEvents,records:nextRecords}});
+      if (workspaceUser.current !== demoUserId) return false;
+      workspaceRevision.current = saved.revision;
+      setPeople(saved.people); setEvents(saved.events); setRecords(saved.records);
+      return true;
+    } catch(error) {
+      notify(error.message);
+      return false;
+    } finally { setWorkspaceBusy(false); }
+  }
+  async function initializeWorkspace(importLocal) {
+    if (!demoUserId || !workspaceReady || workspaceInitialized || workspaceBusy) return;
+    const selectedUser = demoUserId;
+    const snapshot = {revision:workspaceRevision.current,
+      people:importLocal ? localPeople() : [], events:importLocal ? localEvents() : [],
+      records:importLocal ? localRecords() : []};
+    setWorkspaceBusy(true);
+    try {
+      const preview = await demoApi('/workspace/migrations/preview', {userId:selectedUser,method:'POST',body:snapshot});
+      if (preview.initialized) { notify('이미 서버에 기록이 있습니다. 다시 불러오세요.'); return; }
+      const saved = await demoApi('/workspace/personal', {userId:selectedUser,method:'PUT',body:snapshot});
+      if (workspaceUser.current !== selectedUser) return;
+      workspaceRevision.current = saved.revision;
+      setPeople(saved.people); setEvents(saved.events); setRecords(saved.records);
+      setWorkspaceInitialized(true);
+      notify(importLocal ? '브라우저 기록을 서버에 이전했어요.' : '빈 서버 작업 공간을 만들었어요.');
+    } catch(error) { notify(error.message); }
+    finally { setWorkspaceBusy(false); }
+  }
+  async function updatePerson(id, patch) {
+    const saved = await commitData(people.map(person => person.id === id ? {...person,...patch} : person), events, records);
+    if (saved) notify('관계 기록을 저장했어요.');
+    return saved;
+  }
+  async function updateEvent(id, patch) {
+    const saved = await commitData(people, events.map(event => event.id === id ? {...event,...patch} : event), records);
+    if (saved) notify('일정을 업데이트했어요.');
+    return saved;
+  }
+  async function saveEvent(values) {
     let personId = values.personId;
+    let nextPeople = people;
     if (!personId && values.personName) {
       const existing = people.find(person => person.name === values.personName.trim());
       personId = existing?.id || crypto.randomUUID();
-      if (!existing) setPeople(current => [...current, { id: personId, name: values.personName.trim(), relation: '기타', group: '', importance: '보통', lastMet: '', memo: '', interactions: [] }]);
+      if (!existing) nextPeople = [...people, {id:personId,name:values.personName.trim(),relation:'기타',group:'',importance:'보통',lastMet:'',memo:'',interactions:[]}];
     }
-    const { personName, ...event } = values;
-    setEvents(current => [...current, { ...event, personId, id: crypto.randomUUID() }]);
-    setModal(null);
-    notify(values.type === '장례식' && themeMode === 'auto' && daysUntil(values.date, today) >= 0 && daysUntil(values.date, today) <= 3 ? '일정을 등록하고 차분한 분위기로 바꿨어요.' : '일정을 등록했어요. 알림함에서도 확인해 보세요.');
-  }
-  function savePerson(values) { setPeople(current => [...current, { ...values, id: crypto.randomUUID() }]); setModal(null); notify('새로운 인연을 등록했어요.'); }
-  function storeFinancialRecords(nextRecords, nextPeople = people) {
-    try {
-      commitWorkspace({records:nextRecords, ...(nextPeople !== people ? {people:nextPeople} : {})});
-    } catch {
-      notify('브라우저 저장 공간을 확인해 주세요. 금액 기록을 저장하지 못했어요.'); return false;
+    const {personName, ...event} = values;
+    if (await commitData(nextPeople, [...events,{...event,personId,id:crypto.randomUUID()}], records)) {
+      setModal(null); notify('일정을 등록했어요. 알림함에서도 확인해 보세요.');
     }
-    if (nextPeople !== people) setPeople(nextPeople);
-    setRecords(nextRecords); return true;
   }
-  function saveRecord(values) {
+  async function savePerson(values) {
+    if (await commitData([...people,{...values,id:crypto.randomUUID()}], events, records)) {
+      setModal(null); notify('새로운 인연을 등록했어요.');
+    }
+  }
+  async function storeFinancialRecords(nextRecords, nextPeople = people) {
+    return commitData(nextPeople, events, nextRecords);
+  }
+  async function saveRecord(values) {
     const id = modal?.recordId;
     if (id && !records.some(record => record.id === id)) { notify('수정할 기록을 찾을 수 없어요.'); return; }
-    const next = id ? records.map(record => record.id === id ? {...values, id} : record) : [...records, {...values, id:crypto.randomUUID()}];
-    if (!storeFinancialRecords(next)) return;
+    const next = id ? records.map(record => record.id === id ? {...values,id} : record) : [...records,{...values,id:crypto.randomUUID()}];
+    if (!await storeFinancialRecords(next)) return;
     setModal(null); notify(id ? '금액 기록을 수정했어요. 통계에도 반영했어요.' : '주고받은 마음을 기록했어요. 통계에도 반영했어요.');
   }
-  function deleteRecord(id) {
-    if (!storeFinancialRecords(records.filter(record => record.id !== id))) return false;
-    notify('금액 기록을 삭제했어요. 통계에도 반영했어요.'); return true;
+  async function deleteRecord(id) {
+    if (!await storeFinancialRecords(records.filter(record => record.id !== id))) return false;
+    notify('금액 기록을 삭제했어요. 통계에도 반영했어요.');
+    return true;
   }
-  function importRecords(plan) {
+  async function importRecords(plan) {
     try {
       const added = materializeImport(plan, () => crypto.randomUUID(), records);
-      if (!storeFinancialRecords([...records, ...added.records], added.people.length ? [...people, ...added.people] : people)) return false;
-      notify(added.records.length + '건을 가져왔어요.' + (added.people.length ? ' 새 인맥 ' + added.people.length + '명도 등록했어요.' : ''));
+      if (!await storeFinancialRecords([...records,...added.records], added.people.length ? [...people,...added.people] : people)) return false;
+      notify(added.records.length + '건을 가져왔어요.' + (added.people.length ? ' 새 인맥도 등록했어요.' : ''));
       return true;
-    } catch (error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
+    } catch(error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
   }
   function openEvent(event) { setNotificationsOpen(false); setModal({ type: 'eventDetail', id: event.id }); }
   function downloadCalendar(event) { const blob = new Blob([toICS(event)], { type: 'text/calendar;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${event.title}.ics`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('캘린더 파일을 저장했어요. 캘린더 앱에서 열어 주세요.'); }
@@ -152,6 +233,14 @@ export default function App() {
     <div className="app-content">
       <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} aria-label="메뉴 열기"><Icon name="Menu" /></button></div><div className="topbar-actions"><span className="today-label"><span />마음을 챙기기 좋은 하루예요</span><div className="theme-control"><button className="theme-toggle" aria-label="화면 분위기 설정" aria-expanded={themeOpen} onClick={() => { setThemeOpen(!themeOpen); setAccountOpen(false); }}><Icon name={dark ? 'Moon' : 'Sun'} size={15} /><span>{themeMode === 'auto' ? '자동 분위기' : dark ? '차분한 분위기' : '따뜻한 분위기'}</span><Icon name="ChevronDown" size={12} /></button>{themeOpen && <><div className="popover-scrim" onClick={() => setThemeOpen(false)} /><div className="theme-popover"><strong>마음에 맞는 분위기</strong>{[{ value: 'auto', name: '상황에 따라 자동', icon: 'Monitor', text: '3일 이내 조사가 있으면 차분하게' }, { value: 'light', name: '따뜻한 마음', icon: 'Sun', text: '밝은 아이보리와 딥그린' }, { value: 'dark', name: '차분한 마음', icon: 'Moon', text: '깊은 숲빛으로 전하는 위로' }].map(item => <button key={item.value} onClick={() => { setThemeMode(item.value); setThemeOpen(false); }}><Icon name={item.icon} size={17} /><span>{item.name}<small>{item.text}</small></span>{themeMode === item.value && <Icon name="Check" size={16} />}</button>)}</div></>}</div><span className="topbar-divider" /><button className="notification-trigger icon-button" aria-label={`알림 ${unreadCount}개`} onClick={() => setNotificationsOpen(true)}><Icon name="Bell" size={20} />{unreadCount > 0 && <span className="notification-dot" />}</button><div className="account-control"><button className="topbar-avatar" aria-label="계정 관리" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); setThemeOpen(false); }}><Icon name="UserRound" size={17} /></button>{accountOpen && <><div className="popover-scrim" onClick={() => setAccountOpen(false)} /><div className="account-popover">{user ? <><strong>{user.name}님</strong><small>@{user.username || user.email}{user.workplace ? ` · ${user.workplace}` : ''}</small><button onClick={() => { setAccountOpen(false); setModal({ type: 'profile' }); }}><Icon name="UserRound" size={16} />정보 수정</button><button onClick={() => { setUser(null); setAccountOpen(false); notify('로그아웃했어요.'); }}><Icon name="LogOut" size={16} />로그아웃</button></> : <><strong>나의 마음 기록</strong><button onClick={() => { setAccountOpen(false); setModal({type:'login'}); }}><Icon name="LogIn" size={16} />로그인</button><button onClick={() => { setAccountOpen(false); setModal({type:'signup'}); }}><Icon name="UserPlus" size={16} />회원가입</button></>}</div></>}</div></div></header>
       <main id="main" className={`main-content ${page === 'home' ? 'home-main' : ''}`} key={page}>
+        {demoUserId && !workspaceReady && <section className="card" role="status">서버 기록을 불러오는 중이거나 연결에 실패했습니다. 연결 상태를 확인해 주세요.</section>}
+        {demoUserId && workspaceReady && !workspaceInitialized && <section className="card" role="status">
+          <p>이 가상 계정의 서버 기록이 비어 있습니다. 기존 브라우저 기록은 삭제하지 않습니다.</p>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <button type="button" className="button button-primary" disabled={workspaceBusy} onClick={() => initializeWorkspace(true)}>브라우저 기록을 서버로 이전</button>
+            <button type="button" className="button" disabled={workspaceBusy} onClick={() => initializeWorkspace(false)}>빈 기록으로 시작</button>
+          </div>
+        </section>}
         {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} demoUserId={demoUserId} onDemoUserChange={setDemoAccount} />}
         {page === 'people' && <PeoplePage people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}
@@ -166,7 +255,7 @@ export default function App() {
     {modal?.type === 'record' && <RecordForm key={modal.recordId || 'new'} initialRecord={records.find(record => record.id === modal.recordId) || null} people={people} events={events} initialPersonId={modal.personId || ''} initialEventId={modal.eventId || ''} onSave={saveRecord} onClose={() => setModal(null)} />}
     {modal?.type === 'profile' && user && <ProfileEditModal user={user} onClose={() => setModal(null)} onSave={(profile, passwordChanged) => { setUser(profile); setModal(null); notify(passwordChanged ? '비밀번호와 내 정보를 저장했어요.' : '내 정보를 저장했어요.'); }} />}
     {(modal?.type === 'login' || modal?.type === 'signup') && <AuthModal key={modal.type} mode={modal.type} onClose={() => setModal(null)} onSwitch={type => setModal({ type })} onSuccess={profile => { setUser(profile); setModal(null); notify(`${profile.name}님, 마음결에 오신 걸 환영해요.`); }} />}
-    {selectedEvent && <EventDetail event={selectedEvent} person={people.find(person => person.id === selectedEvent.personId)} today={today} onClose={() => setModal(null)} onUpdate={patch => updateEvent(selectedEvent.id, patch)} onDelete={() => { setEvents(current => current.filter(event => event.id !== selectedEvent.id)); setModal(null); notify('일정을 삭제했어요. 금액 기록은 보관했어요.'); }} onDownload={() => downloadCalendar(selectedEvent)} onRecord={() => setModal({ type: 'record', personId: selectedEvent.personId, eventId: selectedEvent.id })} onAI={() => { setAiPersonId(selectedEvent.personId); setModal(null); navigate('ai'); }} />}
+    {selectedEvent && <EventDetail event={selectedEvent} person={people.find(person => person.id === selectedEvent.personId)} today={today} onClose={() => setModal(null)} onUpdate={patch => updateEvent(selectedEvent.id, patch)} onDelete={async () => { const nextEvents=events.filter(event=>event.id!==selectedEvent.id); const nextRecords=records.map(record=>record.eventId===selectedEvent.id?{...record,eventId:''}:record); if(await commitData(people,nextEvents,nextRecords)){setModal(null);notify('일정을 삭제했어요. 금액 기록은 보관했어요.');} }} onDownload={() => downloadCalendar(selectedEvent)} onRecord={() => setModal({ type: 'record', personId: selectedEvent.personId, eventId: selectedEvent.id })} onAI={() => { setAiPersonId(selectedEvent.personId); setModal(null); navigate('ai'); }} />}
     {notificationsOpen && <Notifications notices={notices} sharedInbox={sharedInbox} readIds={readIds} onRead={id => setReadIds(current => [...new Set([...current, id])])} onReadAll={() => setReadIds(current => [...new Set([...current, ...allNoticeIds])])} onClose={() => setNotificationsOpen(false)} onOpenEvent={openEvent} onOpenAI={() => { setNotificationsOpen(false); navigate('ai'); }} browserEnabled={notificationSettings.browser} onBrowserChange={changeBrowserNotifications} />}
     {toast && <div className="toast" role="status"><Icon name="CheckCircle2" size={18} />{toast}</div>}
   </div>;
@@ -194,7 +283,7 @@ function EventDetail({ event, person, today, onClose, onUpdate, onDelete, onDown
   const [confirmDelete, setConfirmDelete] = useState(false);
   return <Modal title="마음을 챙길 일정" subtitle="소중한 날을 위해 차근차근 준비해요." onClose={onClose}>
     <div className={`event-detail-summary ${occasionClass(event.type)}`}><span className={`detail-event-icon ${occasionClass(event.type)}`}><Icon name={eventIcon(event.type)} size={25} /></span><div><span className={`badge ${occasionClass(event.type)}`}>{event.type} · {ddLabel(daysUntil(event.date, today))}</span><h3>{event.title}</h3><p>{person?.name} · {person?.relation} · {person?.group || '소속 그룹 없음'}</p></div><button className="icon-button" aria-label="일정 정보 수정" onClick={() => setEditing(!editing)}><Icon name="Pencil" size={17} /></button></div>
-    {editing ? <form className="detail-edit-form" onSubmit={e => { e.preventDefault(); onUpdate(draft); setEditing(false); }}><label className="field">일정 이름<input className="input" required value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label><div className="form-grid"><label className="field">날짜<input className="input" required type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} /></label><label className="field">시간<input className="input" type="time" value={draft.time} onChange={e => setDraft({ ...draft, time: e.target.value })} /></label></div><label className="field">장소<input className="input" value={draft.location} onChange={e => setDraft({ ...draft, location: e.target.value })} /></label><label className="field">기억할 메모<textarea className="input" rows={2} value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} /></label><button className="button button-primary" type="submit">변경사항 저장</button></form> : <div className="event-detail-info"><div><Icon name="CalendarDays" size={17} /><span>{fullDate(event.date)} · {event.time || '시간 미정'}</span></div><div><Icon name="MapPin" size={17} /><span>{event.location || '장소 미정'}</span></div>{event.memo && <div><Icon name="NotebookPen" size={17} /><span>{event.memo}</span></div>}</div>}
+    {editing ? <form className="detail-edit-form" onSubmit={async e => { e.preventDefault(); if (await onUpdate(draft)) setEditing(false); }}><label className="field">일정 이름<input className="input" required value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label><div className="form-grid"><label className="field">날짜<input className="input" required type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} /></label><label className="field">시간<input className="input" type="time" value={draft.time} onChange={e => setDraft({ ...draft, time: e.target.value })} /></label></div><label className="field">장소<input className="input" value={draft.location} onChange={e => setDraft({ ...draft, location: e.target.value })} /></label><label className="field">기억할 메모<textarea className="input" rows={2} value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} /></label><button className="button button-primary" type="submit">변경사항 저장</button></form> : <div className="event-detail-info"><div><Icon name="CalendarDays" size={17} /><span>{fullDate(event.date)} · {event.time || '시간 미정'}</span></div><div><Icon name="MapPin" size={17} /><span>{event.location || '장소 미정'}</span></div>{event.memo && <div><Icon name="NotebookPen" size={17} /><span>{event.memo}</span></div>}</div>}
     <div className="event-detail-controls"><label className="field">참석 여부<select className="input" value={event.attendance} onChange={e => onUpdate({ attendance: e.target.value })}><option value="" disabled>참석 여부 선택</option>{['참석', '불참'].map(value => <option key={value}>{value}</option>)}</select></label><label className="field">행사 전 알림<select className="input" value={event.reminderDays} onChange={e => onUpdate({ reminderDays: Number(e.target.value) })}><option value={0}>행사 당일</option><option value={1}>1일 전부터</option><option value={3}>3일 전부터</option><option value={7}>7일 전부터</option></select></label></div>
     <div className="event-detail-ai"><Icon name="Sparkles" size={19} /><div><strong>어떤 마음을 전하면 좋을까요?</strong><p>지난 금액과 관계 기록을 함께 참고해 보세요.</p></div><button className="icon-button" aria-label="마음결 AI 열기" onClick={onAI}><Icon name="ArrowUpRight" size={19} /></button></div><div className="event-detail-actions"><button className="button button-secondary" onClick={onDownload}><Icon name="Download" size={16} />캘린더 저장</button><button className="button button-primary" onClick={onRecord}><Icon name="HandHeart" size={16} />금액 기록</button></div><button className={`delete-event ${confirmDelete ? 'confirm' : ''}`} onClick={() => confirmDelete ? onDelete() : setConfirmDelete(true)}>{confirmDelete ? '한 번 더 누르면 일정을 삭제해요' : '일정 삭제'}</button>
   </Modal>;
