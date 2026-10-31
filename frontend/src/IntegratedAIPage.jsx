@@ -85,7 +85,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'ai-user-bubble':'ai-assistant-content ai-answer-bubble'}>
-            {(m.role==='user'||extractAILead(m.body))&&<p style={{whiteSpace:'pre-wrap'}}>{m.role==='user'?m.body:extractAILead(m.body)}</p>}
+            {(m.role==='user'||m.result?.v4_analysis?.amount_krw==null||extractAILead(m.body))&&<p style={{whiteSpace:'pre-wrap'}}>{m.role==='user'||m.result?.v4_analysis?.amount_krw==null?m.body:extractAILead(m.body)}</p>}
             {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&extractAIInterpretation(m.body)&&
               <section className="ai-result-card" aria-label="AI 해석">
                 <p className="ai-interpretation">{extractAIInterpretation(m.body)}</p>
