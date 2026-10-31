@@ -5,8 +5,10 @@ No external LLM calls, credentials, or user-private data are required.
 from fastapi.testclient import TestClient
 
 from gyeongjosa_ai.api import app
+from app.main import app as policy_app
 
 client = TestClient(app)
+policy_client = TestClient(policy_app)
 
 
 def _request(scenario="public_exception", budget=150_000):
@@ -25,17 +27,18 @@ def _request(scenario="public_exception", budget=150_000):
 
 def test_presentation_main_server_and_v4_health():
     assert client.get("/api/health").json()["status"] == "ok"
-    assert client.get("/v4/api/health").json()["policy_engine"] == "v4"
+    assert policy_client.get("/api/health").json()["policy_engine"] == "v4"
 
 
-def test_presentation_both_frontends_served():
-    for path in ("/v4/", "/v4/app.js", "/v4/style.css"):
-        response = client.get(path)
-        assert response.status_code == 200, (path, response.status_code)
+def test_presentation_single_chat_entry():
+    """사용자 화면에서 별도 정책 분석 페이지를 제공하지 않는다."""
+    assert client.get("/").status_code == 200
+    assert client.get("/v4/").status_code == 404
+    assert client.get("/v4/api/health").status_code == 404
 
 
 def test_presentation_offline_budget_never_exceeded():
-    response = client.post("/v4/api/recommend", json=_request("public_exception", budget=30_000))
+    response = policy_client.post("/api/recommend", json=_request("public_exception", budget=30_000))
     assert response.status_code == 200
     result = response.json()["result"]
     assert result["status"] == "RECOMMENDED"
@@ -43,7 +46,7 @@ def test_presentation_offline_budget_never_exceeded():
 
 
 def test_presentation_conditional_cap_is_not_universal_permission():
-    response = client.post("/v4/api/recommend", json=_request("public_exception"))
+    response = policy_client.post("/api/recommend", json=_request("public_exception"))
     assert response.status_code == 200
     result = response.json()["result"]
     assert result["status"] == "RECOMMENDED"
@@ -53,7 +56,7 @@ def test_presentation_conditional_cap_is_not_universal_permission():
 
 
 def test_presentation_contract_conflict_holds_transfer():
-    response = client.post("/v4/api/recommend", json=_request("public_procurement"))
+    response = policy_client.post("/api/recommend", json=_request("public_procurement"))
     assert response.status_code == 200
     result = response.json()["result"]
     assert result["status"] == "POTENTIALLY_PROHIBITED"
