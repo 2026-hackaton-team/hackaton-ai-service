@@ -4,6 +4,7 @@ import { demoApi } from './services/demoApi.js';
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js';
 import { loadSharedNotices, sharedNoticeId } from './services/noticeInbox.js';
 import './notice-inbox.css';
+import { occasionClass } from './occasion.js';
 
 export { sharedNoticeId };
 
@@ -86,7 +87,7 @@ export default function Notifications({ notices, sharedInbox, readIds, onRead, o
               <div className="notice-card-bottom"><span>가상 시연 자료</span><button type="button" className="button button-secondary" aria-label={`${item.notice.title} 소식 확인`} onClick={() => { onRead(id); setSelected(item); }}>소식 확인<Icon name="ArrowUpRight" size={16} /></button></div>
             </article>;
           })}
-          {eventItems.map(notice => <button type="button" key={notice.id} className={`notification-item ${!readIds.includes(notice.id) ? 'unread' : ''}`} onClick={() => { onRead(notice.id); onOpenEvent(notice.event); }}><span className={`notification-type-icon ${notice.event.type === '장례식' ? 'slate' : ''}`}><Icon name={iconFor(notice.event.type)} size={20} /></span><span className="notification-item-body"><strong>{notice.event.type === '장례식' ? '조심스럽게 전해 드리는 소식' : `${notice.event.title}${notice.days === 0 ? '이 오늘이에요' : `까지 ${notice.days}일`}`}</strong><span>{notice.event.type === '장례식' ? `${notice.event.title} · 빈소와 조문 시간을 확인해 주세요.` : `${dateLabel(notice.event.date)} ${notice.event.time || ''} · ${!notice.event.attendance ? '참석 여부를 알려 주세요.' : '준비할 마음을 확인해 보세요.'}`}</span><small>{notice.event.location || '장소를 확인해 주세요'}{notice.event.reminderDays > 0 ? ` · ${notice.event.reminderDays}일 전부터 알림` : ' · 당일 알림'}</small></span>{!readIds.includes(notice.id) && <span className="unread-dot" />}</button>)}
+          {eventItems.map(notice => <button type="button" key={notice.id} className={`notification-item ${!readIds.includes(notice.id) ? 'unread' : ''}`} onClick={() => { onRead(notice.id); onOpenEvent(notice.event); }}><span className={`notification-type-icon ${occasionClass(notice.event.type)}`}><Icon name={iconFor(notice.event.type)} size={20} /></span><span className="notification-item-body"><strong>{notice.event.type === '장례식' ? '조심스럽게 전해 드리는 소식' : `${notice.event.title}${notice.days === 0 ? '이 오늘이에요' : `까지 ${notice.days}일`}`}</strong><span>{notice.event.type === '장례식' ? `${notice.event.title} · 빈소와 조문 시간을 확인해 주세요.` : `${dateLabel(notice.event.date)} ${notice.event.time || ''} · ${!notice.event.attendance ? '참석 여부를 알려 주세요.' : '준비할 마음을 확인해 보세요.'}`}</span><small>{notice.event.location || '장소를 확인해 주세요'}{notice.event.reminderDays > 0 ? ` · ${notice.event.reminderDays}일 전부터 알림` : ' · 당일 알림'}</small></span>{!readIds.includes(notice.id) && <span className="unread-dot" />}</button>)}
           {!hasItems && sharedInbox.status !== 'loading' && !sharedInbox.error && !sharedInbox.usersError && <EmptyState icon="CheckCheck" title={tab === '읽지 않음' ? '새로 확인할 알림이 없어요' : tab === '공유 소식' ? '표시할 공유 소식이 없어요' : '아직 도착한 알림이 없어요'} description="새로운 일정과 공유 소식이 있으면 이곳에 표시돼요." />}
         </div>
       </>}

@@ -13,8 +13,7 @@ frontend/dist/
 data/demo_conversations.sqlite3*
 data/demo_profiles.db*
 
-# Local launcher and working notes
-/start.cmd
+# Local working notes
 /docs/LOCAL_DEMO_REVIEW.md
 /docs/LOCAL_RUN.md
 /docs/NEXT_WORK_SPEC.md

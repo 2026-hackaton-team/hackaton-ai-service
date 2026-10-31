@@ -3,7 +3,7 @@ import { Modal, Icon } from './ui.jsx'
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, resolveRelation } from './relationships.js'
 import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
-import { findAccount, normalizeUsername, normalizePhone, signupError } from './accountRules.js'
+import { findAccount, normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, publicProfile, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const ACCOUNTS_KEY = 'maeum-demo-accounts-v1'
@@ -208,9 +208,26 @@ function readAccounts() {
   return accounts
 }
 
+const emptyAuthForm = { username: '', name: '', password: '', confirmation: '', phone: '', email: '', workplace: '', organization: '', workType: '', visibility: '' }
+
+function WorkFields({ form, update, disabled }) {
+  return <>
+    <Field label="직장" hint="선택 입력 · 예: 마음전자"><input className="input" aria-label="직장" value={form.workplace} onChange={event => update('workplace', event.target.value)} maxLength={60} autoComplete="organization" disabled={disabled}/></Field>
+    <Field label="소속기관" hint="선택 입력 · 예: 인사팀, ○○시청"><input className="input" aria-label="소속기관" value={form.organization} onChange={event => update('organization', event.target.value)} maxLength={60} disabled={disabled}/></Field>
+    <Field label="직무형태" required hint="공직자 등은 청탁금지법 기준을 함께 안내해요."><select className="input" aria-label="직무형태" value={form.workType} onChange={event => update('workType', event.target.value)} required disabled={disabled}><option value="" disabled>직무형태 선택</option>{WORK_TYPES.map(item => <option key={item}>{item}</option>)}</select></Field>
+    <Field label="정보공개여부" required hint="친구 찾기에서 내 정보가 보이는 범위예요."><select className="input" aria-label="정보공개여부" value={form.visibility} onChange={event => update('visibility', event.target.value)} required disabled={disabled}><option value="" disabled>공개 범위 선택</option>{VISIBILITY_OPTIONS.map(item => <option key={item}>{item}</option>)}</select></Field>
+  </>
+}
+
+function accountErrorMessage(cause) {
+  return cause?.message === 'crypto-unavailable'
+    ? '이 브라우저에서는 계정을 저장할 수 없어요. localhost 또는 HTTPS 환경에서 다시 시도해 주세요.'
+    : '브라우저 저장소를 사용할 수 없어요. 저장 공간과 브라우저 설정을 확인해 주세요.'
+}
+
 export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   const signup = mode === 'signup'
-  const [form, setForm] = useState({ username: '', name: '', phone: '', email: '', password: '', confirmation: '', identity: '' })
+  const [form, setForm] = useState(emptyAuthForm)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }))
@@ -221,7 +238,6 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
 
   async function submit(event) {
     event.preventDefault()
-    const email = form.email.trim().toLowerCase()
     if (pending) return
     if (signup) { const error = signupError(form); if (error) { setError(error); return } }
     setPending(true)
@@ -233,20 +249,18 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
         if (error) { setError(error); return }
         const salt = crypto.getRandomValues(new Uint8Array(16))
         const hash = await hashPassword(form.password, salt)
-        const account = { username: normalizeUsername(form.username), phone: normalizePhone(form.phone), name: form.name.trim(), email, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS }
+        const account = { username: normalizeUsername(form.username), name: form.name.trim(), phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(), organization: form.organization.trim(), workType: form.workType, visibility: form.visibility, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS }
         localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
-        onSuccess({ username: account.username || '', name: account.name, phone: account.phone || '', email: account.email })
+        onSuccess(publicProfile(account))
       } else {
-        const account = findAccount(accounts, form.identity)
-        if (!account?.salt || !account?.hash) { setError('아이디 또는 이메일과 비밀번호를 확인해 주세요. 처음이라면 체험 계정을 만들어 주세요.'); return }
+        const account = findAccount(accounts, form.username)
+        if (!account?.salt || !account?.hash) { setError('아이디와 비밀번호를 확인해 주세요. 처음이라면 체험 계정을 만들어 주세요.'); return }
         const hash = await hashPassword(form.password, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
-        if (hash !== account.hash) { setError('아이디 또는 이메일과 비밀번호를 확인해 주세요.'); return }
-        onSuccess({ username: account.username || '', name: account.name, phone: account.phone || '', email: account.email })
+        if (hash !== account.hash) { setError('아이디와 비밀번호를 확인해 주세요.'); return }
+        onSuccess(publicProfile(account))
       }
     } catch (cause) {
-      setError(cause.message === 'crypto-unavailable'
-        ? '이 브라우저에서는 계정을 저장할 수 없어요. localhost 또는 HTTPS 환경에서 다시 시도해 주세요.'
-        : '브라우저 저장소를 사용할 수 없어요. 저장 공간과 브라우저 설정을 확인해 주세요.')
+      setError(accountErrorMessage(cause))
     } finally {
       setPending(false)
     }
@@ -255,20 +269,76 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   return <Modal title={signup ? '함께 마음을 이어가요' : '다시 만나 반가워요'} subtitle={signup ? '소중한 관계를 챙기는 작은 습관, 지금 시작해요.' : '기억해 둔 마음을 다시 만나 보세요.'} onClose={pending ? () => {} : onClose} wide={signup}>
     <div className="auth-demo-note"><Icon name="LockKeyhole" size={16} /><span>체험 계정 · 이 브라우저에 저장됩니다</span></div>
     <form onSubmit={submit} className="app-form auth-form">
-      <div className={signup ? 'form-grid' : 'auth-login-fields'}>
-      {signup ? <Field label="아이디" required hint="영문·숫자·밑줄 4~20자, 대소문자를 구분하지 않아요."><input className="input" aria-label="아이디" value={form.username} onChange={event => update('username', event.target.value)} minLength={4} maxLength={20} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field> : <Field label="아이디 또는 이메일" required><input className="input" aria-label="아이디 또는 이메일" value={form.identity} onChange={event => update('identity', event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field>}
-      <Field label="비밀번호" required hint={signup ? '8자 이상으로 입력해 주세요.' : undefined}><input className="input" aria-label="비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} minLength={signup ? 8 : undefined} maxLength={128} autoComplete={signup ? 'new-password' : 'current-password'} required disabled={pending}/></Field>
-      {signup && <>
-        <Field label="비밀번호 확인" required><input className="input" aria-label="비밀번호 확인" type="password" value={form.confirmation} onChange={event => update('confirmation', event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required disabled={pending}/></Field>
+      {signup ? <div className="form-grid">
+        <Field label="아이디" required hint="영문·숫자·밑줄 4~20자, 대소문자를 구분하지 않아요."><input className="input" aria-label="아이디" value={form.username} onChange={event => update('username', event.target.value)} minLength={4} maxLength={20} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field>
         <Field label="이름" required><input className="input" aria-label="이름" value={form.name} onChange={event => update('name', event.target.value)} maxLength={40} autoComplete="name" required disabled={pending}/></Field>
-        <Field label="전화번호" required hint="예: 010-1234-5678 · 인증 기능은 아직 제공하지 않아요."><input className="input" aria-label="전화번호" type="tel" value={form.phone} onChange={event => update('phone', event.target.value)} maxLength={24} autoComplete="tel" required disabled={pending}/></Field>
+        <Field label="비밀번호" required hint="8자 이상으로 입력해 주세요."><input className="input" aria-label="비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required disabled={pending}/></Field>
+        <Field label="비밀번호 확인" required><input className="input" aria-label="비밀번호 확인" type="password" value={form.confirmation} onChange={event => update('confirmation', event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required disabled={pending}/></Field>
+        <Field label="전화번호" required hint="예: 010-1234-5678"><input className="input" aria-label="전화번호" type="tel" value={form.phone} onChange={event => update('phone', event.target.value)} maxLength={24} autoComplete="tel" required disabled={pending}/></Field>
         <Field label="이메일" required><input className="input" aria-label="이메일" type="email" value={form.email} onChange={event => update('email', event.target.value)} maxLength={254} autoComplete="email" required disabled={pending}/></Field>
-      </>}
-      </div>
+        <WorkFields form={form} update={update} disabled={pending} />
+      </div> : <div className="auth-login-fields">
+        <Field label="아이디" required><input className="input" aria-label="아이디" value={form.username} onChange={event => update('username', event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field>
+        <Field label="비밀번호" required><input className="input" aria-label="비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} maxLength={128} autoComplete="current-password" required disabled={pending}/></Field>
+      </div>}
       <FormError message={error} />
       <button className="button button-primary auth-submit" type="submit" disabled={pending}>{pending && <span className="form-spinner" aria-hidden="true" />}{pending ? (signup ? '계정을 만드는 중…' : '확인하는 중…') : (signup ? '체험 계정 만들기' : '로그인')}<Icon name="ArrowRight" size={17} /></button>
     </form>
     <p className="auth-switch">{signup ? '이미 계정이 있나요?' : '아직 계정이 없나요?'} <button type="button" onClick={() => onSwitch(signup ? 'login' : 'signup')} disabled={pending}>{signup ? '로그인' : '회원가입'}</button></p>
     <p className="auth-storage-info">실제 서비스 계정과 연동되지 않는 체험 기능입니다.<br />일정과 인맥 기록은 이 브라우저의 체험 데이터로 유지됩니다.</p>
+  </Modal>
+}
+
+export function ProfileEditModal({ user, onClose, onSave }) {
+  const [form, setForm] = useState(() => {
+    const account = (() => { try { return findAccount(readAccounts(), user?.username) } catch { return undefined } })() || user || {}
+    return { currentPassword: '', password: '', confirmation: '', phone: account.phone || '', email: account.email || '', workplace: account.workplace || '', organization: account.organization || '', workType: account.workType || '', visibility: account.visibility || '' }
+  })
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+  const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }))
+
+  async function submit(event) {
+    event.preventDefault()
+    if (pending) return
+    setPending(true)
+    setError('')
+    try {
+      const accounts = readAccounts()
+      const account = findAccount(accounts, user?.username)
+      if (!account?.salt || !account?.hash) { setError('이 브라우저에 저장된 계정을 찾지 못했어요. 다시 로그인해 주세요.'); return }
+      const error = profileUpdateError(form, accounts, account.username)
+      if (error) { setError(error); return }
+      const next = { ...account, phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(), organization: form.organization.trim(), workType: form.workType, visibility: form.visibility }
+      if (form.password) {
+        const current = await hashPassword(form.currentPassword, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
+        if (current !== account.hash) { setError('현재 비밀번호가 맞지 않아요.'); return }
+        const salt = crypto.getRandomValues(new Uint8Array(16))
+        Object.assign(next, { salt: bytesToBase64(salt), hash: await hashPassword(form.password, salt), iterations: PBKDF2_ITERATIONS })
+      }
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts.map(item => item === account ? next : item)))
+      onSave(publicProfile(next), Boolean(form.password))
+    } catch (cause) {
+      setError(accountErrorMessage(cause))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return <Modal title="내 정보 수정" subtitle={`${user?.name || ''}님의 계정 정보를 바꿀 수 있어요. 아이디와 이름은 바꿀 수 없어요.`} onClose={pending ? () => {} : onClose} wide>
+    <form onSubmit={submit} className="app-form auth-form profile-form">
+      <div className="form-grid">
+        <Field label="아이디"><input className="input" value={user?.username || ''} readOnly disabled /></Field>
+        <Field label="이름"><input className="input" value={user?.name || ''} readOnly disabled /></Field>
+        <Field label="새 비밀번호" hint="바꿀 때만 입력 · 8자 이상"><input className="input" aria-label="새 비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} maxLength={128} autoComplete="new-password" disabled={pending}/></Field>
+        <Field label="새 비밀번호 확인"><input className="input" aria-label="새 비밀번호 확인" type="password" value={form.confirmation} onChange={event => update('confirmation', event.target.value)} maxLength={128} autoComplete="new-password" disabled={pending}/></Field>
+        {form.password && <Field label="현재 비밀번호" required full hint="비밀번호를 바꾸려면 현재 비밀번호를 확인해요."><input className="input" aria-label="현재 비밀번호" type="password" value={form.currentPassword} onChange={event => update('currentPassword', event.target.value)} maxLength={128} autoComplete="current-password" required disabled={pending}/></Field>}
+        <Field label="전화번호" required hint="예: 010-1234-5678"><input className="input" aria-label="전화번호" type="tel" value={form.phone} onChange={event => update('phone', event.target.value)} maxLength={24} autoComplete="tel" required disabled={pending}/></Field>
+        <Field label="이메일" required><input className="input" aria-label="이메일" type="email" value={form.email} onChange={event => update('email', event.target.value)} maxLength={254} autoComplete="email" required disabled={pending}/></Field>
+        <WorkFields form={form} update={update} disabled={pending} />
+      </div>
+      <FormError message={error} />
+      <div className="form-actions"><button className="button button-secondary" type="button" onClick={onClose} disabled={pending}>취소</button><button className="button button-primary" type="submit" disabled={pending}>{pending && <span className="form-spinner" aria-hidden="true" />}{pending ? '저장하는 중…' : '변경사항 저장'}</button></div>
+    </form>
   </Modal>
 }
