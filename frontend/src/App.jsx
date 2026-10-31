@@ -14,7 +14,8 @@ import { SOCIAL_EVENT, SOCIAL_KEY, ACCOUNTS_KEY, loadSocial, mutateSocial, readM
 import { buildReceivedItems, itemToEvent } from './services/receivedItems.js';
 import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
-import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './services/workspaceStorage.js';
+import { STORAGE_KEYS, readStored, writeStored } from './services/workspaceStorage.js';
+import { useServerWorkspace } from './services/serverWorkspace.js';
 import { normalizePerson } from './relationships.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 
@@ -50,12 +51,18 @@ export default function App() {
   // 로그인한 계정마다 인맥 · 일정 · 금액 기록을 따로 보관한다. (로그아웃 상태는 기본 공간)
   const scope = user?.username ? `:${user.username}` : '';
   const workspaceKeys = useMemo(() => ({ ...STORAGE_KEYS, people: STORAGE_KEYS.people + scope, events: STORAGE_KEYS.events + scope, records: STORAGE_KEYS.records + scope, readIds: STORAGE_KEYS.readIds + scope }), [scope]);
-  const [people, setPeople] = useStored(workspaceKeys.people, initialPeople, items => items.map(normalizePerson));
-  const [events, setEvents] = useStored(workspaceKeys.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
-  const [records, setRecords] = useStored(workspaceKeys.records, initialRecords);
+  const [localPeople] = useStored(workspaceKeys.people, initialPeople, items => items.map(normalizePerson));
+  const [localEvents] = useStored(workspaceKeys.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
+  const [localRecords] = useStored(workspaceKeys.records, initialRecords);
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [readIds, setReadIds] = useStored(workspaceKeys.readIds, []);
   const sharedInbox = useSharedNoticeInbox();
+  const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(sharedInbox.userId);
+  const linked = Boolean(sharedInbox.userId);
+  const workspaceReady = linked && workspace.owner === sharedInbox.userId && workspace.status === 'ready';
+  const people = linked ? (workspaceReady ? workspace.snapshot.people.map(normalizePerson) : []) : localPeople;
+  const events = linked ? (workspaceReady ? workspace.snapshot.events.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })) : []) : localEvents;
+  const records = linked ? (workspaceReady ? workspace.snapshot.records : []) : localRecords;
   const [notificationSettings, setNotificationSettings] = useStored(STORAGE_KEYS.notifications, { browser: false });
   const [page, setPage] = useState(() => navigation.some(item => item.id === location.hash.slice(1)) ? location.hash.slice(1) : 'home');
   const [aiPersonId, setAiPersonId] = useState('');
@@ -95,61 +102,115 @@ export default function App() {
     sendReminders(); const timer = setInterval(sendReminders, 60000); return () => clearInterval(timer);
   }, [notificationSettings.browser, upcoming, today]);
 
-  function updatePerson(id, patch) { setPeople(current => current.map(person => person.id === id ? { ...person, ...patch } : person)); notify('관계 기록을 저장했어요.'); }
-  function updateEvent(id, patch) {
-    const target = events.find(event => event.id === id);
-    setEvents(current => current.map(event => event.id === id ? { ...event, ...patch } : event));
-    if (target?.owner === 'me' && user) mutate(state => updateSharedEvent(state, user.username, { ...target, ...patch }));
-    notify('일정을 업데이트했어요.');
+  async function saveChanges(change) {
+    if (!workspaceReady) {
+      notify(linked ? '서버 기록을 불러오거나 이전한 뒤 저장할 수 있어요.' : 'AI에서 가상 계정을 선택한 뒤 서버에 기록해 주세요.');
+      return false;
+    }
+    try {
+      await commitServer(change);
+      return true;
+    } catch (error) {
+      notify(error.message || '서버에 저장하지 못했습니다. 다시 확인해 주세요.');
+      return false;
+    }
   }
-  function saveEvent(values) {
+
+  async function initializeWorkspace(importLocal) {
+    try {
+      await initializeServer(importLocal
+        ? { people: localPeople, events: localEvents, records: localRecords }
+        : { people: [], events: [], records: [] });
+      notify(importLocal ? '기존 브라우저 기록을 서버에 이전했어요.' : '빈 서버 작업공간을 시작했어요.');
+    } catch (error) {
+      notify(error.message || '서버 이전에 실패했습니다. 브라우저 기록은 유지됩니다.');
+    }
+  }
+
+  async function updatePerson(id, patch) {
+    if (await saveChanges(state => ({ people: state.people.map(person => person.id === id ? { ...person, ...patch } : person) }))) {
+      notify('관계 기록을 서버에 저장했어요.');
+    }
+  }
+
+  async function updateEvent(id, patch) {
+    const target = events.find(event => event.id === id);
+    if (await saveChanges(state => ({ events: state.events.map(event => event.id === id ? { ...event, ...patch } : event) }))) {
+      if (target?.owner === 'me' && user) mutate(state => updateSharedEvent(state, user.username, { ...target, ...patch }));
+      notify('일정을 서버에 저장했어요.');
+    }
+  }
+
+  async function saveEvent(values) {
     if (values.owner === 'me') {
       const { shareScope, shareMessage, ...rest } = values;
       const created = { ...rest, id: crypto.randomUUID() };
-      setEvents(current => [...current, created]);
-      if (shareScope && shareScope !== 'private' && user) { setModal({ type: 'share', id: created.id, event: created, scope: shareScope, message: shareMessage }); notify('내 경조사를 등록했어요. 이제 보낼 친구를 골라 주세요.'); }
-      else { setModal(null); notify('내 경조사를 등록했어요.'); }
+      if (!await saveChanges(state => ({ events: [...state.events, created] }))) return;
+      if (shareScope && shareScope !== 'private' && user) {
+        setModal({ type: 'share', id: created.id, event: created, scope: shareScope, message: shareMessage });
+        notify('내 경조사를 등록했어요. 이제 보낼 친구를 골라 주세요.');
+      } else {
+        setModal(null);
+        notify('내 경조사를 서버에 등록했어요.');
+      }
       return;
     }
     let personId = values.personId;
+    let createdPerson = null;
     if (!personId && values.personName) {
       const existing = people.find(person => person.name === values.personName.trim());
       personId = existing?.id || crypto.randomUUID();
-      if (!existing) setPeople(current => [...current, { id: personId, name: values.personName.trim(), relation: '기타', group: '', importance: '보통', lastMet: '', memo: '', interactions: [] }]);
+      if (!existing) createdPerson = { id: personId, name: values.personName.trim(), relation: '기타', group: '', importance: '보통', lastMet: '', memo: '', interactions: [] };
     }
     const { personName, ...event } = values;
-    setEvents(current => [...current, { ...event, personId, id: crypto.randomUUID() }]);
+    const created = { ...event, personId, id: crypto.randomUUID() };
+    if (!await saveChanges(state => ({
+      people: createdPerson ? [...state.people, createdPerson] : state.people,
+      events: [...state.events, created],
+    }))) return;
     setModal(null);
-    notify(values.type === '장례식' && themeMode === 'auto' && daysUntil(values.date, today) >= 0 && daysUntil(values.date, today) <= 3 ? '일정을 등록하고 차분한 분위기로 바꿨어요.' : '일정을 등록했어요. 알림함에서도 확인해 보세요.');
+    notify('일정을 서버에 등록했어요.');
   }
-  function savePerson(values) { setPeople(current => [...current, { ...values, id: crypto.randomUUID() }]); setModal(null); notify('새로운 인연을 등록했어요.'); }
-  function storeFinancialRecords(nextRecords, nextPeople = people) {
-    try {
-      commitWorkspace({records:nextRecords, ...(nextPeople !== people ? {people:nextPeople} : {})}, undefined, workspaceKeys);
-    } catch {
-      notify('브라우저 저장 공간을 확인해 주세요. 금액 기록을 저장하지 못했어요.'); return false;
-    }
-    if (nextPeople !== people) setPeople(nextPeople);
-    setRecords(nextRecords); return true;
+
+  async function savePerson(values) {
+    const created = { ...values, id: crypto.randomUUID() };
+    if (!await saveChanges(state => ({ people: [...state.people, created] }))) return;
+    setModal(null);
+    notify('새로운 인연을 서버에 등록했어요.');
   }
-  function saveRecord(values) {
+
+  async function saveRecord(values) {
     const id = modal?.recordId;
     if (id && !records.some(record => record.id === id)) { notify('수정할 기록을 찾을 수 없어요.'); return; }
-    const next = id ? records.map(record => record.id === id ? {...values, id} : record) : [...records, {...values, id:crypto.randomUUID()}];
-    if (!storeFinancialRecords(next)) return;
-    setModal(null); notify(id ? '금액 기록을 수정했어요. 통계에도 반영했어요.' : '주고받은 마음을 기록했어요. 통계에도 반영했어요.');
+    const newId = id || crypto.randomUUID();
+    if (!await saveChanges(state => ({
+      records: id
+        ? state.records.map(record => record.id === id ? { ...values, id } : record)
+        : [...state.records, { ...values, id: newId }],
+    }))) return;
+    setModal(null);
+    notify(id ? '금액 기록을 서버에서 수정했어요.' : '주고받은 마음을 서버에 기록했어요.');
   }
-  function deleteRecord(id) {
-    if (!storeFinancialRecords(records.filter(record => record.id !== id))) return false;
-    notify('금액 기록을 삭제했어요. 통계에도 반영했어요.'); return true;
+
+  async function deleteRecord(id) {
+    const ok = await saveChanges(state => ({ records: state.records.filter(record => record.id !== id) }));
+    if (ok) notify('금액 기록을 서버에서 삭제했어요.');
+    return ok;
   }
-  function importRecords(plan) {
+
+  async function importRecords(plan) {
     try {
       const added = materializeImport(plan, () => crypto.randomUUID(), records);
-      if (!storeFinancialRecords([...records, ...added.records], added.people.length ? [...people, ...added.people] : people)) return false;
-      notify(added.records.length + '건을 가져왔어요.' + (added.people.length ? ' 새 인맥 ' + added.people.length + '명도 등록했어요.' : ''));
+      if (!await saveChanges(state => ({
+        records: [...state.records, ...added.records],
+        people: added.people.length ? [...state.people, ...added.people] : state.people,
+      }))) return false;
+      notify(added.records.length + '건을 서버에 가져왔어요.' + (added.people.length ? ' 새 인맥 ' + added.people.length + '명도 등록했어요.' : ''));
       return true;
-    } catch (error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
+    } catch (error) {
+      notify(error.message || 'CSV를 다시 확인해 주세요.');
+      return false;
+    }
   }
   // 로그인 계정마다 마지막으로 고른 AI 프로필을 기억했다가 로그인하면 자동으로 선택한다.
   const profileSync = useRef({ user: '', target: null });
