@@ -19,7 +19,6 @@ const friendlyError = error => /Failed to fetch|NetworkError|Load failed|서버 
 export default function IntegratedAIPage({initialNoticeId='',embedded=false,userId=''}) {
   const [scenarioExamples,setScenarioExamples]=useState([])
   const [cid,setCid]=useState('')
-  const [conversations,setConversations]=useState([])
   const [messages,setMessages]=useState([])
   const [question,setQuestion]=useState('')
   const [busy,setBusy]=useState(false)
@@ -31,19 +30,13 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
   useEffect(()=>()=>controller.current?.abort(),[])
   useEffect(()=>{
     controller.current?.abort()
-    setMessages([]);setCid('');setConversations([]);setScenarioExamples([]);setError('')
+    setMessages([]);setCid('');setScenarioExamples([]);setError('')
     if(!userId)return
     const ac=new AbortController()
-    demoApi('/conversations',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setConversations(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
     demoApi('/demo/v4-scenarios',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setScenarioExamples(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
     return ()=>ac.abort()
   },[userId])
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end',behavior:'smooth'})},[messages])
-  async function openConversation(id) {
-    if(!userId||busy)return
-    try{const r=await demoApi('/conversations/'+encodeURIComponent(id),{userId});if(activeUser.current!==userId)return;setCid(id);setMessages(r.messages||[]);setError('')}
-    catch(e){if(activeUser.current===userId)setError(friendlyError(e))}
-  }
   function newConversation(){if(busy)return;setCid('');setMessages([]);setError('')}
   async function send(text, selection=null){
     const prompt=String(text||'').trim()
@@ -55,7 +48,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
       if(!current){
         const r=await demoApi('/conversations',{userId,method:'POST',signal:ac.signal})
         if(ac.signal.aborted||activeUser.current!==userId)return
-        current=r.id;setCid(current);setConversations(prev=>[{id:current,created_at:r.createdAt},...prev])
+        current=r.id;setCid(current)
       }
       const response=await demoApi('/conversations/'+encodeURIComponent(current)+'/messages',{
         userId,method:'POST',signal:ac.signal,
@@ -75,9 +68,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
         <button className="button" type="button" disabled={!userId||busy} onClick={newConversation}>새 대화</button>
-      </div>
-      <div style={{display:'flex',gap:8,overflowX:'auto',padding:12}}>
-        {conversations.map(c=><button key={c.id} type="button" className="text-button" onClick={()=>openConversation(c.id)} disabled={busy} aria-pressed={cid===c.id}>{new Date(c.updated_at||c.created_at).toLocaleString('ko-KR')}</button>)}
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
