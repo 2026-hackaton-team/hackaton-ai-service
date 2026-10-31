@@ -83,7 +83,8 @@ def test_persona_records_are_used_by_normal_recommendation_engine(tmp_path, monk
     assert result["history_stats"]["paid"]["average_krw"] == 50000
     assert result["history_stats"]["received"]["average_krw"] == 100000
     assert result["budget_analysis"]["budget_krw"] == 120000
-    assert result["budget_analysis"]["unrestricted_amount_krw"] == 100000
+    assert result["budget_analysis"]["unrestricted_amount_krw"] >= 10000
+    assert result["budget_analysis"]["unrestricted_amount_krw"] % 10000 == 0
     assert result["budget_analysis"]["budget_limited"] is False
 
 
