@@ -308,6 +308,12 @@ class ChatService:
             "evidence": evidence, "cited_ids": cited_ids,
             "history_stats": summarize_transactions(history),
             "suggested_amount_krw": amount,
+            "budget_analysis": {
+                "budget_krw": budget,
+                "unrestricted_amount_krw": result.get("unrestricted_amount_krw") if amount is not None else None,
+                "budget_limited": result.get("budget_limited") if amount is not None else None,
+                "reference_only": provisional,
+            },
             "recommendation_basis": result.get("recommendation_basis"),
             "evidence_level": result.get("evidence_level"),
             "v4_analysis": {

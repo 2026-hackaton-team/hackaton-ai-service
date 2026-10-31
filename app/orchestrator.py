@@ -63,6 +63,8 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
                   'matched_source_id':base.get('matched_source_id'),
                   'matched_transaction_ids':base.get('matched_transaction_ids',[]),
                   'baseline_amount_krw':base.get('baseline_amount_krw'),
+                  'unrestricted_amount_krw':base.get('unrestricted_amount_krw'),
+                  'budget_limited':base.get('budget_limited'),
                   'relationship_adjustments':base.get('relationship_adjustments',[]),
                   'reasons':base.get('reasons',[]),
                   'disclaimer':'참고액은 법적 송금 가능 금액이 아닙니다.'}
