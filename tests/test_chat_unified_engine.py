@@ -156,7 +156,7 @@ def test_conversation_api_reads_updated_workspace_each_turn(tmp_path, monkeypatc
             cid = client.post("/api/conversations", headers=headers).json()["id"]
             endpoint = f"/api/conversations/{cid}/messages"
             first = client.post(endpoint, headers=headers, json={
-                "requestId": "turn1",
+                "requestId": "request-turn-one",
                 "text": "친구A의 장례식인데 예산은 10만원이에요",
             })
             assert first.status_code == 200, first.text
@@ -167,7 +167,7 @@ def test_conversation_api_reads_updated_workspace_each_turn(tmp_path, monkeypatc
             amended["revision"] = 1
             save_workspace("U001", WorkspaceInput.model_validate(amended))
             second = client.post(endpoint, headers=headers, json={
-                "requestId": "turn2", "text": "예산은 10만원으로 추천해줘",
+                "requestId": "request-turn-two", "text": "예산은 10만원으로 추천해줘",
             })
             assert second.status_code == 200, second.text
             assert any("200,000원" in row["text"] for row in second.json()["evidence"]
