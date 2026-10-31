@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.data import DemoData, load_data
 from gyeongjosa_ai.generate_data import add_scenario_fixtures, generate_dataset
 
@@ -18,8 +19,8 @@ LEGACY_DIGEST = "812ee16e77ca5c2b768a668f307bfa4d90605621e3ae2c2cd23b14ef5c9a2f1
 
 
 def read_json(name):
-    """저장된 가상 데이터 파일을 읽는다."""
-    return json.loads((DATA / name).read_text(encoding="utf-8-sig"))
+    """시드 DB에 저장된 가상 데이터를 예전 파일 이름으로 읽는다."""
+    return seed_db.load(name.removesuffix(".json"))
 
 
 def test_fixture_additions_preserve_the_entire_existing_dataset():

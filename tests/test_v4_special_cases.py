@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.main import app as v4_app
 from app.special_cases import assess_special
 from gyeongjosa_ai.api import app
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.special_fixtures import merge_special_fixtures
 from gyeongjosa_ai.v4_chat import SCENARIOS
@@ -49,7 +50,7 @@ def test_ten_scenarios_have_distinct_synthetic_person_mapping():
 
 
 def test_original_datasets_remain_unchanged_and_new_links_are_valid():
-    original = json.loads((ROOT / "data" / "original_demo.json").read_text(encoding="utf-8"))
+    original = seed_db.load("original_demo")
     untouched = copy.deepcopy(original)
     combined = merge_special_fixtures(original)
     assert original == untouched

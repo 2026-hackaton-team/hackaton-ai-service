@@ -6,12 +6,10 @@
 """
 from __future__ import annotations
 from collections import Counter
-import json
 import math
-from pathlib import Path
 import re
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+from gyeongjosa_ai import seed_db
 
 
 def grams(value: str) -> Counter[str]:
@@ -21,8 +19,8 @@ def grams(value: str) -> Counter[str]:
 
 
 class KnowledgeBase:
-    def __init__(self, path: Path | None = None):
-        self.data = json.loads((path or DATA_DIR / "knowledge_base.json").read_text(encoding="utf-8"))
+    def __init__(self, data: dict | None = None):
+        self.data = data if data is not None else seed_db.load("knowledge_base")
         self.documents = self.data["documents"]
         self.by_id = {d["id"]: d for d in self.documents}
         self.tf = [grams(" ".join([d["title"], d["text"], *d["keywords"]])) for d in self.documents]

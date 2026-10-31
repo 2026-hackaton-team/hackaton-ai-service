@@ -1,18 +1,18 @@
 """새 가상 인물과 소식으로 주요 경계 동작을 검증한다."""
 
 import json
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.ai import ModelUnavailable, parse_response
 from gyeongjosa_ai.api import app
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.service import ChatService
 
 
-CASES = json.loads((Path(__file__).resolve().parents[1] / "data" / "scenario_cases.json").read_text(encoding="utf-8-sig"))["scenarios"]
+CASES = seed_db.load("scenario_cases")["scenarios"]
 
 
 class ScenarioGateway:

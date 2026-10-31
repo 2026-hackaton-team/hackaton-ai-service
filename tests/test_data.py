@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.data import DemoData
 from gyeongjosa_ai import generate_data as generator
 from gyeongjosa_ai.generate_data import generate_dataset
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="module")
 def original():
-    return json.loads((ROOT / "data" / "original_demo.json").read_text(encoding="utf-8"))
+    return seed_db.load("original_demo")
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +34,7 @@ def data(generated):
 
 def test_original_copy_matches_source():
     source = ROOT.parent / "data" / "gyeongjosa_demo.json"
-    copied = ROOT / "data" / "original_demo.json"
+    copied = ROOT / "data" / "json_backup" / "original_demo.json"
     # 줄바꿈을 정규화해 윈도와 리눅스에서 같은 원본 내용을 확인한다.
     expected_sha256 = "1f9cee2d3e971013298c7de0ff7dbda11a284e955d3a7208f0228a57cf3f6b5e"
     copied_bytes = copied.read_bytes().replace(b"\r\n", b"\n")
@@ -73,20 +74,18 @@ def test_generated_questions_include_varied_expressions(generated):
 
 
 def test_generator_does_not_overwrite_without_explicit_force(tmp_path, monkeypatch, original):
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "original_demo.json").write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
-    (data_dir / "scenario_fixtures.json").write_bytes((ROOT / "data" / "scenario_fixtures.json").read_bytes())
-    output = data_dir / "demo.json"
-    output.write_text("기존 작업 데이터", encoding="utf-8")
-    monkeypatch.setattr(generator, "ROOT", tmp_path)
+    seed = tmp_path / "seed.sqlite3"
+    seed_db.save("original_demo", original, seed)
+    seed_db.save("scenario_fixtures", seed_db.load("scenario_fixtures"), seed)
+    seed_db.save("demo", {"note": "기존 작업 데이터"}, seed)
+    monkeypatch.setattr(seed_db, "SEED_DB", seed)
     monkeypatch.setattr(sys, "argv", ["generate_data"])
     with pytest.raises(SystemExit):
         generator.main()
-    assert output.read_text(encoding="utf-8") == "기존 작업 데이터"
+    assert seed_db.load("demo") == {"note": "기존 작업 데이터"}
     monkeypatch.setattr(sys, "argv", ["generate_data", "--force"])
     generator.main()
-    assert len(json.loads(output.read_text(encoding="utf-8"))["users"]) == 117
+    assert len(seed_db.load("demo")["users"]) == 117
 
 
 def test_generated_references_and_ids_are_consistent(generated):
