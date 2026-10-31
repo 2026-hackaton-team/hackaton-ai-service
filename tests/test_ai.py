@@ -5,7 +5,10 @@ import json
 import httpx
 import pytest
 
-from gyeongjosa_ai.ai import ModelGateway, ModelUnavailable, parse_intent, parse_response
+from gyeongjosa_ai.ai import (
+    FALLBACK_MODEL, PRIMARY_MODEL, ModelGateway, ModelUnavailable,
+    model_request_budget, parse_intent, parse_response,
+)
 
 
 def response(answer="기록을 참고해 직접 결정해 주세요.", ids=None, suggested=None):
@@ -24,8 +27,8 @@ def test_primary_falls_back_and_identifies_actual_model():
 
     gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
     result = gateway.generate({"mode": "history"}, {"T001"})
-    assert result["model"] == "gpt-5.4"
-    assert [item["model"] for item in requests] == ["claude-opus-4-8", "gpt-5.4"]
+    assert result["model"] == "gpt-5.4-mini"
+    assert [item["model"] for item in requests] == ["claude-opus-4-8", "gpt-5.4-mini"]
     assert all("temperature" not in item and "top_p" not in item for item in requests)
 
 
@@ -59,8 +62,8 @@ def test_classifier_falls_back_when_primary_returns_unowned_person():
 
     gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
     result = gateway.classify({"question": "가상 지인의 이력"}, {"P001"}, set())
-    assert result["person_id"] == "P001" and result["model"] == "gpt-5.4"
-    assert requests == ["claude-opus-4-8", "gpt-5.4"]
+    assert result["person_id"] == "P001" and result["model"] == "gpt-5.4-mini"
+    assert requests == ["claude-opus-4-8", "gpt-5.4-mini"]
 
 
 def test_fallback_classification_keeps_fallback_for_answer():
@@ -72,9 +75,9 @@ def test_fallback_classification_keeps_fallback_for_answer():
         return httpx.Response(200, json=response(ids=["T001"]))
 
     gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
-    result = gateway.generate({"mode": "history"}, {"T001"}, preferred_model="gpt-5.4")
-    assert result["model"] == "gpt-5.4"
-    assert requests == ["gpt-5.4"]
+    result = gateway.generate({"mode": "history"}, {"T001"}, preferred_model="gpt-5.4-mini")
+    assert result["model"] == "gpt-5.4-mini"
+    assert requests == ["gpt-5.4-mini"]
 
 
 def test_amount_response_must_cite_each_transaction():
@@ -89,9 +92,9 @@ def test_amount_response_must_cite_each_transaction():
     gateway = ModelGateway(api_key="test", transport=httpx.MockTransport(handler))
     context = {"mode": "amount", "budget_krw": 80000, "history": {"transactions": [{"id": "T001"}, {"id": "T002"}]}}
     result = gateway.generate(context, {"P001", "T001", "T002"})
-    assert result["model"] == "gpt-5.4"
+    assert result["model"] == "gpt-5.4-mini"
     assert set(result["evidence_ids"]) == {"T001", "T002"}
-    assert requests == ["claude-opus-4-8", "gpt-5.4"]
+    assert requests == ["claude-opus-4-8", "gpt-5.4-mini"]
 
 
 def test_known_amounts_in_model_prose_are_redacted_and_unrecorded_amounts_rejected():
@@ -123,9 +126,9 @@ def test_scenario_explanation_uses_real_gateway_and_validates_fallback():
         "question": "이번에는 왜 더 줬을까요?",
         "known_amounts_krw": [50000, 200000],
     })
-    assert result["model"] == "gpt-5.4"
+    assert result["model"] == "gpt-5.4-mini"
     assert "여러 사정" in result["analysis"]
-    assert models == ["claude-opus-4-8", "gpt-5.4"]
+    assert models == ["claude-opus-4-8", "gpt-5.4-mini"]
 
 
 def test_scenario_explanation_rejects_invalid_model_output():
@@ -160,8 +163,8 @@ def test_meal_intent_rejects_invalid_type(meal):
 
 def test_model_request_timeout_for_demo():
     """모델당 과도한 재시도 대신 기존 기본 제한시간을 공유하며 설정을 유지한다."""
-    assert ModelGateway(api_key="test").timeout == 60
-    assert ModelGateway(api_key="test", timeout=42).timeout == 42
+    assert ModelGateway(api_key="test").timeout == 30
+    assert ModelGateway(api_key="test", timeout=15).timeout == 15
 
 
 def test_internal_field_names_never_pass_response_validation():
@@ -190,6 +193,75 @@ def test_model_fallback_shares_one_timeout_budget():
             return {"answer": "확인했습니다.", "evidence_ids": [], "model": model}
 
     gateway = DelayedGateway(api_key="test", timeout=1)
-    assert gateway.generate({}, set())["model"] == "gpt-5.4"
+    assert gateway.generate({}, set())["model"] == "gpt-5.4-mini"
     assert len(calls) == 2
     assert 0 < calls[1][1] < calls[0][1] <= 1
+
+
+def test_primary_and_fallback_have_separate_limits():
+    """주 모델은 20초, 보조 모델은 10초까지만 요청한다."""
+    calls = []
+
+    class RecordingGateway(ModelGateway):
+        def generate_for_model(self, context, allowed_ids, model, timeout=None):
+            calls.append((model, timeout))
+            if model == PRIMARY_MODEL:
+                raise ModelUnavailable("주 모델 실패")
+            return {"model": model, "answer": "확인", "evidence_ids": []}
+
+    result = RecordingGateway(api_key="test").generate({}, set())
+    assert result["model"] == FALLBACK_MODEL
+    assert [model for model, _ in calls] == [PRIMARY_MODEL, FALLBACK_MODEL]
+    assert 0 < calls[0][1] <= 20
+    assert 0 < calls[1][1] <= 10
+    assert sum(timeout for _, timeout in calls) <= 30
+
+
+def test_classification_and_generation_share_total_budget(monkeypatch):
+    """한 상담의 질문 분류와 답변 생성이 제한시간을 다시 받지 않는다."""
+    from gyeongjosa_ai import ai
+
+    clock = [0.0]
+    monkeypatch.setattr(ai.time, "monotonic", lambda: clock[0])
+    calls = []
+
+    class ClockedGateway(ModelGateway):
+        def classify_for_model(self, context, people_ids, notice_ids, model, timeout=None):
+            calls.append(("classify", model, timeout))
+            clock[0] += 19
+            return {"intent": "amount", "person_id": None, "notice_id": None,
+                    "event_type": "결혼", "model": model}
+
+        def generate_for_model(self, context, allowed_ids, model, timeout=None):
+            calls.append(("generate", model, timeout))
+            clock[0] += 2 if model == PRIMARY_MODEL else 1
+            return {"model": model, "answer": "확인", "evidence_ids": []}
+
+    class Conversation:
+        gateway = ClockedGateway(api_key="test")
+
+        @model_request_budget
+        def run(self):
+            self.gateway.classify({}, set(), set())
+            return self.gateway.generate({}, set())
+
+    assert Conversation().run()["model"] == FALLBACK_MODEL
+    assert calls[0] == ("classify", PRIMARY_MODEL, 20)
+    assert calls[1] == ("generate", PRIMARY_MODEL, 1)
+    assert calls[2] == ("generate", FALLBACK_MODEL, 9)
+    assert clock[0] == 22
+
+
+def test_fallback_alone_still_uses_ten_seconds():
+    """분류 단계에서 보조 모델을 선택하면 생성도 보조 모델을 유지한다."""
+    calls = []
+
+    class RecordingGateway(ModelGateway):
+        def generate_for_model(self, context, allowed_ids, model, timeout=None):
+            calls.append((model, timeout))
+            return {"model": model, "answer": "확인", "evidence_ids": []}
+
+    result = RecordingGateway(api_key="test").generate({}, set(), preferred_model=FALLBACK_MODEL)
+    assert result["model"] == FALLBACK_MODEL
+    assert len(calls) == 1 and calls[0][0] == FALLBACK_MODEL
+    assert 0 < calls[0][1] <= 10
