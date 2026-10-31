@@ -76,7 +76,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
         {scenarioExamples.length>0&&!messages.length&&<div className="ai-suggestion-chips" aria-label="가상 분석 시연 선택">
           {scenarioExamples.map(example=><button type="button" key={example.id} disabled={busy} onClick={()=>send(example.question)} title={example.question}>{example.title}</button>)}
-        </div>
+        </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'':'ai-assistant-content'}>
             <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
