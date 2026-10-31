@@ -86,6 +86,11 @@ def analyze_relationship_case(*, user_id: str, person_id: str, scenario_id: str)
     if scenario_id == "relation_close_friend":
         messages.append("사용자가 높이 평가한 친밀도를 존중하되 금액을 자동으로 올리는 근거로 사용하지 않습니다.")
 
+    reference = context.get("comparison_reference_krw")
+    if reference is not None:
+        messages.append(
+            f"비교용 {reference:,}원은 합성 시연 기준이며 사회 전체 평균이나 공식 통계가 아닙니다."
+        )
     messages.append("금전 내역과 관계 메모는 선택의 참고 자료입니다. 상대방의 감정·경제 사정을 추측하거나 보답을 강요하지 않습니다.")
     return {
         "messages": messages,
