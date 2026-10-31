@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, 
 from .dependencies import get_service
 from .data import public_legacy_candidate
 from .shared_events_store import SharedEventsStore
+from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
 
 router = APIRouter(prefix="/api")
 _DB = Path(os.environ.get("GYEONGJOSA_DEMO_DB", str(Path(__file__).resolve().parents[1] / "data" / "demo_conversations.sqlite3")))
@@ -184,6 +185,24 @@ def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
         "dashboard": service.data.dashboard(user_id),
         "source": "rag-demo-json-read-only"
     }
+
+@router.get("/workspace/personal")
+def personal_workspace(user_id: str = Depends(_user)):
+    """현재 가상 계정이 서버에 저장한 인맥·일정·장부를 반환한다."""
+    return load_workspace(user_id)
+
+
+@router.post("/workspace/migrations/preview")
+def workspace_migration_preview(data: WorkspaceInput, user_id: str = Depends(_user)):
+    """로컬 기록 이전 전 참조 관계와 서버 변경 버전을 검증한다."""
+    return preview_workspace(user_id, data)
+
+
+@router.put("/workspace/personal")
+def save_personal_workspace(data: WorkspaceInput, user_id: str = Depends(_user)):
+    """현재 계정의 저장 데이터만 버전 검증 후 원자적으로 교체한다."""
+    return save_workspace(user_id, data)
+
 
 @router.get("/notices")
 def notices(user_id: str = Depends(_user), service=Depends(get_service)):
