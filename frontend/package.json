@@ -11,7 +11,7 @@
     "setup:demo": "node scripts/setup-demo.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
     "test:backend": ".venv\\Scripts\\python.exe -m pytest backend/tests -q",
-    "test": "node --test src/accountRules.test.js src/domain.test.js src/ledgerCsv.test.js src/relationships.test.js src/sharedEvents.test.js src/services/apiClient.test.js src/services/workspaceStorage.test.js src/services/aiChat.test.js src/services/notificationInbox.test.js src/services/socialStore.test.js src/services/receivedItems.test.js src/services/relationshipPriority.test.js src/scenarioEvaluation.test.js",
+    "test": "node --test src/accountRules.test.js src/domain.test.js src/ledgerCsv.test.js src/relationships.test.js src/sharedEvents.test.js src/services/apiClient.test.js src/services/workspaceStorage.test.js src/services/aiChat.test.js src/services/notificationInbox.test.js src/services/socialStore.test.js src/services/receivedItems.test.js src/services/relationshipPriority.test.js src/scenarioEvaluation.test.js src/aiAnalysisStatus.test.js",
     "dev:all": "node ../scripts/dev-all.mjs"
   },
   "dependencies": {
