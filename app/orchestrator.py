@@ -58,6 +58,13 @@ def run(*, user_id:str, person_id:str, identity_confirmed:bool, event_type:str,
             # 일반 개인화 참고액은 행동 추천액과 구분한다. 법적 결과 미확정이면 송금액 반환 금지.
             base={'status':status,'message':legal['reason'],'reference_only_amount_krw':initial,
                   'missing_questions':legal['missing_questions'],
+                  'recommendation_basis':base.get('recommendation_basis'),
+                  'evidence_level':base.get('evidence_level'),
+                  'matched_source_id':base.get('matched_source_id'),
+                  'matched_transaction_ids':base.get('matched_transaction_ids',[]),
+                  'baseline_amount_krw':base.get('baseline_amount_krw'),
+                  'relationship_adjustments':base.get('relationship_adjustments',[]),
+                  'reasons':base.get('reasons',[]),
                   'disclaimer':'참고액은 법적 송금 가능 금액이 아닙니다.'}
         else:
             base['reasons'].append('등록된 합성 인물·업무 관계에서 직무 관련 경조사 한도 적용이 확인되지 않아 일반 추천을 유지했습니다.')
