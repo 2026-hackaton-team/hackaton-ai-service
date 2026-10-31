@@ -40,11 +40,18 @@ def test_new_login_uses_isolated_sqlite_workspace(client):
     headers = {"X-Demo-User-Id": first}
     original = client.get("/api/workspace/personal", headers=headers)
     assert original.status_code == 200
-    assert original.json()["initialized"] is False
-    snapshot = {"revision": 0, "people": [], "events": [], "records": []}
-    saved = client.put("/api/workspace/personal", headers=headers, json=snapshot)
+    assert original.json()["initialized"] is True
+    assert len(original.json()["people"]) >= 20
+    assert len(original.json()["records"]) >= 20
+    before = original.json()
+    saved = client.put("/api/workspace/personal", headers=headers, json={
+        "revision": before["revision"], "people": before["people"],
+        "events": before["events"], "records": before["records"][1:],
+    })
     assert saved.status_code == 200
-    assert client.get("/api/workspace/personal", headers=headers).json()["initialized"] is True
-    assert client.get("/api/workspace/personal", headers={"X-Demo-User-Id": "LOCAL_ANOTHER"}).json()["initialized"] is False
+    assert len(client.get("/api/workspace/personal", headers=headers).json()["records"]) == len(before["records"]) - 1
+    other = client.get("/api/workspace/personal", headers={"X-Demo-User-Id": "LOCAL_ANOTHER"}).json()
+    assert other["initialized"] is True
+    assert len(other["records"]) == len(before["records"])
     assert client.get("/api/conversations", headers=headers).status_code == 200
     assert client.get("/api/workspace/personal").status_code == 401

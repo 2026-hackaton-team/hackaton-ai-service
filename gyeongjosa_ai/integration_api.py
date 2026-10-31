@@ -20,6 +20,7 @@ from .shared_events_store import SharedEventsStore
 from .relationship_priority import IMPORTANCE_OPTIONS, PriorityStore
 from .event_parser import parse_event_text
 from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
+from .test_account_seed import test_workspace
 from .service import ChatService
 from .workspace_adapter import data_for_chat
 
@@ -236,8 +237,11 @@ def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
 
 @router.get("/workspace/personal")
 def personal_workspace(user_id: str = Depends(_user)):
-    """현재 가상 계정이 서버에 저장한 인맥·일정·장부를 반환한다."""
-    return load_workspace(user_id)
+    """새 시연 계정은 최초 한 번만 합성 인맥·장부를 SQLite에 시드한다."""
+    workspace = load_workspace(user_id)
+    if user_id.startswith("LOCAL_") and not workspace["initialized"]:
+        return save_workspace(user_id, WorkspaceInput.model_validate(test_workspace()))
+    return workspace
 
 
 @router.post("/workspace/migrations/preview")
