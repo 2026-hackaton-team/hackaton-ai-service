@@ -6,3 +6,10 @@ export function extractAIInterpretation(message) {
   if(index>=0)return text.slice(index+2).trim()
   return text.startsWith('AI 해석: ') ? text.trim() : ''
 }
+
+export function extractAILead(message) {
+  const text=String(message||'')
+  const index=text.lastIndexOf('\n\nAI 해석: ')
+  if(index>=0)return text.slice(0,index).trim()
+  return text.startsWith('AI 해석: ') ? '' : text
+}
