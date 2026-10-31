@@ -1,0 +1,10 @@
+{
+  "limit": 62,
+  "previous_reserved": 5,
+  "evaluation_requests": 57,
+  "additional_approval": {
+    "date": "2026-10-31",
+    "extra_calls": 12,
+    "purpose": "두 모델의 이력·금액·참석 분류부터 답변까지 재검증"
+  }
+}

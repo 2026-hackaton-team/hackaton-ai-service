@@ -1,0 +1,156 @@
+{
+  "started_at": "2026-10-30T23:48:34.236239+09:00",
+  "notice": "모든 입력은 가상 데이터이며 일부 표현의 의미 정확성은 별도 검토가 필요하다.",
+  "run_kind": "보완 후 재검증",
+  "models": [
+    "claude-opus-4-8",
+    "gpt-5.4"
+  ],
+  "cases": [
+    {
+      "model": "claude-opus-4-8",
+      "case": "history",
+      "status": "answer",
+      "intent": "history",
+      "pending_field": null,
+      "message": "기록 합계: 받은 금액 100,000원, 낸 금액 50,000원.\n해든기획팀 김도윤 님과 주고받은 기록을 정리해 드릴게요.\n\n[받은 기록]\n- 본인 결혼 행사(2024-05-18, 결혼): 축의금을 받으셨어요. (T001)\n\n[낸 기록]\n- 지인 가족 칠순 행사(2025-04-12, 칠순): 축하금을 내셨고, 참석하신 것으로 기록되어 있어요. (T002)\n\n구체적인 금액은 함께 표시되는 근거 카드에서 확인하실 수 있습니다. 참고로 이 기록은 선택하신 지인 개인 이력이며, 동일인 여부는 아직 확인되지 않은 상태라는 점을 알려 드립니다.",
+      "response_model": "claude-opus-4-8",
+      "classification_model": "claude-opus-4-8",
+      "evidence_ids": [
+        "P001",
+        "E001",
+        "E002",
+        "T001",
+        "T002"
+      ],
+      "cited_ids": [
+        "P001",
+        "E001",
+        "E002",
+        "T001",
+        "T002"
+      ],
+      "suggested_amount_krw": null,
+      "elapsed_seconds": 6.585,
+      "requests": 2,
+      "automatic_issues": [],
+      "semantic_review": "미검토",
+      "diagnostic": null
+    },
+    {
+      "model": "claude-opus-4-8",
+      "case": "amount",
+      "status": "error",
+      "intent": "amount",
+      "pending_field": null,
+      "message": "모델 답변 검증에 실패했습니다.",
+      "response_model": null,
+      "classification_model": "claude-opus-4-8",
+      "evidence_ids": [],
+      "cited_ids": [],
+      "suggested_amount_krw": null,
+      "elapsed_seconds": 8.921,
+      "requests": 2,
+      "automatic_issues": [
+        "응답 상태 불일치"
+      ],
+      "semantic_review": "미검토",
+      "diagnostic": "답변에 검증되지 않은 금액이 포함됐습니다."
+    },
+    {
+      "model": "claude-opus-4-8",
+      "case": "attendance",
+      "status": "answer",
+      "intent": "attendance",
+      "pending_field": null,
+      "message": "조문을 고민하고 계시는군요. 선택하신 부고 정보를 정리해 드릴게요. 장례는 2026년 10월 30일부터 11월 1일까지 서울에서 진행되며, 상주는 해든기획팀 김도윤 님으로 부친상입니다. 말씀하신 10월 31일 오전은 장례 기간에 포함되어 조문이 가능한 날짜입니다. 다만 빈소의 구체적인 주소와 조문 가능 시간은 기록에 없어, 방문 전에 확인해 보시길 권해 드립니다. 또한 상주 김도윤 님이 평소 알고 계신 분과 동일인인지 아직 확인되지 않았으니, 이 점도 함께 살펴보시면 좋겠습니다. 참석 여부는 상황에 맞게 편하게 결정하셔도 괜찮습니다.",
+      "response_model": "claude-opus-4-8",
+      "classification_model": "claude-opus-4-8",
+      "evidence_ids": [
+        "N001"
+      ],
+      "cited_ids": [
+        "N001"
+      ],
+      "suggested_amount_krw": null,
+      "elapsed_seconds": 7.143,
+      "requests": 2,
+      "automatic_issues": [],
+      "semantic_review": "미검토",
+      "diagnostic": null
+    },
+    {
+      "model": "gpt-5.4",
+      "case": "amount",
+      "status": "answer",
+      "intent": "amount",
+      "pending_field": null,
+      "message": "직장 동료의 부친상이라면, 주신 예산 안에서는 무리되지 않게 마음을 전하시는 쪽이 좋겠습니다. 기록상 과거 경조사 거래로는 본인 결혼식에서 받은 기록이 있었고, 다른 지인 가족 행사에는 내신 기록이 확인됩니다. 다만 장례에 대한 직접적인 과거 기준은 보이지 않아, 현재 관계와 예산을 함께 고려해 정하시는 것이 가장 자연스럽습니다. 그래서 이번에는 부담 없는 선에서 조의금을 준비해 보셔도 좋겠습니다.\n검토할 선택지: 50,000원. 최종 결정은 사용자가 합니다.",
+      "response_model": "gpt-5.4",
+      "classification_model": "gpt-5.4",
+      "evidence_ids": [
+        "P001",
+        "N001",
+        "E001",
+        "E002",
+        "T001",
+        "T002"
+      ],
+      "cited_ids": [
+        "P001",
+        "N001",
+        "E001",
+        "E002",
+        "T001",
+        "T002"
+      ],
+      "suggested_amount_krw": 50000,
+      "elapsed_seconds": 7.842,
+      "requests": 2,
+      "automatic_issues": [],
+      "semantic_review": "미검토",
+      "diagnostic": null
+    },
+    {
+      "model": "gpt-5.4",
+      "case": "attendance",
+      "status": "answer",
+      "intent": "attendance",
+      "pending_field": null,
+      "message": "알려진 정보만 보면 장례 기간이 10월 30일부터 11월 1일까지라서, 말씀하신 10월 31일 오전은 조문 가능한 범위에 들어갑니다. 다만 정확한 빈소 위치나 별도 시간 안내는 확인되지 않았습니다. 참석 여부는 김도윤 님과의 관계, 직접 위로를 전하고 싶은 마음, 이동 가능 여부를 기준으로 편하게 정하시면 됩니다. 가신다면 먼저 장소와 방문 가능 시간을 한 번 더 확인하시는 것이 좋겠습니다.",
+      "response_model": "gpt-5.4",
+      "classification_model": "gpt-5.4",
+      "evidence_ids": [
+        "N001"
+      ],
+      "cited_ids": [
+        "N001"
+      ],
+      "suggested_amount_krw": null,
+      "elapsed_seconds": 6.215,
+      "requests": 2,
+      "automatic_issues": [],
+      "semantic_review": "미검토",
+      "diagnostic": null
+    }
+  ],
+  "summary": {
+    "claude-opus-4-8": {
+      "cases": 3,
+      "automatic_passes": 2,
+      "median_seconds": 7.143,
+      "max_seconds": 8.921
+    },
+    "gpt-5.4": {
+      "cases": 2,
+      "automatic_passes": 2,
+      "median_seconds": 7.028,
+      "max_seconds": 7.842
+    }
+  },
+  "budget": {
+    "limit": 50,
+    "previous_reserved": 5,
+    "evaluation_requests": 44
+  }
+}
