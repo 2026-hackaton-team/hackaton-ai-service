@@ -33,7 +33,7 @@ def _closeness(amount, anchor):
 def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_type: str,
               attendance_with_meal: bool | None, budget_krw: int | None, legal_risk: bool = False,
               kb: KnowledgeBase = KB, closeness_override: int | None = None,
-              special_care: bool = False):
+              special_care: bool = False, recent_received_override: int | None = None):
     if not identity_confirmed:
         return {"status": "NEEDS_IDENTITY_CONFIRMATION", "message": "동명이인일 수 있습니다. 추천 대상자를 확인해 주세요."}
     person = owned_person(user_id, person_id)
@@ -103,11 +103,13 @@ def recommend(*, user_id: str, person_id: str, identity_confirmed: bool, event_t
         upward += 1
         adjustments.append({"signal": "reciprocity", "direction": "up", "reason": "상대에게 받은 금액의 중앙값이 내가 낸 금액보다 높습니다."})
     dated_received = sorted(received, key=lambda t: (own_events[t["private_event_id"]]["start_date"], t["id"]))
-    if len(dated_received) >= 3:
+    if len(dated_received) >= (2 if recent_received_override is not None else 3):
         from statistics import median as _median
-        earlier_amounts = [t["amount_krw"] for t in dated_received[:-1] if t["amount_krw"] > 0]
+        # 사용자 자기신고 최신 수령액은 저장된 거래를 변경하지 않고 임시 신호로 처리한다.
+        preceding_records = dated_received if recent_received_override is not None else dated_received[:-1]
+        earlier_amounts = [t["amount_krw"] for t in preceding_records if t["amount_krw"] > 0]
         preceding = _median(earlier_amounts) if earlier_amounts else None
-        latest = dated_received[-1]["amount_krw"]
+        latest = recent_received_override if recent_received_override is not None else dated_received[-1]["amount_krw"]
         if preceding and latest >= preceding * 2:
             upward += 2 if latest >= preceding * 3 else 1
             adjustments.append({"signal": "recent_large_gift", "direction": "up",
