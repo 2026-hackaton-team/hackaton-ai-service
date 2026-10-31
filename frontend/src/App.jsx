@@ -16,6 +16,8 @@ import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored } from './services/workspaceStorage.js';
 import { useServerWorkspace } from './services/serverWorkspace.js';
+import { setDemoAccount } from './services/demoAccount.js';
+import { seedTestSocial, TEST_USERNAME, TEST_PROFILE_ID } from './services/testAccountDemo.js';
 import { normalizePerson } from './relationships.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 
@@ -356,7 +358,14 @@ export default function App() {
     {modal?.type === 'person' && <PersonForm onSave={savePerson} onClose={() => setModal(null)} />}
     {modal?.type === 'record' && <RecordForm key={modal.recordId || 'new'} initialRecord={records.find(record => record.id === modal.recordId) || null} people={people} events={events} initialPersonId={modal.personId || ''} initialEventId={modal.eventId || ''} onSave={saveRecord} onClose={() => setModal(null)} />}
     {modal?.type === 'profile' && user && <ProfileEditModal user={user} onClose={() => setModal(null)} onSave={(profile, passwordChanged) => { setUser(profile); setModal(null); notify(passwordChanged ? '비밀번호와 내 정보를 저장했어요.' : '내 정보를 저장했어요.'); }} />}
-    {(modal?.type === 'login' || modal?.type === 'signup') && <AuthModal key={modal.type} mode={modal.type} onClose={() => setModal(null)} onSwitch={type => setModal({ type })} onSuccess={profile => { setUser(profile); setModal(null); notify(`${profile.name}님, 마음결에 오신 걸 환영해요.`); }} />}
+    {(modal?.type === 'login' || modal?.type === 'signup') && <AuthModal key={modal.type} mode={modal.type} onClose={() => setModal(null)} onSwitch={type => setModal({ type })} onSuccess={profile => {
+        if (profile.username === TEST_USERNAME) {
+          seedTestSocial();
+          writeStored(PROFILE_LINKS_KEY, { ...readStored(PROFILE_LINKS_KEY, {}), [TEST_USERNAME]: TEST_PROFILE_ID });
+          setDemoAccount(TEST_PROFILE_ID);
+        }
+        setUser(profile); setModal(null); notify(`${profile.name}님, 마음결에 오신 걸 환영해요.`);
+      }} />}
     {selectedEvent && <EventDetail event={selectedEvent} person={people.find(person => person.id === selectedEvent.personId)} today={today} onClose={() => setModal(null)} onUpdate={patch => updateEvent(selectedEvent.id, patch)} onShare={() => user ? setModal({ type: 'share', id: selectedEvent.id, back: true }) : setModal({ type: 'login' })} onDelete={async () => { const ok = await saveChanges(state => ({ events: state.events.filter(event => event.id !== selectedEvent.id), records: state.records.map(record => record.eventId === selectedEvent.id ? { ...record, eventId: '' } : record) })); if (!ok) return; if (selectedEvent.owner === 'me' && user) mutate(state => removeShare(state, user.username, selectedEvent.id)); setModal(null); notify('일정을 서버에서 삭제했어요. 금액 기록은 유지했어요.'); }} onDownload={() => downloadCalendar(selectedEvent)} onRecord={() => setModal({ type: 'record', personId: selectedEvent.personId, eventId: selectedEvent.id })} onAI={() => { setAiPersonId(selectedEvent.personId); setModal(null); navigate('ai'); }} />}
     {notificationsOpen && <Notifications notices={notices} sharedInbox={sharedInbox} receivedItems={receivedItems} loggedIn={!!user} onLogin={mode => { setNotificationsOpen(false); setModal({ type: mode === 'signup' ? 'signup' : 'login' }); }} onAddToCalendar={addToCalendar} onOpenReceived={() => { setNotificationsOpen(false); setModal({ type: 'received' }); }} readIds={readIds} onRead={id => setReadIds(current => [...new Set([...current, id])])} onReadAll={() => setReadIds(current => [...new Set([...current, ...allNoticeIds])])} onClose={() => setNotificationsOpen(false)} onOpenEvent={openEvent} onOpenAI={() => { setNotificationsOpen(false); navigate('ai'); }} browserEnabled={notificationSettings.browser} onBrowserChange={changeBrowserNotifications} />}
     {toast && <div className="toast" role="status"><Icon name="CheckCircle2" size={18} />{toast}</div>}
