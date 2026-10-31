@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Modal, Icon } from './ui.jsx'
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, resolveRelation } from './relationships.js'
 import './forms.css'
+import PersonSearch from './PersonSearch.jsx'
+import { findAccount, normalizeUsername, normalizePhone, signupError } from './accountRules.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const ACCOUNTS_KEY = 'maeum-demo-accounts-v1'
@@ -45,6 +47,7 @@ export function EventForm({ people = [], onSave, onClose }) {
 
   function submit(event) {
     event.preventDefault()
+    if (!selectedPerson && form.personId !== '__new') { setError('검색 결과에서 인맥을 선택해 주세요.'); return }
     const name = selectedPerson?.name || form.personName.trim()
     if (!name) { setError('누구의 경조사인지 선택하거나 이름을 입력해 주세요.'); return }
     if (!form.type || !form.date || !form.time || !form.location.trim()) {
@@ -63,13 +66,7 @@ export function EventForm({ people = [], onSave, onClose }) {
   return <Modal title="새로운 마음을 챙겨요" subtitle="경조사를 등록하고, 마음을 전할 때를 기억하세요." onClose={onClose} wide>
     <form onSubmit={submit} className="app-form">
       <div className="form-grid">
-        <Field label="누구의 경조사인가요?" required full>
-          <select className="input" value={form.personId} required onChange={(event) => update('personId', event.target.value)}>
-            <option value="" disabled>인맥을 선택해 주세요</option>
-            {people.map((person) => <option key={person.id} value={person.id}>{person.name} · {person.relation}</option>)}
-            <option value="__new">+ 새로운 사람</option>
-          </select>
-        </Field>
+        <PersonSearch people={people} value={form.personId} onChange={value => update('personId', value)} />
         {form.personId === '__new' && <Field label="이름" required full hint="새 인맥으로 함께 저장됩니다. 관계는 인맥 관리에서 수정할 수 있어요.">
           <input className="input" value={form.personName} onChange={(event) => update('personName', event.target.value)} placeholder="이름을 입력해 주세요" maxLength={40} required />
         </Field>}
@@ -213,7 +210,7 @@ function readAccounts() {
 
 export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   const signup = mode === 'signup'
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmation: '' })
+  const [form, setForm] = useState({ username: '', name: '', phone: '', email: '', password: '', confirmation: '', identity: '' })
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }))
@@ -225,26 +222,26 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   async function submit(event) {
     event.preventDefault()
     const email = form.email.trim().toLowerCase()
-    if (signup && !form.name.trim()) { setError('사용할 이름을 입력해 주세요.'); return }
-    if (signup && form.password.length < 8) { setError('비밀번호는 8자 이상으로 입력해 주세요.'); return }
-    if (signup && form.password !== form.confirmation) { setError('두 비밀번호가 일치하지 않아요.'); return }
+    if (pending) return
+    if (signup) { const error = signupError(form); if (error) { setError(error); return } }
     setPending(true)
     setError('')
     try {
       const accounts = readAccounts()
       if (signup) {
-        if (accounts.some((account) => account.email === email)) { setError('이 브라우저에 이미 등록된 이메일이에요. 로그인해 주세요.'); return }
+        const error = signupError(form, accounts)
+        if (error) { setError(error); return }
         const salt = crypto.getRandomValues(new Uint8Array(16))
         const hash = await hashPassword(form.password, salt)
-        const account = { name: form.name.trim(), email, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS }
+        const account = { username: normalizeUsername(form.username), phone: normalizePhone(form.phone), name: form.name.trim(), email, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS }
         localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
-        onSuccess({ name: account.name, email: account.email })
+        onSuccess({ username: account.username || '', name: account.name, phone: account.phone || '', email: account.email })
       } else {
-        const account = accounts.find((entry) => entry.email === email)
-        if (!account?.salt || !account?.hash) { setError('이메일과 비밀번호를 확인해 주세요. 처음이라면 체험 계정을 만들어 주세요.'); return }
+        const account = findAccount(accounts, form.identity)
+        if (!account?.salt || !account?.hash) { setError('아이디 또는 이메일과 비밀번호를 확인해 주세요. 처음이라면 체험 계정을 만들어 주세요.'); return }
         const hash = await hashPassword(form.password, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
-        if (hash !== account.hash) { setError('이메일과 비밀번호를 확인해 주세요.'); return }
-        onSuccess({ name: account.name, email: account.email })
+        if (hash !== account.hash) { setError('아이디 또는 이메일과 비밀번호를 확인해 주세요.'); return }
+        onSuccess({ username: account.username || '', name: account.name, phone: account.phone || '', email: account.email })
       }
     } catch (cause) {
       setError(cause.message === 'crypto-unavailable'
@@ -255,13 +252,19 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
     }
   }
 
-  return <Modal title={signup ? '함께 마음을 이어가요' : '다시 만나 반가워요'} subtitle={signup ? '소중한 관계를 챙기는 작은 습관, 지금 시작해요.' : '기억해 둔 마음을 다시 만나 보세요.'} onClose={pending ? () => {} : onClose}>
+  return <Modal title={signup ? '함께 마음을 이어가요' : '다시 만나 반가워요'} subtitle={signup ? '소중한 관계를 챙기는 작은 습관, 지금 시작해요.' : '기억해 둔 마음을 다시 만나 보세요.'} onClose={pending ? () => {} : onClose} wide={signup}>
     <div className="auth-demo-note"><Icon name="LockKeyhole" size={16} /><span>체험 계정 · 이 브라우저에 저장됩니다</span></div>
     <form onSubmit={submit} className="app-form auth-form">
-      {signup && <Field label="이름" required><input className="input" value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="어떻게 불러 드릴까요?" maxLength={40} autoComplete="name" required disabled={pending} /></Field>}
-      <Field label="이메일" required><input className="input" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="hello@example.com" maxLength={254} autoComplete="username" required disabled={pending} /></Field>
-      <Field label="비밀번호" required hint={signup ? '8자 이상으로 입력해 주세요.' : undefined}><input className="input" type="password" value={form.password} onChange={(event) => update('password', event.target.value)} placeholder={signup ? '8자 이상의 비밀번호' : '비밀번호를 입력해 주세요'} minLength={signup ? 8 : undefined} maxLength={128} autoComplete={signup ? 'new-password' : 'current-password'} required disabled={pending} /></Field>
-      {signup && <Field label="비밀번호 확인" required><input className="input" type="password" value={form.confirmation} onChange={(event) => update('confirmation', event.target.value)} placeholder="비밀번호를 한 번 더 입력해 주세요" minLength={8} maxLength={128} autoComplete="new-password" required disabled={pending} /></Field>}
+      <div className={signup ? 'form-grid' : 'auth-login-fields'}>
+      {signup ? <Field label="아이디" required hint="영문·숫자·밑줄 4~20자, 대소문자를 구분하지 않아요."><input className="input" aria-label="아이디" value={form.username} onChange={event => update('username', event.target.value)} minLength={4} maxLength={20} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field> : <Field label="아이디 또는 이메일" required><input className="input" aria-label="아이디 또는 이메일" value={form.identity} onChange={event => update('identity', event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required disabled={pending}/></Field>}
+      <Field label="비밀번호" required hint={signup ? '8자 이상으로 입력해 주세요.' : undefined}><input className="input" aria-label="비밀번호" type="password" value={form.password} onChange={event => update('password', event.target.value)} minLength={signup ? 8 : undefined} maxLength={128} autoComplete={signup ? 'new-password' : 'current-password'} required disabled={pending}/></Field>
+      {signup && <>
+        <Field label="비밀번호 확인" required><input className="input" aria-label="비밀번호 확인" type="password" value={form.confirmation} onChange={event => update('confirmation', event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required disabled={pending}/></Field>
+        <Field label="이름" required><input className="input" aria-label="이름" value={form.name} onChange={event => update('name', event.target.value)} maxLength={40} autoComplete="name" required disabled={pending}/></Field>
+        <Field label="전화번호" required hint="예: 010-1234-5678 · 인증 기능은 아직 제공하지 않아요."><input className="input" aria-label="전화번호" type="tel" value={form.phone} onChange={event => update('phone', event.target.value)} maxLength={24} autoComplete="tel" required disabled={pending}/></Field>
+        <Field label="이메일" required><input className="input" aria-label="이메일" type="email" value={form.email} onChange={event => update('email', event.target.value)} maxLength={254} autoComplete="email" required disabled={pending}/></Field>
+      </>}
+      </div>
       <FormError message={error} />
       <button className="button button-primary auth-submit" type="submit" disabled={pending}>{pending && <span className="form-spinner" aria-hidden="true" />}{pending ? (signup ? '계정을 만드는 중…' : '확인하는 중…') : (signup ? '체험 계정 만들기' : '로그인')}<Icon name="ArrowRight" size={17} /></button>
     </form>

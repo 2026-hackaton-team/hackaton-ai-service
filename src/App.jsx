@@ -7,6 +7,7 @@ import PeoplePage from './PeoplePage.jsx';
 import LedgerPage from './LedgerPage.jsx';
 import SchedulePage from './SchedulePage.jsx';
 import AIPage from './AIPage.jsx';
+import EtiquettePage from './EtiquettePage.jsx';
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './services/workspaceStorage.js';
 import { normalizePerson } from './relationships.js';
@@ -17,6 +18,7 @@ const navigation = [
   { id: 'people', label: '인맥 관리', icon: 'UsersRound' },
   { id: 'ledger', label: '금액 · 통계', icon: 'ChartNoAxesCombined' },
   { id: 'ai', label: '마음 AI', icon: 'Sparkles' },
+  { id: 'guide', label: '경조사 예절', icon: 'Bookmark' },
 ];
 const koreanDate = () => {
   const p = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -145,6 +147,7 @@ export default function App() {
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} />}
         {page === 'people' && <PeoplePage people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}
         {page === 'ledger' && <LedgerPage people={people} events={events} records={records} onAddRecord={() => setModal({ type: 'record' })} onEditRecord={id => setModal({type:'record', recordId:id})} onDeleteRecord={deleteRecord} onImportRecords={importRecords} notify={notify} />}
+        {page === 'guide' && <EtiquettePage />}
         {page === 'ai' && <AIPage people={people} events={events} records={records} today={today} initialPersonId={aiPersonId} notify={notify} />}
         {page !== 'home' && <footer className="page-footer"><span>마음결<span className="footer-separator">·</span>기억하고, 연결하고, 마음을 전해요.</span><span>해커톤 체험 버전</span></footer>}
       </main>

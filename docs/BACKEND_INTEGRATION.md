@@ -138,3 +138,7 @@ const saved = await api.people.update(personId, patch, { signal: controller.sign
 ```
 
 `.env`의 `VITE_*`는 빌드 결과에 포함되는 **공개 설정**입니다. 서버 주소만 넣고 비밀번호·AI 키·DB 접속정보를 넣지 않습니다. 환경변수를 바꾼 후 개발 서버 재시작 또는 운영 재빌드가 필요합니다. 실제 백엔드 구축·배포·DB 연결·서비스 워커·SMS/이메일 공급자 연동은 이번 준비 작업에 포함되지 않았습니다.
+
+### 가입 화면 계약 변경
+
+체험 가입 화면은 `username`, `password`, `confirmation`, `name`, `phone`, `email`을 받습니다. 저장 시 `confirmation`과 비밀번호 원문은 남기지 않습니다. username은 영문·숫자·밑줄 4~20자를 소문자로 정규화하고 phone은 표시 구분자를 제거합니다. 실제 서버 가입 시 확인 비밀번호는 프론트 검증 후 전송에서 제외하고, 서버는 ID/이메일 중복·비밀번호 정책·전화번호/이메일 소유 확인을 별도로 구현해야 합니다. 현재 FastAPI AI 모의 서버에는 회원가입/로그인 API가 없습니다.
