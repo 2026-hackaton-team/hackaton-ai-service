@@ -3,7 +3,7 @@
 import re
 from statistics import median
 
-from .ai import ModelUnavailable
+from .ai import ModelUnavailable, model_request_budget
 
 
 MODES = {"history", "amount", "attendance", "message", "notice"}
@@ -365,6 +365,7 @@ class ChatService:
             },
         }
 
+    @model_request_budget
     def chat_auto(self, request):
         """자연어 의도를 분류하고 계정별 대화 맥락을 이어 간다."""
         user_id = request.get("user_id", "")
