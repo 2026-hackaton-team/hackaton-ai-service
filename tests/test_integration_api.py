@@ -81,3 +81,71 @@ def test_notice_access_requires_explicit_sharing():
         h={"X-Demo-User-Id":users[0]["id"]}
         assert c.get("/api/notices/unknown",headers=h).status_code==404
         assert c.get("/api/notices",headers=h).status_code==200
+
+
+def test_conversation_api_recalculates_budget_after_no_cash_candidate(tmp_path, monkeypatch):
+    """실제 대화 API와 SQLite 상태에서 999원에서 99,999원으로 수정한다."""
+    from gyeongjosa_ai.dependencies import get_service
+    from gyeongjosa_ai.data import load_data
+    from gyeongjosa_ai.service import ChatService
+
+    class SessionGateway:
+        """최초 상담만 금액 의도로 분류하는 모델 대역이다."""
+
+        def __init__(self):
+            self.classify_calls = 0
+            self.answer_contexts = []
+
+        def classify(self, context, people_ids, notice_ids):
+            self.classify_calls += 1
+            return {"intent": "amount" if self.classify_calls == 1 else "out_of_scope",
+                    "person_id": None, "notice_id": None,
+                    "event_type": "장례" if self.classify_calls == 1 else None,
+                    "model": "test-model", "requested_aspects": []}
+
+        def generate(self, context, allowed_ids, preferred_model=None):
+            self.answer_contexts.append(context)
+            return {"answer": "검은색의 단정한 복장으로 방문하고 유족에게 짧게 위로를 전하세요.",
+                    "evidence_ids": sorted(allowed_ids),
+                    "suggested_amount_krw": None, "model": "test-model"}
+
+    gateway = SessionGateway()
+    service = ChatService(load_data(), gateway)
+    monkeypatch.setattr(integration_api, "_DB", tmp_path / "conversation.sqlite")
+    app.dependency_overrides[get_service] = lambda: service
+    try:
+        with TestClient(app) as client:
+            headers = {"X-Demo-User-Id": "U001"}
+            created = client.post("/api/conversations", headers=headers)
+            assert created.status_code == 201
+            cid = created.json()["id"]
+
+            def send(text, index):
+                response = client.post(f"/api/conversations/{cid}/messages", headers=headers,
+                                       json={"requestId": f"message-{index}", "text": text})
+                assert response.status_code == 200, response.text
+                return response.json()
+
+            first = send("회사 동료 부친상, 조의금과 조문 예절이 궁금해", 1)
+            assert first["pending_field"] == "person_id"
+            second = send("해든기획팀 김도윤", 2)
+            assert second["pending_field"] == "budget_krw"
+            low = send("999", 3)
+            assert low["status"] == "answer"
+            assert low["budget_analysis"]["budget_krw"] == 999
+            assert low["suggested_amount_krw"] is None
+            assert "위로" in low["message"]
+            high = send("99999", 4)
+            assert high["status"] == "answer"
+            assert high["context"]["budget_krw"] == 99999
+            assert high["budget_analysis"]["budget_krw"] == 99999
+            assert "예산 99,999원" in high["message"]
+            assert high["suggested_amount_krw"] is None or high["suggested_amount_krw"] <= 99999
+            assert "위로" in high["message"]
+            assert gateway.classify_calls == 3
+            saved = client.get(f"/api/conversations/{cid}", headers=headers)
+            assert saved.status_code == 200
+            assert saved.json()["state"]["budget_krw"] == 99999
+            assert saved.json()["state"]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    finally:
+        app.dependency_overrides.pop(get_service, None)

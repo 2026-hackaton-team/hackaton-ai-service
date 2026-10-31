@@ -417,8 +417,8 @@ def test_funeral_etiquette_only_does_not_require_person_or_budget():
     })
     assert result["status"] == "answer"
     assert result.get("pending_field") is None
-    assert result["context"]["requested_aspects"] == ["funeral_etiquette"]
-    assert gateway.answers[0][0]["requested_aspects"] == ["funeral_etiquette"]
+    assert result["context"]["requested_aspects"] == ["funeral_etiquette", "clothing"]
+    assert gateway.answers[0][0]["requested_aspects"] == ["funeral_etiquette", "clothing"]
     assert "조문 예절" in result["message"]
 
 
@@ -490,3 +490,51 @@ def test_funeral_type_survives_budget_followup_without_notice():
     assert reply["context"].get("pending_field") is None
     assert gateway.answers[-1][0]["event_type"] == "장례"
     assert "조문 예절" in reply["message"]
+
+
+def test_below_minimum_budget_then_revision_with_missing_model_aspects():
+    """모델이 복합 항목을 누락해도 999원 뒤 99,999원으로 정상 재계산한다."""
+    gateway = AutoGateway(intent="amount", person_id=None)
+    service = ChatService(load_data(), gateway)
+    first = service.chat_auto({
+        "user_id": "U001", "question": "회사 동료 부친상, 조의금과 조문 예절이 궁금해",
+    })
+    assert first["pending_field"] == "person_id"
+    assert first["context"]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    contact = service.chat_auto({
+        "user_id": "U001", "question": "해든기획팀 김도윤", "context": first["context"],
+    })
+    assert contact["pending_field"] == "budget_krw"
+    low = service.chat_auto({
+        "user_id": "U001", "question": "999", "context": contact["context"],
+    })
+    assert low["status"] == "answer"
+    assert low["context"]["budget_krw"] == 999
+    assert low["budget_analysis"]["budget_krw"] == 999
+    assert low["v4_analysis"]["amount_krw"] is None
+    assert gateway.answers[-1][0]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    high = service.chat_auto({
+        "user_id": "U001", "question": "99999", "context": low["context"],
+    })
+    assert high["status"] == "answer"
+    assert high["context"]["budget_krw"] == 99999
+    assert high["budget_analysis"]["budget_krw"] == 99999
+    assert "예산 99,999원" in high["message"]
+    assert high["context"]["requested_aspects"] == ["amount", "funeral_etiquette"]
+    assert high["suggested_amount_krw"] is None or high["suggested_amount_krw"] <= 99999
+
+
+def test_numeric_budget_revision_does_not_rerun_intent_classification():
+    """예산 재입력 단계는 LLM 의도 오분류와 무관하게 처리한다."""
+    gateway = AutoGateway(intent="out_of_scope", person_id=None)
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({
+        "user_id": "U001", "question": "99999",
+        "context": {"intent": "amount", "person_id": "P001", "event_type": "장례",
+                    "budget_krw": 999, "requested_aspects": ["amount", "funeral_etiquette"],
+                    "original_question": "조의금과 조문 예절이 궁금해"},
+    })
+    assert result["status"] == "answer"
+    assert result["context"]["budget_krw"] == 99999
+    assert result["budget_analysis"]["budget_krw"] == 99999
+    assert gateway.classifications == []

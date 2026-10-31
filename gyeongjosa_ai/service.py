@@ -7,6 +7,24 @@ from .ai import ASPECTS, ModelUnavailable, model_request_budget
 
 
 MODES = {"history", "amount", "attendance", "message", "notice"}
+
+
+def explicit_aspects(question):
+    """모델이 누락한 명시적인 복합 상담 요구만 보충한다."""
+    aspects = []
+    if re.search(r"조의금|부의금|축의금|금액|얼마|현금", question):
+        aspects.append("amount")
+    if re.search(r"조문\s*예절|조문\s*순서|조문\s*절차", question):
+        aspects.append("funeral_etiquette")
+    if re.search(r"복장|옷차림", question):
+        aspects.append("clothing")
+    if "선물" in question and re.search(r"현금|돈", question):
+        aspects.append("gift_comparison")
+    if re.search(r"위로\s*문자|축하\s*문자|인사말", question):
+        aspects.append("message")
+    return aspects
+
+
 CATEGORIES = ("결혼", "장례", "부고", "백일", "돌", "생일", "환갑", "칠순", "팔순")
 
 
@@ -414,6 +432,16 @@ class ChatService:
         if context.get("notice_id") and context["notice_id"] not in notice_ids:
             return error_result("선택한 부고를 이 계정에서 조회할 수 없습니다.")
 
+        # 추천 완료 뒤 숫자만 입력한 경우에는 분류 결과와 무관하게 예산을 갱신한다.
+        if (context.get("intent") == "amount" and not context.get("pending_field")
+                and isinstance(context.get("budget_krw"), int)
+                and re.fullmatch(r"\d[\d,]*", question)):
+            context["budget_krw"] = int(question.replace(",", ""))
+            result = self.chat({**context, "user_id": user_id, "question": question, "mode": "amount"})
+            if result.get("pending_field"):
+                context["pending_field"] = result["pending_field"]
+            return {**result, "intent": "amount", "classification_model": None, "context": context}
+
         if context.get("intent") == "amount" and context.get("pending_field") in {"budget_krw", "budget_clarification"}:
             budget_reply = interpret_budget_reply(question)
             if budget_reply == "ambiguous":
@@ -528,7 +556,13 @@ class ChatService:
         ):
             intent = "amount"
         if intent != "out_of_scope":
-            aspects = classified.get("requested_aspects") or []
+            aspects = list(classified.get("requested_aspects") or [])
+            if not pending:
+                for aspect in explicit_aspects(question):
+                    if aspect not in aspects:
+                        aspects.append(aspect)
+                if "amount" in aspects and intent == "message":
+                    intent = "amount"
             if not pending and not updating_budget and aspects:
                 if new_event:
                     for field in ("person_id", "notice_id", "person_confirmed", "budget_krw",
