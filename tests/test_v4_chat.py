@@ -71,12 +71,10 @@ def test_procurement_risk_never_becomes_payment_advice():
     assert "보류" in result["message"]
 
 
-def test_unmarked_work_context_requires_fictional_confirmation():
-    pending = chat("저는 심사하는 거래처의 부친상에 가고 싶어요.")
-    assert pending["status"] == "need_more_info"
-    assert pending["pending_field"] == "v4_scenario"
-    assert pending["options"][0]["id"] == "procurement"
-    assert pending["context"].get("v4_scenario") is None
+def test_unmarked_work_context_is_not_forced_into_fictional_scenario():
+    from gyeongjosa_ai.v4_chat import try_v4_chat
+
+    assert try_v4_chat("U001", "저는 심사하는 거래처의 부친상에 가고 싶어요.", {}) is None
 
 
 def test_scenario_change_does_not_reuse_other_person_budget():
