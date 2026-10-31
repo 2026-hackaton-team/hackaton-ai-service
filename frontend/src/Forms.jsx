@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, Icon } from './ui.jsx'
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, resolveRelation } from './relationships.js'
 import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
 import { demoApi } from './services/demoApi.js'
+import { createSubmissionGuard } from './services/submissionGuard.js'
 import { normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
 
 const TEST_USERNAME = 'test1234'
@@ -31,15 +32,34 @@ function FormError({ message }) {
   return message ? <p className="form-error" role="alert"><Icon name="CircleAlert" size={16} />{message}</p> : null
 }
 
-function FormActions({ onClose, children, disabled = false }) {
+function FormActions({ onClose, children, disabled = false, pending = false }) {
   return <div className="form-actions">
     <button type="button" className="button button-secondary" onClick={onClose}>취소</button>
-    <button type="submit" className="button button-primary" disabled={disabled}>{children}</button>
+    <button type="submit" className="button button-primary" disabled={disabled || pending}>{pending ? '저장 중…' : children}</button>
   </div>
+}
+
+function useSaveSubmission(onSave, setError) {
+  const [pending, setPending] = useState(false)
+  const guard = useRef(null)
+  if (!guard.current) guard.current = createSubmissionGuard(setPending)
+  async function save(values) {
+    try {
+      return await guard.current(() => {
+        setError('')
+        return onSave(values)
+      })
+    } catch (error) {
+      setError(error?.message || '저장하지 못했어요. 다시 시도해 주세요.')
+      return false
+    }
+  }
+  return { pending, save }
 }
 
 export function EventForm({ people = [], onSave, onClose, user = null }) {
   const [error, setError] = useState('')
+  const { pending, save } = useSaveSubmission(onSave, setError)
   const [form, setForm] = useState({
     owner: 'other', personId: '', personName: '', title: '', type: '결혼식', date: todayInSeoul(),
     time: '14:00', location: '', attendance: '참석', reminderDays: 1,
@@ -61,18 +81,17 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
     if (mine) {
       if (form.shareScope !== 'private' && !user) { setError('친구에게 보내려면 먼저 로그인해 주세요.'); return }
       if (form.shareScope !== 'private' && type === '장례식' && !form.consent) { setError('장례 소식은 유족(가족)의 공유 동의를 확인한 뒤 보낼 수 있어요.'); return }
-      onSave({
+      return save({
         owner: 'me', personId: '', title: form.title.trim() || `${myName}의 ${type}`,
         type, date: form.date, time: form.time, location: form.location.trim(),
         attendance: '참석', reminderDays: Number(form.reminderDays), memo: form.shareMessage.trim(),
         shareScope: form.shareScope, shareMessage: form.shareMessage.trim(),
       })
-      return
     }
     if (!selectedPerson && form.personId !== '__new') { setError('검색 결과에서 인맥을 선택해 주세요.'); return }
     const name = selectedPerson?.name || form.personName.trim()
     if (!name) { setError('누구의 경조사인지 선택하거나 이름을 입력해 주세요.'); return }
-    onSave({
+    return save({
       personId: selectedPerson?.id || '',
       ...(selectedPerson ? {} : { personName: name }),
       title: form.title.trim() || `${name} ${type}`,
@@ -82,7 +101,7 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
   }
 
   return <Modal title="새로운 마음을 챙겨요" subtitle={mine ? '내 경조사를 등록하고, 소중한 사람들에게 알려요.' : '경조사를 등록하고, 마음을 전할 때를 기억하세요.'} onClose={onClose} wide>
-    <form onSubmit={submit} className="app-form">
+    <form onSubmit={submit} className="app-form" aria-busy={pending}>
       <div className="form-grid">
         <div className="owner-toggle" role="group" aria-label="누구의 경조사인가요?">
           <button type="button" aria-pressed={!mine} onMouseDown={event => event.preventDefault()} onClick={() => { update('owner', 'other'); setError('') }}><Icon name="UsersRound" size={16} />지인의 경조사</button>
@@ -126,13 +145,14 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         </Field>
       </div>
       <FormError message={error} />
-      <FormActions onClose={onClose}><Icon name={mine && form.shareScope !== 'private' ? 'Send' : 'Plus'} size={17} />{mine && form.shareScope === 'friends' ? '등록하고 친구 고르기' : mine && form.shareScope === 'friends_of_friends' ? '등록하고 친구의 친구에게 알리기' : '일정 등록하기'}</FormActions>
+      <FormActions onClose={onClose} pending={pending}><Icon name={mine && form.shareScope !== 'private' ? 'Send' : 'Plus'} size={17} />{mine && form.shareScope === 'friends' ? '등록하고 친구 고르기' : mine && form.shareScope === 'friends_of_friends' ? '등록하고 친구의 친구에게 알리기' : '일정 등록하기'}</FormActions>
     </form>
   </Modal>
 }
 
 export function PersonForm({ onSave, onClose }) {
   const [error, setError] = useState('')
+  const { pending, save } = useSaveSubmission(onSave, setError)
   const [form, setForm] = useState({ name: '', relation: '친구', group: '', importance: '보통', closeness_score: null, special: false, lastMet: '', memo: '' })
   const [customRelation, setCustomRelation] = useState('')
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }))
@@ -140,10 +160,10 @@ export function PersonForm({ onSave, onClose }) {
     event.preventDefault()
     if (!form.name.trim()) { setError('이름을 입력해 주세요.'); return }
     if (form.lastMet && form.lastMet > todayInSeoul()) { setError('마지막 만남은 오늘 또는 이전 날짜로 입력해 주세요.'); return }
-    onSave({ ...form, relation: resolveRelation(form.relation, customRelation), name: form.name.trim(), group: form.group.trim(), memo: form.memo.trim(), interactions: [] })
+    return save({ ...form, relation: resolveRelation(form.relation, customRelation), name: form.name.trim(), group: form.group.trim(), memo: form.memo.trim(), interactions: [] })
   }
   return <Modal title="오래 이어갈 인연" subtitle="이름부터 함께한 순간까지, 소중한 사람을 기록해요." onClose={onClose}>
-    <form onSubmit={submit} className="app-form">
+    <form onSubmit={submit} className="app-form" aria-busy={pending}>
       <div className="form-grid">
         <Field label="이름" required full><input className="input" value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="이름을 입력해 주세요" maxLength={40} autoComplete="name" required /></Field>
         <Field label="관계" required><select className="input" aria-label="관계" value={form.relation} onChange={(event) => update('relation', event.target.value)}>{RELATION_OPTIONS.map((relation) => <option key={relation}>{relation}</option>)}</select></Field>
@@ -156,13 +176,14 @@ export function PersonForm({ onSave, onClose }) {
         <Field label="기억하고 싶은 이야기" full><textarea className="input" value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="취향이나 함께한 추억을 남겨 보세요." rows={3} maxLength={1000} /></Field>
       </div>
       <FormError message={error} />
-      <FormActions onClose={onClose}><Icon name="UserPlus" size={17} />인맥 등록하기</FormActions>
+      <FormActions onClose={onClose} pending={pending}><Icon name="UserPlus" size={17} />인맥 등록하기</FormActions>
     </form>
   </Modal>
 }
 
 export function RecordForm({ people = [], events = [], onSave, onClose, initialPersonId = '', initialEventId = '', initialRecord = null }) {
   const [error, setError] = useState('')
+  const { pending, save } = useSaveSubmission(onSave, setError)
   const editing = !!initialRecord
   const recordTypes = [...new Set([...EVENT_TYPES, '기타', initialRecord?.type, ...events.map((event) => event.type)].filter(Boolean))]
   const [form, setForm] = useState(() => {
@@ -191,10 +212,10 @@ export function RecordForm({ people = [], events = [], onSave, onClose, initialP
     if (!people.some((person) => person.id === form.personId)) { setError('기록할 사람을 선택해 주세요.'); return }
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 1000000000) { setError('금액은 1원부터 10억 원까지 정수로 입력해 주세요.'); return }
     if (!form.date) { setError('주고받은 날짜를 선택해 주세요.'); return }
-    onSave({ ...form, amount, memo: form.memo.trim() })
+    return save({ ...form, amount, memo: form.memo.trim() })
   }
   return <Modal title={editing ? "금액 기록 수정" : "주고받은 마음 기록"} subtitle={editing ? "수정한 내용은 장부와 통계에 함께 반영돼요." : "다음에 마음을 전할 때 참고할 수 있도록 남겨요."} onClose={onClose}>
-    <form onSubmit={submit} className="app-form">
+    <form onSubmit={submit} className="app-form" aria-busy={pending}>
       <div className="money-direction" aria-label="주고받은 방향">
         {['보낸 마음', '받은 마음'].map((direction) => <button type="button" key={direction} className={form.direction === direction ? 'active' : ''} aria-pressed={form.direction === direction} onClick={() => update('direction', direction)}>
           <Icon name={direction === '보낸 마음' ? 'ArrowUpRight' : 'ArrowDownLeft'} size={18} />{direction}
@@ -217,7 +238,7 @@ export function RecordForm({ people = [], events = [], onSave, onClose, initialP
         <Field label="메모" full><textarea className="input" rows={3} value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="예) 결혼식에 참석해 직접 전달" maxLength={1000} /></Field>
       </div>
       <FormError message={error} />
-      <FormActions onClose={onClose} disabled={!people.length}><Icon name="Check" size={17} />{editing ? '변경사항 저장' : '마음 기록하기'}</FormActions>
+      <FormActions onClose={onClose} disabled={!people.length} pending={pending}><Icon name="Check" size={17} />{editing ? '변경사항 저장' : '마음 기록하기'}</FormActions>
     </form>
   </Modal>
 }

@@ -1,21 +1,26 @@
 export const RELATION_OPTIONS = ['가족', '친구', '직장동료', '거래처', '기타'];
 export const IMPORTANCE_OPTIONS = ['매우 중요', '중요', '보통'];
 
-export function relationDraft(value) {
+function standardRelation(value) {
   const relation = String(value || '').trim() || '기타';
+  return relation === '직장 동료' ? '직장동료' : relation;
+}
+
+export function relationDraft(value) {
+  const relation = standardRelation(value);
   return RELATION_OPTIONS.includes(relation)
     ? { relation, customRelation: '' }
     : { relation: '기타', customRelation: relation };
 }
 
 export function resolveRelation(choice, custom = '') {
-  return choice === '기타' ? String(custom).trim() || '기타' : String(choice || '').trim() || '기타';
+  return choice === '기타' ? String(custom).trim() || '기타' : standardRelation(choice);
 }
 
 export function matchesRelation(value, filter) {
   if (filter === '전체') return true;
   const category = relationDraft(value).relation;
-  return category === filter;
+  return category === (filter === '직장 동료' ? '직장동료' : filter);
 }
 
 export function normalizeImportance(value) {
