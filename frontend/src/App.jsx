@@ -16,12 +16,10 @@ import { demoApi } from './services/demoApi.js';
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored } from './services/workspaceStorage.js';
 import { useServerWorkspace } from './services/serverWorkspace.js';
-import { setDemoAccount } from './services/demoAccount.js';
-import { seedTestSocial, TEST_USERNAME, TEST_PROFILE_ID } from './services/testAccountDemo.js';
+import { seedTestSocial, TEST_USERNAME } from './services/testAccountDemo.js';
 import { normalizePerson } from './relationships.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 
-const PROFILE_LINKS_KEY = 'maeum-profile-links-v1';
 const navigation = [
   { id: 'home', label: '홈', icon: 'LayoutGrid' },
   { id: 'schedule', label: '일정 관리', icon: 'CalendarDays' },
@@ -59,12 +57,14 @@ export default function App() {
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [readIds, setReadIds] = useStored(workspaceKeys.readIds, []);
   const sharedInbox = useSharedNoticeInbox();
-  const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(sharedInbox.userId);
-  const linked = Boolean(sharedInbox.userId);
-  const workspaceReady = linked && workspace.owner === sharedInbox.userId && workspace.status === 'ready';
-  const people = linked ? (workspaceReady ? workspace.snapshot.people.map(normalizePerson) : []) : localPeople;
-  const events = linked ? (workspaceReady ? workspace.snapshot.events.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })) : []) : localEvents;
-  const records = linked ? (workspaceReady ? workspace.snapshot.records : []) : localRecords;
+  const [identity, setIdentity] = useState({ username: '', userId: '', error: '' });
+  const serverUserId = user?.username && identity.username === user.username ? identity.userId : '';
+  const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(serverUserId);
+  const linked = Boolean(serverUserId);
+  const workspaceReady = linked && workspace.owner === serverUserId && workspace.status === 'ready';
+  const people = user ? (workspaceReady ? workspace.snapshot.people.map(normalizePerson) : []) : localPeople;
+  const events = user ? (workspaceReady ? workspace.snapshot.events.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })) : []) : localEvents;
+  const records = user ? (workspaceReady ? workspace.snapshot.records : []) : localRecords;
   const [notificationSettings, setNotificationSettings] = useStored(STORAGE_KEYS.notifications, { browser: false });
   const [page, setPage] = useState(() => navigation.some(item => item.id === location.hash.slice(1)) ? location.hash.slice(1) : 'home');
   const [aiPersonId, setAiPersonId] = useState('');
@@ -106,7 +106,7 @@ export default function App() {
 
   async function saveChanges(change) {
     if (!workspaceReady) {
-      notify(linked ? '서버 기록을 불러오거나 이전한 뒤 저장할 수 있어요.' : 'AI에서 가상 계정을 선택한 뒤 서버에 기록해 주세요.');
+      notify(linked ? '서버 기록을 불러오거나 이전한 뒤 저장할 수 있어요.' : '로그인 후 서버 계정 연결을 확인해 주세요.');
       return false;
     }
     try {
@@ -216,24 +216,25 @@ export default function App() {
       return false;
     }
   }
-  // 로그인 계정마다 마지막으로 고른 AI 프로필을 기억했다가 로그인하면 자동으로 선택한다.
-  const profileSync = useRef({ user: '', target: null });
+  // 로그인 계정에서 서버 사용자 ID를 조회하며 이전 계정의 화면 상태를 즉시 분리한다.
   useEffect(() => {
-    const name = user?.username || '';
-    const previous = profileSync.current.user;
-    const linked = name ? (readStored(PROFILE_LINKS_KEY, {})[name] || '') : '';
-    profileSync.current = { user: name, target: name ? linked : null };
-    if (name && linked !== sharedInbox.userId) sharedInbox.selectUser(linked);
-    if (!name && previous && sharedInbox.userId) sharedInbox.selectUser('');
+    const username = user?.username || '';
+    let active = true;
+    setIdentity({ username: '', userId: '', error: '' });
+    sharedInbox.selectUser('');
+    if (username) {
+      demoApi('/demo/accounts/resolve', { method: 'POST', body: { username } })
+        .then(result => {
+          if (!active) return;
+          setIdentity({ username, userId: result.user_id, error: '' });
+          sharedInbox.selectUser(result.user_id);
+        })
+        .catch(error => {
+          if (active) setIdentity({ username, userId: '', error: error.message || '서버 계정을 연결하지 못했습니다.' });
+        });
+    }
+    return () => { active = false; };
   }, [user?.username]);
-  useEffect(() => {
-    const { user: name, target } = profileSync.current;
-    if (!name || name !== user?.username) return;
-    if (target !== null && sharedInbox.userId !== target) return; // 전환 중
-    profileSync.current.target = null;
-    if (!sharedInbox.userId) return;
-    try { const links = readStored(PROFILE_LINKS_KEY, {}); if (links[name] !== sharedInbox.userId) writeStored(PROFILE_LINKS_KEY, { ...links, [name]: sharedInbox.userId }); } catch { /* 저장 공간이 없으면 연결만 생략 */ }
-  }, [sharedInbox.userId, user?.username]);
   // ---- 마음결 친구 · 일정 공유 ----
   const [social, setSocial] = useState(loadSocial);
   const [members, setMembers] = useState(readMembers);
@@ -249,7 +250,7 @@ export default function App() {
     catch (error) { const text = error?.message || '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; if (onError) onError(text); else notify(text); return false; }
   }
   // 받은 일정은 개인정보라 로그인한 사람에게만 보여 준다.
-  const receivedItems = useMemo(() => !user ? [] : buildReceivedItems({ social, me: user?.username || '', notices: sharedInbox.items, profileId: sharedInbox.userId, events, members, people, today }), [social, user, sharedInbox.items, sharedInbox.userId, events, members, people, today]);
+  const receivedItems = useMemo(() => !user || !serverUserId ? [] : buildReceivedItems({ social, me: user.username, notices: sharedInbox.userId === serverUserId ? sharedInbox.items : [], profileId: serverUserId, events, members, people, today }), [social, user, sharedInbox.items, sharedInbox.userId, serverUserId, events, members, people, today]);
   const newReceivedCount = receivedItems.filter(item => item.status === 'new').length;
   async function addToCalendar(item) {
     const existing = events.find(event => event.source?.key === item.key);
@@ -276,16 +277,17 @@ export default function App() {
   const [serverPriorities, setServerPriorities] = useState({});
   useEffect(() => {
     setServerPriorities({});
-    if (!user || !sharedInbox.userId) return;
+    if (!user || !serverUserId || sharedInbox.userId !== serverUserId) return;
     const controller = new AbortController();
-    demoApi('/relationship-priorities', { userId: sharedInbox.userId, signal: controller.signal })
+    demoApi('/relationship-priorities', { userId: serverUserId, signal: controller.signal })
       .then(result => { if (!controller.signal.aborted) setServerPriorities(Object.fromEntries((result.items || []).map(item => [item.target_user_id, item]))); })
       .catch(() => {});
     return () => controller.abort();
-  }, [user?.username, sharedInbox.userId]);
+  }, [user?.username, sharedInbox.userId, serverUserId]);
   async function saveServerPriority(targetUserId, body) {
     try {
-      const saved = await demoApi(`/relationship-priorities/${encodeURIComponent(targetUserId)}`, { userId: sharedInbox.userId, method: 'PUT', body });
+      if (!workspaceReady) throw new Error('서버 계정 연결 후 저장할 수 있습니다.');
+      const saved = await demoApi(`/relationship-priorities/${encodeURIComponent(targetUserId)}`, { userId: serverUserId, method: 'PUT', body });
       setServerPriorities(current => ({ ...current, [targetUserId]: saved }));
       sharedInbox.refresh();
       notify('중요도를 저장했어요. 받은 일정 순서에 반영했어요.');
@@ -331,17 +333,19 @@ export default function App() {
       <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} aria-label="메뉴 열기"><Icon name="Menu" /></button></div><div className="topbar-actions"><span className="today-label"><span />{hasUrgentFuneral ? '조용히 위로를 전할 때예요' : dark ? '차분하게 마음을 살피는 하루예요' : '마음을 챙기기 좋은 하루예요'}</span><div className="theme-control"><button className="theme-toggle" aria-label="화면 분위기 설정" aria-expanded={themeOpen} onClick={() => { setThemeOpen(!themeOpen); setAccountOpen(false); }}><Icon name={dark ? 'Moon' : 'Sun'} size={15} /><span>{themeMode === 'auto' ? '자동 분위기' : dark ? '차분한 분위기' : '따뜻한 분위기'}</span><Icon name="ChevronDown" size={12} /></button>{themeOpen && <><div className="popover-scrim" onClick={() => setThemeOpen(false)} /><div className="theme-popover"><strong>마음에 맞는 분위기</strong>{[{ value: 'auto', name: '상황에 따라 자동', icon: 'Monitor', text: '3일 이내 조사가 있으면 차분하게' }, { value: 'light', name: '따뜻한 마음', icon: 'Sun', text: '한지 아이보리와 쪽빛' }, { value: 'dark', name: '차분한 마음', icon: 'Moon', text: '깊은 먹빛으로 전하는 위로' }].map(item => <button key={item.value} onClick={() => { setThemeMode(item.value); setThemeOpen(false); }}><Icon name={item.icon} size={17} /><span>{item.name}<small>{item.text}</small></span>{themeMode === item.value && <Icon name="Check" size={16} />}</button>)}</div></>}</div><span className="topbar-divider" /><button className="notification-trigger icon-button" aria-label={`알림 ${unreadCount}개`} onClick={() => setNotificationsOpen(true)}><Icon name="Bell" size={20} />{unreadCount > 0 && <span className="notification-dot" />}</button><div className="account-control"><button className="topbar-avatar" aria-label="계정 관리" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); setThemeOpen(false); }}><Icon name="UserRound" size={17} /></button>{accountOpen && <><div className="popover-scrim" onClick={() => setAccountOpen(false)} /><div className="account-popover">{user ? <><strong>{user.name}님</strong><small>@{user.username || user.email}{user.workplace ? ` · ${user.workplace}` : ''}</small><button onClick={() => { setAccountOpen(false); setModal({ type: 'profile' }); }}><Icon name="UserRound" size={16} />정보 수정</button><button onClick={() => { setUser(null); setAccountOpen(false); notify('로그아웃했어요.'); }}><Icon name="LogOut" size={16} />로그아웃</button></> : <><strong>나의 마음 기록</strong><button onClick={() => { setAccountOpen(false); setModal({type:'login'}); }}><Icon name="LogIn" size={16} />로그인</button><button onClick={() => { setAccountOpen(false); setModal({type:'signup'}); }}><Icon name="UserPlus" size={16} />회원가입</button></>}</div></>}</div></div></header>
       <main id="main" className={`main-content ${page === 'home' ? 'home-main' : ''}`} key={page}>
         <section className="card" aria-live="polite" style={{ marginBottom: 12, padding: 12 }}>
-          {!linked
-            ? <p>서버 기록을 사용하려면 마음결 AI에서 가상 계정을 선택해 주세요. 현재 인맥·장부는 기존 브라우저 백업 보기이며 새 기록은 저장되지 않습니다.</p>
-            : workspace.owner !== sharedInbox.userId || workspace.status === 'loading'
+          {!user
+            ? <p>로그인하면 동일한 계정의 서버 인맥·일정·장부와 AI 추천을 이용할 수 있습니다.</p>
+            : !linked
+              ? <p role={identity.error ? 'alert' : 'status'}>{identity.error || '로그인 계정의 서버 기록을 연결하는 중입니다.'}</p>
+            : workspace.owner !== serverUserId || workspace.status === 'loading'
               ? <p>서버 인맥·일정·장부를 불러오는 중입니다.</p>
               : workspace.status === 'migration'
-              ? <><p>선택한 가상 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
+              ? <><p>로그인 계정의 서버 기록이 비어 있습니다. 브라우저 자료를 이전하거나 빈 공간에서 시작하세요. 브라우저 원본은 삭제하지 않습니다.</p>
                 <button className="button button-primary" onClick={() => initializeWorkspace(true)}>기존 브라우저 기록 서버로 이전</button>
                 <button className="button button-secondary" onClick={() => initializeWorkspace(false)}>빈 서버 공간 시작</button></>
               : workspace.status === 'error'
                   ? <p role="alert">서버 기록 조회 실패: {workspace.error}. 저장하지 말고 서버 연결을 확인해 주세요.</p>
-                  : <p>서버 작업공간 연결됨 · 가상 계정 {sharedInbox.userId} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.</p>}
+                  : <p>서버 작업공간 연결됨 · {user.username} · 친밀도·장부는 AI 추천과 같은 SQLite 기록을 사용합니다.</p>}
         </section>
         {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} onOpenReceived={() => setModal({ type: 'received' })} receivedCount={newReceivedCount} />}
@@ -359,11 +363,7 @@ export default function App() {
     {modal?.type === 'record' && <RecordForm key={modal.recordId || 'new'} initialRecord={records.find(record => record.id === modal.recordId) || null} people={people} events={events} initialPersonId={modal.personId || ''} initialEventId={modal.eventId || ''} onSave={saveRecord} onClose={() => setModal(null)} />}
     {modal?.type === 'profile' && user && <ProfileEditModal user={user} onClose={() => setModal(null)} onSave={(profile, passwordChanged) => { setUser(profile); setModal(null); notify(passwordChanged ? '비밀번호와 내 정보를 저장했어요.' : '내 정보를 저장했어요.'); }} />}
     {(modal?.type === 'login' || modal?.type === 'signup') && <AuthModal key={modal.type} mode={modal.type} onClose={() => setModal(null)} onSwitch={type => setModal({ type })} onSuccess={profile => {
-        if (profile.username === TEST_USERNAME) {
-          seedTestSocial();
-          writeStored(PROFILE_LINKS_KEY, { ...readStored(PROFILE_LINKS_KEY, {}), [TEST_USERNAME]: TEST_PROFILE_ID });
-          setDemoAccount(TEST_PROFILE_ID);
-        }
+        if (profile.username === TEST_USERNAME) seedTestSocial();
         setUser(profile); setModal(null); notify(`${profile.name}님, 마음결에 오신 걸 환영해요.`);
       }} />}
     {selectedEvent && <EventDetail event={selectedEvent} person={people.find(person => person.id === selectedEvent.personId)} today={today} onClose={() => setModal(null)} onUpdate={patch => updateEvent(selectedEvent.id, patch)} onShare={() => user ? setModal({ type: 'share', id: selectedEvent.id, back: true }) : setModal({ type: 'login' })} onDelete={async () => { const ok = await saveChanges(state => ({ events: state.events.filter(event => event.id !== selectedEvent.id), records: state.records.map(record => record.eventId === selectedEvent.id ? { ...record, eventId: '' } : record) })); if (!ok) return; if (selectedEvent.owner === 'me' && user) mutate(state => removeShare(state, user.username, selectedEvent.id)); setModal(null); notify('일정을 서버에서 삭제했어요. 금액 기록은 유지했어요.'); }} onDownload={() => downloadCalendar(selectedEvent)} onRecord={() => setModal({ type: 'record', personId: selectedEvent.personId, eventId: selectedEvent.id })} onAI={() => { setAiPersonId(selectedEvent.personId); setModal(null); navigate('ai'); }} />}

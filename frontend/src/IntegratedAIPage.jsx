@@ -5,7 +5,7 @@ import HistoryStats from './HistoryStats.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
 import { aiAnalysisStatusLabel } from './aiAnalysisStatus.js'
 import { demoApi } from './services/demoApi.js'
-import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js'
+import { DEMO_ACCOUNT_EVENT, getDemoAccount } from './services/demoAccount.js'
 export { demoApi } from './services/demoApi.js'
 const stored=()=>getDemoAccount()
 const QUICK_QUESTIONS = [
@@ -19,7 +19,6 @@ const friendlyError = error => /Failed to fetch|NetworkError|Load failed|서버 
   ? 'AI 서버에 연결할 수 없어요. 서버가 켜져 있는지 확인한 뒤 다시 시도해 주세요.'
   : String(error?.message || error)
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
-  const [users,setUsers]=useState([])
   const [scenarioExamples,setScenarioExamples]=useState([])
   const [userId,setUserId]=useState(stored)
   const [cid,setCid]=useState('')
@@ -34,11 +33,9 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   activeUser.current=userId
   useEffect(()=>{const sync=()=>setUserId(getDemoAccount());window.addEventListener(DEMO_ACCOUNT_EVENT,sync);return()=>window.removeEventListener(DEMO_ACCOUNT_EVENT,sync)},[])
   useEffect(()=>()=>controller.current?.abort(),[])
-  useEffect(()=>{demoApi('/demo/users').then(r=>setUsers(r.items||[])).catch(e=>setError(friendlyError(e)))},[])
   useEffect(()=>{
     controller.current?.abort()
     setMessages([]);setCid('');setConversations([]);setScenarioExamples([]);setError('')
-    setDemoAccount(userId)
     if(!userId)return
     const ac=new AbortController()
     demoApi('/conversations',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setConversations(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
@@ -81,9 +78,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
     {userId==='SCENARIO_KIM'&&<ScenarioLab userId={userId} onQuestion={setQuestion}/>}
     <section className="card ai-chat-card">
       <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
-        <label>프로필 <select className="input" aria-label="프로필" value={userId} onChange={e=>setUserId(e.target.value)}>
-          <option value="">프로필 선택</option>{users.map(u=><option key={u.id} value={u.id}>{u.name} · {u.affiliation||u.id}</option>)}
-        </select></label>
         <button className="button" type="button" disabled={!userId||busy} onClick={newConversation}>새 대화</button>
       </div>
       <div style={{display:'flex',gap:8,overflowX:'auto',padding:12}}>
@@ -102,7 +96,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
             </details>)}
         </div>}
         {scenarioExamples.length===0&&!messages.length&&<div className="ai-quick-questions" aria-label="예시 질문">
-          {!userId&&<p className="ai-quick-hint">위에서 프로필을 고르면 내 기록을 바탕으로 답해 드려요.</p>}
+          {!userId&&<p className="ai-quick-hint">로그인하면 내 서버 기록을 바탕으로 답해 드려요.</p>}
           <div className="ai-suggestion-chips">{QUICK_QUESTIONS.map(item=><button type="button" key={item} disabled={busy} onClick={()=>userId?send(item):setQuestion(item)}>{item}</button>)}</div>
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>

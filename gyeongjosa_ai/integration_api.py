@@ -4,6 +4,7 @@ This is NOT production authentication. Do not expose this application publicly.
 """
 import json
 import os
+import re
 import sqlite3
 import threading
 import uuid
@@ -58,8 +59,18 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 def _user(x_demo_user_id: str = Header(default=""), service=Depends(get_service)):
-    if not x_demo_user_id or x_demo_user_id not in service.data.users:
-        raise HTTPException(401, "가상 계정을 먼저 선택하세요. 실제 인증 기능은 제공되지 않습니다.")
+    if x_demo_user_id not in service.data.users:
+        if not re.fullmatch(r"LOCAL_[A-Z0-9_]{4,20}", x_demo_user_id):
+            raise HTTPException(401, "로그인 계정의 서버 사용자 ID가 필요합니다.")
+        # 시연용 신규 로그인은 고정 사용자 ID로 빈 개인 작업공간을 사용한다.
+        username = x_demo_user_id.removeprefix("LOCAL_").lower()
+        user = {
+            "id": x_demo_user_id, "name": username, "login_id": username,
+            "demo_account": True, "fictional_affiliation": "마음결 시연 계정",
+            "preferred_region": "서울", "preferred_event_types": [],
+        }
+        service.data.users[x_demo_user_id] = user
+        service.data.dataset["users"].append(user)
     return x_demo_user_id
 
 def _conversation(db, cid, uid):
@@ -171,6 +182,19 @@ def own_shared_event(notice):
               "publisher_name_visible", "related_role", "related_user_recommendation_allowed", "recipient_user_ids",
               "recipient_group", "created_at", "updated_at")
     return {key: notice.get(key) for key in fields}
+
+class LoginIdentityInput(BaseModel):
+    username: str = Field(pattern=r"^[a-z0-9_]{4,20}$")
+
+
+@router.post("/demo/accounts/resolve")
+def resolve_login_identity(account: LoginIdentityInput, service=Depends(get_service)):
+    """일반 로그인 아이디를 서버의 합성 사용자 ID에 연결한다."""
+    for user in service.data.users.values():
+        if user.get("login_id", "").lower() == account.username:
+            return {"user_id": user["id"]}
+    return {"user_id": "LOCAL_" + account.username.upper()}
+
 
 @router.get("/demo/users")
 def demo_users(service=Depends(get_service)):
