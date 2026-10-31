@@ -7,8 +7,8 @@ export default function BudgetComparison({result, budget, compact=false}) {
   const comparison=compareBudget(result,budget)
   if(!comparison)return null
   const {amount,gap,baseline,adjustments}=comparison
-  return <section aria-label="추천 금액과 예산 비교" className="ai-result-card">
-    <strong>{comparison.title}</strong>
+  return <details aria-label="추천 금액과 예산 비교" className="ai-result-card ai-analysis-details">
+    <summary style={{cursor:'pointer'}}><strong>추천 근거 · {comparison.title}</strong></summary>
     {amount == null
       ? <p>예산 {money(comparison.budget)} · 금액 제안 보류</p>
       : <p>예산 {money(comparison.budget)} → {comparison.referenceOnly?'비교 참고액':'추천액'} {money(amount)} · {gap>0?'잔여 '+money(gap):'예산과 동일'} ({comparison.usagePercent}% 사용)</p>}
@@ -21,5 +21,5 @@ export default function BudgetComparison({result, budget, compact=false}) {
       {!adjustments.length&&<p>추가 관계 금액 조정 없음 · 기존 기록 및 적격 근거 기준으로 선택</p>}
       {comparison.referenceOnly&&<p>법률 확인 전 비교 참고액이며 송금 가능 여부를 뜻하지 않습니다.</p>}
     </div>}
-  </section>
+  </details>
 }
