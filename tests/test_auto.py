@@ -490,3 +490,56 @@ def test_funeral_type_survives_budget_followup_without_notice():
     assert reply["context"].get("pending_field") is None
     assert gateway.answers[-1][0]["event_type"] == "장례"
     assert "조문 예절" in reply["message"]
+
+
+class SemanticGateway(AutoGateway):
+    """맥락 의미와 관계값을 돌려주는 의도 분류 모델 대역이다."""
+
+    def __init__(self, **semantics):
+        super().__init__(intent="amount", person_id="P001")
+        self.semantics = semantics
+
+    def classify(self, context, people_ids, notice_ids):
+        return {**super().classify(context, people_ids, notice_ids),
+                **self.semantics}
+
+
+def test_current_closeness_from_llm_precedes_old_first_match():
+    """과거 점수보다 문맥상 현재 점수를 추천 상태에 저장한다."""
+    gateway = SemanticGateway(relationship_closeness=2)
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({
+        "user_id": "U001",
+        "question": "친밀도 5점이었지만 지금은 2점이에요. 장례 예산은 10만원",
+        "context": {"person_id": "P001"},
+    })
+    assert result["context"]["relationship_closeness"] == 2
+
+
+@pytest.mark.parametrize(("amount", "expected"), [
+    (200000, 200000), (900000, None),
+])
+def test_model_received_amount_must_appear_in_question(amount, expected):
+    """모델이 만든 숫자를 장부와 개인화 추천에 주입하지 않는다."""
+    gateway = SemanticGateway(recent_received_amount_krw=amount)
+    result = ChatService(load_data(), gateway).chat_auto({
+        "user_id": "U001",
+        "question": "최근 20만원을 받았어. 장례 예산은 10만원",
+        "context": {"person_id": "P001"},
+    })
+    assert result["context"].get("recent_received_override") == expected
+
+
+def test_model_negation_can_lower_unconfirmed_work_risk_but_not_confirm_legality():
+    """LLM의 부정 해석은 확인 전 위험 가설만 바꾸고 법률 허용을 확정하지 않는다."""
+    from app.relationship_analysis import analyze
+    sender = {"occupation": "civil_servant", "duty_role": "procurement"}
+    recipient = {"covered": "unknown"}
+    text = "계약 관련성은 없어"
+    legacy = analyze(sender=sender, recipient=recipient, relationship_text=text)
+    checked = analyze(sender=sender, recipient=recipient,
+                      relationship_text=text, semantic_hint="negated")
+    assert legacy["high_risk_hint"] is True
+    assert checked["high_risk_hint"] is False
+    assert checked["duty_context"] == "unknown"
+    assert checked["status"] == "insufficient_facts"
