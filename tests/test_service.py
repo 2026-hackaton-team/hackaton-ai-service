@@ -36,6 +36,9 @@ def test_same_name_requires_user_selection_before_model_call(service):
     assert result["status"] == "need_more_info"
     assert result["pending_field"] == "person_id"
     assert {option["id"] for option in result["options"]} == {"P001", "P002"}
+    options = {option["id"]: option for option in result["options"]}
+    assert options["P001"]["label"] == "김도윤 · 해든기획팀 · 직장 동료"
+    assert options["P002"]["label"] == "김도윤 · 솔빛독서모임 · 독서 모임 지인"
     assert service.gateway.calls == []
 
 
