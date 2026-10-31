@@ -5,9 +5,7 @@ import HistoryStats from './HistoryStats.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
 import { aiAnalysisStatusLabel } from './aiAnalysisStatus.js'
 import { demoApi } from './services/demoApi.js'
-import { DEMO_ACCOUNT_EVENT, getDemoAccount } from './services/demoAccount.js'
 export { demoApi } from './services/demoApi.js'
-const stored=()=>getDemoAccount()
 const QUICK_QUESTIONS = [
   '친구 결혼식인데 축의금은 얼마가 적당할까?',
   '회사 동료 부친상, 조의금과 조문 예절이 궁금해',
@@ -18,9 +16,8 @@ const QUICK_QUESTIONS = [
 const friendlyError = error => /Failed to fetch|NetworkError|Load failed|서버 요청에 실패/.test(String(error?.message || error))
   ? 'AI 서버에 연결할 수 없어요. 서버가 켜져 있는지 확인한 뒤 다시 시도해 주세요.'
   : String(error?.message || error)
-export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
+export default function IntegratedAIPage({initialNoticeId='',embedded=false,userId=''}) {
   const [scenarioExamples,setScenarioExamples]=useState([])
-  const [userId,setUserId]=useState(stored)
   const [cid,setCid]=useState('')
   const [conversations,setConversations]=useState([])
   const [messages,setMessages]=useState([])
@@ -31,7 +28,6 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const bottom=useRef(null)
   const activeUser=useRef(userId)
   activeUser.current=userId
-  useEffect(()=>{const sync=()=>setUserId(getDemoAccount());window.addEventListener(DEMO_ACCOUNT_EVENT,sync);return()=>window.removeEventListener(DEMO_ACCOUNT_EVENT,sync)},[])
   useEffect(()=>()=>controller.current?.abort(),[])
   useEffect(()=>{
     controller.current?.abort()

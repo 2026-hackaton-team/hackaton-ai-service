@@ -56,9 +56,9 @@ export default function App() {
   const [localRecords] = useStored(workspaceKeys.records, initialRecords);
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [readIds, setReadIds] = useStored(workspaceKeys.readIds, []);
-  const sharedInbox = useSharedNoticeInbox();
   const [identity, setIdentity] = useState({ username: '', userId: '', error: '' });
   const serverUserId = user?.username && identity.username === user.username ? identity.userId : '';
+  const sharedInbox = useSharedNoticeInbox(serverUserId);
   const { state: workspace, commit: commitServer, initialize: initializeServer } = useServerWorkspace(serverUserId);
   const linked = Boolean(serverUserId);
   const workspaceReady = linked && workspace.owner === serverUserId && workspace.status === 'ready';
@@ -221,13 +221,11 @@ export default function App() {
     const username = user?.username || '';
     let active = true;
     setIdentity({ username: '', userId: '', error: '' });
-    sharedInbox.selectUser('');
     if (username) {
       demoApi('/demo/accounts/resolve', { method: 'POST', body: { username } })
         .then(result => {
           if (!active) return;
           setIdentity({ username, userId: result.user_id, error: '' });
-          sharedInbox.selectUser(result.user_id);
         })
         .catch(error => {
           if (active) setIdentity({ username, userId: '', error: error.message || '서버 계정을 연결하지 못했습니다.' });
@@ -352,7 +350,7 @@ export default function App() {
         {page === 'people' && <PeoplePage key={peopleTab.nonce} initialTab={peopleTab.tab} people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}
         {page === 'ledger' && <LedgerPage people={people} events={events} records={records} onAddRecord={() => setModal({ type: 'record' })} onEditRecord={id => setModal({type:'record', recordId:id})} onDeleteRecord={deleteRecord} onImportRecords={importRecords} notify={notify} />}
         {page === 'guide' && <EtiquettePage />}
-        {page === 'ai' && <AIPage />}
+        {page === 'ai' && <AIPage key={serverUserId || 'signed-out'} userId={serverUserId} />}
         {page !== 'home' && <footer className="page-footer"><span>마음결<span className="footer-separator">·</span>기억하고, 연결하고, 마음을 전해요.</span></footer>}
       </main>
     </div>

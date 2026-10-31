@@ -1,22 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Icon, Modal, EmptyState } from './ui.jsx';
-import { demoApi } from './services/demoApi.js';
-import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js';
 import { loadSharedNotices, sharedNoticeId } from './services/noticeInbox.js';
 import './notice-inbox.css';
 import { occasionClass } from './occasion.js';
 
 export { sharedNoticeId };
 
-export function useSharedNoticeInbox() {
-  const [userId, setUserId] = useState(() => getDemoAccount());
+export function useSharedNoticeInbox(userId = '') {
   const [reload, setReload] = useState(0);
   const [snapshot, setSnapshot] = useState({ userId: '', items: [], status: 'idle', error: '' });
-  useEffect(() => {
-    const sync = () => setUserId(getDemoAccount());
-    window.addEventListener(DEMO_ACCOUNT_EVENT, sync);
-    return () => window.removeEventListener(DEMO_ACCOUNT_EVENT, sync);
-  }, []);
   useEffect(() => {
     if (!userId) { setSnapshot({ userId: '', items: [], status: 'idle', error: '' }); return; }
     const controller = new AbortController();
@@ -29,10 +21,7 @@ export function useSharedNoticeInbox() {
     return () => controller.abort();
   }, [userId, reload]);
   const current = snapshot.userId === userId ? snapshot : { items: [], status: userId ? 'loading' : 'idle', error: '' };
-  return { ...current, userId,
-    selectUser: id => { setDemoAccount(id); setUserId(id); },
-    refresh: () => setReload(value => value + 1),
-  };
+  return { ...current, userId, refresh: () => setReload(value => value + 1) };
 }
 
 const dateLabel = value => value ? String(value).replaceAll('-', '.') : '날짜 확인 필요';
