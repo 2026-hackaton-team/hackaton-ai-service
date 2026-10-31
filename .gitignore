@@ -3,6 +3,10 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp-*/
 *.py[cod]
+/data/demo_shared_events.sqlite3
+/data/demo_shared_events.sqlite3-journal
+/data/demo_shared_events.sqlite3-wal
+/data/demo_shared_events.sqlite3-shm
 
 # Local unified launcher
 .venv/
@@ -11,6 +15,7 @@ frontend/dist/
 
 # Local demo runtime databases
 data/demo_conversations.sqlite3*
+data/demo_workspace.sqlite3*
 data/demo_profiles.db*
 
 # Local working notes

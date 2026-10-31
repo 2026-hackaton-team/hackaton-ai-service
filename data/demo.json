@@ -26,7 +26,7 @@
     "api_key_included": false,
     "access_policy": "이 파일에는 여러 가상 계정의 개인 이력과 비공개 소식이 함께 있으므로 서버 측 시드와 검증에 사용한다. 실제 서비스에서는 계정별 소유권과 공유 조건을 검사한 결과만 사용자와 AI에 제공해야 한다.",
     "generation_note": "추가된 100명과 질문은 허구이며 고정 시드와 작성된 예시 문구로 생성했다.",
-    "scenario_fixtures_version": "1.0"
+    "scenario_fixtures_version": "1.1"
   },
   "event_categories": [
     "결혼",
@@ -7671,6 +7671,15 @@
       "name": "최도하",
       "relationship": "친구",
       "fictional_affiliation": "한울계약팀"
+    },
+    {
+      "id": "SCP019",
+      "owner_user_id": "SCU001",
+      "linked_user_id": "SCU006",
+      "name": "한소민",
+      "relationship": "직장동료",
+      "fictional_affiliation": "하루돌봄모임",
+      "linked_user_confirmed_for_recommendation": true
     }
   ],
   "private_events": [

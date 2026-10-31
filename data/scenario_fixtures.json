@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "version": "1.0",
+    "version": "1.1",
     "reference_date": "2026-10-30",
     "timezone": "Asia/Seoul",
     "notice": "모든 인물·관계·행사·금액은 검증을 위한 허구이며 실제 분포를 대표하지 않는다."
@@ -274,6 +274,15 @@
       "name": "최도하",
       "relationship": "친구",
       "fictional_affiliation": "한울계약팀"
+    },
+    {
+      "id": "SCP019",
+      "owner_user_id": "SCU001",
+      "linked_user_id": "SCU006",
+      "name": "한소민",
+      "relationship": "직장동료",
+      "fictional_affiliation": "하루돌봄모임",
+      "linked_user_confirmed_for_recommendation": true
     }
   ],
   "private_events": [

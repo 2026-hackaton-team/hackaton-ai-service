@@ -85,7 +85,7 @@ def test_confirmed_history_keeps_received_and_paid_amounts_separate():
     assert all(item["contact_person_id"] == "SCP001" for item in gateway.generated[0]["history"]["transactions"])
 
 
-def test_zero_budget_and_missing_history_do_not_produce_an_amount():
+def test_zero_budget_blocks_but_missing_history_produces_low_confidence_amount():
     gateway = ScenarioGateway()
     service = ChatService(load_data(), gateway)
     zero = service.chat({"user_id": "SCU001", "mode": "amount", "question": "0원이에요",
@@ -93,9 +93,10 @@ def test_zero_budget_and_missing_history_do_not_produce_an_amount():
     missing = service.chat({"user_id": "SCU002", "mode": "amount", "question": "얼마가 좋을까요?",
                             "person_id": "SCP004", "event_type": "팔순", "budget_krw": 30000})
     assert zero["status"] == "answer" and zero["suggested_amount_krw"] is None
-    assert missing["status"] == "answer" and missing["suggested_amount_krw"] is None
-    assert "금액 이력" in missing["message"]
-    assert gateway.generated == []
+    assert missing["status"] == "answer" and missing["suggested_amount_krw"] == 30000
+    assert missing["evidence_level"] == "low"
+    assert "금전 이력은 0건" in missing["message"]
+    assert len(gateway.generated) == 1
 
 
 def test_ambiguous_budget_followup_does_not_turn_into_a_zero_budget():

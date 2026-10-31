@@ -4,6 +4,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock,patch
@@ -45,7 +46,7 @@ class V4Tests(unittest.TestCase):
 
     def test_legacy_migration_preserves_profiles(self):
         path=Path(self.temp.name)/'legacy.sqlite3'
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute('CREATE TABLE profiles (user_id TEXT PRIMARY KEY, occupation TEXT NOT NULL, institution TEXT NOT NULL, allow_recommendation INTEGER NOT NULL, visibility TEXT NOT NULL, updated_at TEXT NOT NULL)')
             db.execute('INSERT INTO profiles VALUES (?,?,?,?,?,?)',('U001','civil_servant','government',1,'accepted_contacts','old'))
         s=ProfileStore(path,seed=False)
@@ -125,10 +126,10 @@ class V4Tests(unittest.TestCase):
         self.put('U002')
         marker='TEST_PRIVATE_USER_INPUT_DO_NOT_STORE'
         reco(relationship_text='계약 심사 '+marker)
-        with sqlite3.connect(self.store.db_path) as db:
+        with closing(sqlite3.connect(self.store.db_path)) as db:
             dump=' '.join(' '.join(str(v) for v in row) for row in db.execute('SELECT * FROM profiles'))
         self.assertNotIn(marker,dump)
-        self.assertNotIn(marker,Path('app/relationship_analysis.py').read_text())
+        self.assertNotIn(marker,Path('app/relationship_analysis.py').read_text(encoding='utf-8'))
 
     def test_no_llm_call_without_explicit_opt_in(self):
         self.put('U002')

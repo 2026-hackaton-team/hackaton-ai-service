@@ -121,7 +121,7 @@ class ChatService:
         v4_result = try_v4_chat(user_id, question, raw_context)
         if v4_result is not None:
             return v4_result
-        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "pending_field"}
+        keys = {"intent", "person_id", "notice_id", "person_confirmed", "budget_krw", "budget_state", "availability", "event_type", "attendance_with_meal", "pending_field"}
         context = {key: value for key, value in raw_context.items() if key in keys}
         people = self.data.people(user_id)
         people_ids = {person["id"] for person in people}
@@ -194,6 +194,11 @@ class ChatService:
 
         intent = classified["intent"]
         pending = context.get("pending_field")
+        if pending == "attendance_with_meal":
+            if re.search(r"식사\s*(?:안|하지)|안\s*(?:먹|할)|불참", question):
+                context["attendance_with_meal"] = False
+            elif re.search(r"식사|먹|참석|네|예", question):
+                context["attendance_with_meal"] = True
         previous_intent = context.get("intent")
         explicit_followup = (
             pending in {"budget_krw", "budget_clarification"} and parse_budget(question) is not None
@@ -201,6 +206,7 @@ class ChatService:
             or pending == "person_id" and bool(context.get("person_id"))
             or pending == "notice_id" and bool(context.get("notice_id"))
             or pending == "event_type" and any(category in question for category in CATEGORIES)
+            or pending == "attendance_with_meal" and context.get("attendance_with_meal") is not None
         )
         if pending and previous_intent in MODES and (intent == previous_intent or explicit_followup):
             intent = previous_intent
@@ -370,8 +376,84 @@ class ChatService:
             prefix = "선택한 지인의 경조사 이력이 없습니다. " if history and not history["events"] else ""
             return question_result(prefix + "어떤 종류의 경조사인지 알려 주세요.", "event_type")
         if mode == "amount" and history is not None and not history["transactions"]:
-            prefix = "선택한 지인의 경조사 이력이 없습니다." if not history["events"] else "선택한 지인의 주고받은 금액 이력이 없습니다."
-            return {"status": "answer", "message": prefix + " 근거가 부족해 구체적인 금액 제안을 보류합니다. 예산과 현재 사정을 고려해 직접 결정해 주세요.", "model": None, "evidence": [], "suggested_amount_krw": None}
+            from app.knowledge import KB
+            from app.recommender import recommend
+
+            attendance = request.get("attendance_with_meal")
+            if attendance is None and re.search(r"식사|뷔페|밥", question):
+                attendance = not bool(re.search(r"식사\s*(?:안|하지)|안\s*(?:먹|할)", question))
+            result = recommend(
+                user_id=user_id, person_id=person["id"], identity_confirmed=True,
+                event_type=event_type, attendance_with_meal=attendance,
+                budget_krw=budget, dataset=self.data.dataset,
+            )
+            if result["status"] == "NEEDS_ATTENDANCE_CONTEXT":
+                return question_result(
+                    "결혼식에 참석해 식사할 예정인가요?",
+                    "attendance_with_meal",
+                    [{"label": "식사할 예정", "reply": "식사할 예정이에요"},
+                     {"label": "식사하지 않음", "reply": "식사하지 않을 예정이에요"}],
+                )
+            if result["status"] != "RECOMMENDED":
+                return {"status": "answer", "message": result["message"],
+                        "model": None, "evidence": [], "suggested_amount_krw": None}
+
+            sources = KB.retrieve(
+                f"{event_type} {person['relationship']} 경조사비 금액 부담",
+                event_type=event_type, relationship=person["relationship"], top_k=6,
+            )
+            evidence = [{"id": person["id"], "kind": "지인",
+                         "text": f"{person['name']} · {person['relationship']}"}]
+            for source in sources:
+                evidence.append({
+                    "id": source["id"], "kind": "공개 근거", "text": source["excerpt"],
+                    "url": source["url"],
+                    "decision_role": ("applied_statistic" if source["id"] == result["matched_source_id"]
+                                      else "context_only"),
+                })
+            context = {
+                "mode": "amount", "question": question, "person": person_option(person),
+                "history": {"person_id": person["id"], "events": [], "transactions": []},
+                "event_type": event_type, "budget_krw": budget,
+                "recommendation": {
+                    "amount_krw": result["amount_krw"],
+                    "evidence_level": result["evidence_level"],
+                    "recommendation_basis": result["recommendation_basis"],
+                    "reasons": result["reasons"],
+                    "matched_source_id": result["matched_source_id"],
+                },
+                "public_sources": [
+                    {"id": item["id"], "text": item["text"],
+                     "decision_role": item["decision_role"]}
+                    for item in evidence if item["kind"] == "공개 근거"
+                ],
+                "allowed_evidence_ids": [item["id"] for item in evidence],
+            }
+            try:
+                preferred = request.get("_preferred_model")
+                if preferred:
+                    answer = self.gateway.generate(context, {item["id"] for item in evidence},
+                                                   preferred_model=preferred)
+                else:
+                    answer = self.gateway.generate(context, {item["id"] for item in evidence})
+            except ModelUnavailable:
+                answer = {"answer": "외부 AI 설명은 연결되지 않아 근거 기반 참고액만 표시합니다.",
+                          "model": None, "evidence_ids": []}
+
+            risky = bool(re.search(r"공무원|공직|직무|계약|입찰|심사|평가|청탁금지|담임", question))
+            label = "법률 확인 전 일반 참고액" if risky else "추천 참고액"
+            message = (
+                f"선택한 지인과의 금전 이력은 0건입니다. {label}은 {result['amount_krw']:,}원입니다. "
+                + " ".join(result["reasons"]) + " " + answer["answer"]
+                + " 법적 송금 가능 여부는 별도로 확인해야 하며 최종 선택은 사용자에게 있습니다."
+            )
+            return {
+                "status": "answer", "message": message, "model": answer["model"],
+                "evidence": evidence, "cited_ids": answer["evidence_ids"],
+                "suggested_amount_krw": None if risky else result["amount_krw"],
+                "recommendation_basis": result["recommendation_basis"],
+                "evidence_level": result["evidence_level"],
+            }
 
         evidence = []
         person_data = None
