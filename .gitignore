@@ -1,0 +1,30 @@
+.env
+__pycache__/
+.pytest_cache/
+.pytest-tmp-*/
+*.py[cod]
+/data/demo_shared_events.sqlite3
+/data/demo_shared_events.sqlite3-journal
+/data/demo_shared_events.sqlite3-wal
+/data/demo_shared_events.sqlite3-shm
+
+# Local unified launcher
+.venv/
+frontend/node_modules/
+frontend/dist/
+
+# Local demo runtime databases
+data/demo_conversations.sqlite3*
+data/demo_workspace.sqlite3*
+data/demo_profiles.db*
+data/demo_accounts.sqlite3*
+
+# Local working notes
+/docs/LOCAL_DEMO_REVIEW.md
+/docs/LOCAL_RUN.md
+/docs/NEXT_WORK_SPEC.md
+/docs/WORK_NOTES.md
+data/demo_relationship_priorities.sqlite3*
+
+# Local runtime DB backups
+/data/runtime_backup_*/

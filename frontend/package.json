@@ -1,0 +1,26 @@
+{
+  "name": "maeum-gyeol",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "setup:demo": "node scripts/setup-demo.mjs",
+    "dev:demo": "node scripts/dev-demo.mjs",
+    "test:backend": ".venv\\Scripts\\python.exe -m pytest backend/tests -q",
+    "test": "node --test src/accountRules.test.js src/domain.test.js src/ledgerCsv.test.js src/relationships.test.js src/sharedEvents.test.js src/services/apiClient.test.js src/services/workspaceStorage.test.js src/services/aiChat.test.js src/services/notificationInbox.test.js src/services/socialStore.test.js src/services/friendRecommendations.test.js src/services/receivedItems.test.js src/services/relationshipPriority.test.js src/scenarioEvaluation.test.js src/aiAnalysisStatus.test.js src/aiResponseText.test.js src/services/submissionGuard.test.js",
+    "dev:all": "node ../scripts/dev-all.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "vite": "^6.4.1",
+    "@vitejs/plugin-react": "^4.7.0"
+  }
+}

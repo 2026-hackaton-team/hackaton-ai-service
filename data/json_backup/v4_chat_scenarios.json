@@ -1,0 +1,278 @@
+{
+  "version": "2026-10-31-relationship-v1",
+  "notice": "모든 인물·직업·관계는 합성 시연용이며 실제 사람이나 법적 사실 확인 결과가 아니다.",
+  "scenarios": [
+    {
+      "id": "general",
+      "name": "직장 동료 결혼식",
+      "person_id": "P001",
+      "scenario_id": "default",
+      "event_type": "결혼",
+      "keywords": [
+        "직장 동료 결혼식",
+        "동료 김도윤 결혼식"
+      ],
+      "example_question": "가상 시나리오: 직장 동료 김도윤 결혼식에 참석해서 식사해요. 예산은 3만원이에요"
+    },
+    {
+      "id": "public_exception",
+      "name": "공직자 부조 예외 성립 가정",
+      "person_id": "P004",
+      "scenario_id": "chat_public_exception",
+      "event_type": "장례",
+      "keywords": [
+        "공직자 부조 예외",
+        "부조 예외 성립"
+      ],
+      "example_question": "가상 시나리오: 공직자 부조 예외 성립 가정, 장례식 예산은 10만원이에요"
+    },
+    {
+      "id": "procurement",
+      "name": "계약·심사 이해관계 가정",
+      "person_id": "P005",
+      "scenario_id": "chat_public_procurement",
+      "event_type": "장례",
+      "keywords": [
+        "계약 심사 거래처",
+        "심사하는 거래처",
+        "계약 심사 중",
+        "계약 심사 이해관계"
+      ],
+      "example_question": "가상 시나리오: 계약 심사 거래처 부친상, 예산은 3만원이에요"
+    },
+    {
+      "id": "teacher_parent",
+      "name": "현직 담임교사 축의금",
+      "person_id": "V4P001",
+      "scenario_id": "default",
+      "event_type": "결혼",
+      "keywords": [
+        "담임선생님",
+        "담임 선생님",
+        "담임교사",
+        "학부모가 담임"
+      ],
+      "example_question": "가상 시나리오: 우리 아이 담임선생님 결혼식에 축의금 3만원 드려도 될까요?"
+    },
+    {
+      "id": "sender_public",
+      "name": "공무원 제공자와 민간 거래처",
+      "person_id": "V4P002",
+      "scenario_id": "chat_sender_public",
+      "event_type": "장례",
+      "keywords": [
+        "제가 담당하는 업체",
+        "제가 담당하는 거래처",
+        "구청 계약 담당자",
+        "공무원 제공자",
+        "제가 심사하는 업체"
+      ],
+      "example_question": "가상 시나리오: 저는 구청 계약 담당자이고 담당 업체 직원의 부친상입니다. 예산은 3만원이에요"
+    },
+    {
+      "id": "private_occupation",
+      "name": "상대방 직업 비공개",
+      "person_id": "V4P003",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "상대가 직업 비공개",
+        "직업을 공개하지",
+        "직업정보 비공개",
+        "직업을 비공개",
+        "공무원인 것 같은데"
+      ],
+      "example_question": "가상 시나리오: 상대가 직업을 비공개로 했는데 공무원인 것 같아요. 부의금은 3만원이에요"
+    },
+    {
+      "id": "cash_and_wreath",
+      "name": "현금과 조화 복합 제공",
+      "person_id": "V4P004",
+      "scenario_id": "chat_cash_and_wreath",
+      "event_type": "장례",
+      "keywords": [
+        "조의금과 조화",
+        "조의금 5만원에 조화",
+        "현금과 조화",
+        "조의금 5만원과 조화",
+        "조의금 3만원과 조화"
+      ],
+      "example_question": "가상 시나리오: 직무 관련 공직자에게 조의금 5만원과 조화 10만원을 함께 보내도 될까요?"
+    },
+    {
+      "id": "public_dol",
+      "name": "직무 관련 공직자 자녀 돌잔치",
+      "person_id": "V4P005",
+      "scenario_id": "default",
+      "event_type": "돌",
+      "keywords": [
+        "공직자 자녀 돌잔치",
+        "공무원 아이 돌잔치",
+        "직무 관련 공무원의 아이 돌잔치",
+        "공직자 돌잔치"
+      ],
+      "example_question": "가상 시나리오: 직무 관련 공무원의 아이 돌잔치에도 경조사비 5만원 기준이 적용되나요?"
+    },
+    {
+      "id": "duplicate_mourner",
+      "name": "동명이인 상주 확인",
+      "person_id": "P001",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "김도윤 부친상",
+        "김도윤의 부친상",
+        "동명이인 상주",
+        "회사 동료 김도윤이 맞"
+      ],
+      "example_question": "가상 시나리오: 김도윤의 부친상인데 우리 회사 동료 김도윤이 맞나요? 예산은 3만원이에요"
+    },
+    {
+      "id": "ended_contract",
+      "name": "계약 종료 후 직무 관련성",
+      "person_id": "V4P006",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "keywords": [
+        "계약은 6개월 전에 끝",
+        "계약이 6개월 전에 끝",
+        "계약이 종료된 거래처",
+        "과거에 계약을 심사",
+        "계약 종료된 업체",
+        "계약이 끝난 업체",
+        "6개월 전에 계약이 끝난"
+      ],
+      "example_question": "가상 시나리오: 6개월 전에 계약이 끝난 업체 직원의 부친상인데 3만원을 보내도 될까요?"
+    },
+    {
+      "id": "relation_give_more",
+      "name": "나는 늘 더 많이 준 관계",
+      "person_id": "V4P011",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "늘 더 많이 준 관계",
+        "항상 5만원씩 줬어"
+      ],
+      "example_question": "가상 시나리오: 나는 늘 더 많이 준 관계야. 4번 10만원씩 줬는데 상대는 항상 5만원씩 줬어. 이번 예산은 5만원이야"
+    },
+    {
+      "id": "relation_receive_more",
+      "name": "상대가 늘 두 배를 준 관계",
+      "person_id": "V4P012",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "상대가 늘 두 배를 준 관계",
+        "상대가 10만원씩 줬어"
+      ],
+      "example_question": "가상 시나리오: 상대가 늘 두 배를 준 관계야. 나는 5만원씩 줬는데 상대가 10만원씩 줬어. 예산은 5만원뿐이야"
+    },
+    {
+      "id": "relation_close_friend",
+      "name": "금액보다 소중한 친구",
+      "person_id": "V4P013",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "금액보다 소중한 친구",
+        "친밀도를 5점으로"
+      ],
+      "example_question": "가상 시나리오: 금액보다 소중한 친구야. 인맥관리 친밀도를 5점으로 등록했어. 예산은 7만원이고 특별히 챙기고 싶어"
+    },
+    {
+      "id": "relation_recent_large",
+      "name": "최근 갑자기 큰 금액을 받은 관계",
+      "person_id": "V4P014",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "최근 갑자기 큰 금액을 받은 관계",
+        "서로 5만원씩 주고받다가 20만원"
+      ],
+      "example_question": "가상 시나리오: 최근 갑자기 큰 금액을 받은 관계야. 서로 5만원씩 주고받다가 20만원을 받았어. 무슨 의미일까?"
+    },
+    {
+      "id": "relation_recent_small",
+      "name": "최근 갑자기 적게 받은 관계",
+      "person_id": "V4P015",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "최근 갑자기 적게 받은 관계",
+        "이번엔 3만원을 줬어"
+      ],
+      "example_question": "가상 시나리오: 최근 갑자기 적게 받은 관계야. 늘 10만원씩 주던 사람이 이번엔 3만원을 줬어. 멀어진 걸까?"
+    },
+    {
+      "id": "relation_attendance",
+      "name": "돈은 같지만 참석은 일방적인 관계",
+      "person_id": "V4P016",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "돈은 같지만 참석은 일방적인 관계",
+        "나는 4번 참석했는데"
+      ],
+      "example_question": "가상 시나리오: 돈은 같지만 참석은 일방적인 관계야. 나는 4번 참석했는데 상대는 내 행사에 한 번도 안 왔어. 예산은 5만원이야"
+    },
+    {
+      "id": "relation_nonmonetary",
+      "name": "돈보다 큰 도움을 준 친구",
+      "person_id": "V4P017",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "돈보다 큰 도움을 준 친구",
+        "이사와 어려운 시기를 도와줬"
+      ],
+      "example_question": "가상 시나리오: 돈보다 큰 도움을 준 친구야. 예전에 이사와 어려운 시기를 도와줬고 이번 예산은 7만원이야"
+    },
+    {
+      "id": "relation_drift",
+      "name": "예전엔 친했지만 멀어진 관계",
+      "person_id": "V4P018",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "예전엔 친했지만 멀어진 관계",
+        "18개월째 연락이 없고"
+      ],
+      "example_question": "가상 시나리오: 예전엔 친했지만 멀어진 관계야. 18개월째 연락이 없고 과거엔 서로 10만원씩 줬어. 이번 예산은 5만원이야"
+    },
+    {
+      "id": "relation_budget",
+      "name": "이번 달 경조사비가 부담되는 관계",
+      "person_id": "V4P019",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "이번 달 경조사비가 부담되는 관계",
+        "경조사가 4건이라"
+      ],
+      "example_question": "가상 시나리오: 이번 달 경조사비가 부담되는 관계야. 평소엔 10만원인데 경조사가 4건이라 예산은 3만원뿐이야"
+    },
+    {
+      "id": "relation_peer_pressure",
+      "name": "주변 사람들이 많이 내는 관계",
+      "person_id": "V4P020",
+      "scenario_id": "default",
+      "event_type": "장례",
+      "category": "relationship",
+      "keywords": [
+        "주변 사람들이 많이 내는 관계",
+        "회사 사람은 다 10만원"
+      ],
+      "example_question": "가상 시나리오: 주변 사람들이 많이 내는 관계야. 회사 사람은 다 10만원 낸다는데 나는 예산이 5만원이야"
+    }
+  ]
+}

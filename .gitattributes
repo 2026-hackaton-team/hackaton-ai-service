@@ -1,0 +1,6 @@
+# Platform launchers: preserve shell-compatible line endings.
+/window_start.cmd text eol=crlf
+/mac_start.cmd text eol=lf
+
+# SQLite seed database: never apply text conversion.
+*.sqlite3 binary

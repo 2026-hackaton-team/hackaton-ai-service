@@ -1,0 +1,196 @@
+{
+  "version": "2026-10-31-special-v1",
+  "notice": "모든 직업·직무관계는 원본 JSON 밖에서 추가한 합성 시연 데이터이며 실제 인물 신분의 근거가 아니다.",
+  "profiles": {
+    "P001": {
+      "covered": "no",
+      "duty_related": "no",
+      "exception_confirmed": "unknown",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 민간기업 직장 동료"
+    },
+    "P002": {
+      "covered": "unknown",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_unknown",
+      "description": "직업·직무 관계 미확인"
+    },
+    "P003": {
+      "covered": "yes",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 공직자등, 직무관련성 미확인"
+    },
+    "P004": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "yes",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 공직자등·직무관련·부조 예외 성립 가정"
+    },
+    "P005": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "no",
+      "conflict": "high",
+      "provenance": "synthetic_demo",
+      "description": "가상 계약심사 이해관계·예외 미성립"
+    },
+    "V4P001": {
+      "covered": "yes",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 현직 담임교사, 학부모와 평가·지도 관계"
+    },
+    "V4P002": {
+      "covered": "no",
+      "duty_related": "no",
+      "exception_confirmed": "unknown",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 민간 거래처 직원"
+    },
+    "V4P003": {
+      "covered": "unknown",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_unknown",
+      "description": "직업정보 공개 동의 없는 가상 지인"
+    },
+    "V4P004": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "yes",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 공직자·부조 예외 성립 가정"
+    },
+    "V4P005": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 직무 관련 공직자 자녀 돌잔치"
+    },
+    "V4P006": {
+      "covered": "yes",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 과거 계약 상대방·현재 업무 관계 미확인"
+    }
+  },
+  "scenarios": {
+    "default": {
+      "label": "등록된 인물 프로필 자동 판단",
+      "description": "선택한 인물의 합성 시연 프로필 적용"
+    },
+    "public_peer": {
+      "label": "가정: 공공기관 일반 동료",
+      "person_id": "P001",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "no",
+        "exception_confirmed": "unknown",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "직무 관련성 없는 가상 공공기관 동료"
+      }
+    },
+    "public_unknown": {
+      "label": "가정: 공직자등·직무 관련성 불명",
+      "person_id": "P001",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "unknown",
+        "exception_confirmed": "unknown",
+        "conflict": "unknown",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자등, 직무 관계 정보 없음"
+      }
+    },
+    "public_exception": {
+      "label": "가정: 직무 관련 + 부조 예외 성립",
+      "person_id": "P001",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "yes",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자등, 부조 목적 예외 요건 충족"
+      }
+    },
+    "public_procurement": {
+      "label": "가정: 계약 심사 이해관계",
+      "person_id": "P001",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "no",
+        "conflict": "high",
+        "provenance": "synthetic_scenario",
+        "description": "가상 계약 심사 담당자, 예외 미성립"
+      }
+    },
+    "chat_public_exception": {
+      "label": "채팅 가정: 직무 관련 부조 예외 성립",
+      "person_id": "P004",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "yes",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자등·직무관련·부조 예외 성립 가정"
+      }
+    },
+    "chat_public_procurement": {
+      "label": "채팅 가정: 계약 심사 이해관계·예외 미성립",
+      "person_id": "P005",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "no",
+        "conflict": "high",
+        "provenance": "synthetic_scenario",
+        "description": "가상 계약심사 이해관계·예외 미성립"
+      }
+    },
+    "chat_sender_public": {
+      "label": "채팅 가정: 제공자가 공무원인 현재 계약 관계",
+      "person_id": "V4P002",
+      "profile": {
+        "covered": "no",
+        "duty_related": "no",
+        "exception_confirmed": "unknown",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 민간 거래처 직원"
+      }
+    },
+    "chat_cash_and_wreath": {
+      "label": "채팅 가정: 직무 관련 부조 예외 성립 및 현금·조화",
+      "person_id": "V4P004",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "yes",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자·부조 예외 성립 가정"
+      }
+    }
+  }
+}

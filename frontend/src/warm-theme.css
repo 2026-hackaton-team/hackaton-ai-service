@@ -1,0 +1,83 @@
+:root:not([data-theme=dark]){
+  --bg:#f6f7f3;
+  --surface:#ffffff;
+  --surface-soft:#f0f3ef;
+  --text:#263833;
+  --muted:#5d6d66;
+  --border:#dce3dd;
+  --primary:#2f6659;
+  --primary-soft:#e5eee8;
+  --accent:#9e5368;
+  --accent-soft:#f7e9ed;
+  --shadow:0 12px 38px #2638330b;
+}
+:root:not([data-theme=dark]) .app{
+  background:var(--bg);
+}
+:root:not([data-theme=dark]) .nav-item{color:var(--muted)}
+:root:not([data-theme=dark]) .nav-item.active{color:var(--primary)}
+:root:not([data-theme=dark]) .topbar-avatar{background:var(--primary-soft);color:var(--primary)}
+:root:not([data-theme=dark]) .today-label>span{background:var(--primary)}
+:root:not([data-theme=dark]) .sidebar{background:var(--surface)}
+:root:not([data-theme=dark]) .topbar{background:#fbfcf9}
+:root:not([data-theme=dark]) .nav-item:hover{color:var(--primary)}
+:root:not([data-theme=dark]) .badge.slate,
+:root:not([data-theme=dark]) .event-date.slate{background:#eaf0ee;color:#52645e}
+:root:not([data-theme=dark]) .legend-dot{background:var(--primary)}
+:root:not([data-theme=dark]) .card{box-shadow:0 2px 8px #26383303}
+.sidebar-header{display:flex;align-items:center;gap:8px}
+.sidebar-header .desktop-sidebar-toggle{margin:0;width:28px;padding:4px;flex-shrink:0}
+@media(min-width:761px){
+  .sidebar-header .brand{padding:0;gap:8px;align-self:center}
+  .sidebar-header .brand-mark{width:36px;height:38px;border-radius:11px}
+  .sidebar-header .brand>span:last-child{font-size:24px}
+  .sidebar-header .brand small{font-size:7px;letter-spacing:0;margin-top:6px}
+  .sidebar-collapsed .sidebar-header{flex-direction:column;gap:17px}
+  .sidebar-collapsed .sidebar-header .brand-mark{width:40px;height:42px}
+  .sidebar-collapsed .main-nav{margin-top:34px}
+  .topbar-left{display:none}
+  .topbar{justify-content:flex-end}
+  .home-main{height:auto;min-height:calc(100dvh - 80px);padding:30px 38px 28px;max-width:1440px}
+  .home-main .home-page{height:auto;display:block}
+  .home-main .home-page>.page-heading{margin-bottom:26px}
+  .home-main .page-heading h1{font-size:29px;margin:8px 0}
+  .home-overview{display:block;min-height:0}
+  .home-overview>.upcoming-card{max-height:none;overflow:visible;padding:25px 28px 8px}
+  .home-overview .section-heading h2{font-size:15px}
+  .home-overview .upcoming-filters{margin:18px 0 6px}
+  .home-overview .event-list{display:block}
+  .home-overview .event-row,.home-overview .event-row:last-child{gap:16px;padding:24px 0}
+  .home-overview .event-row:not(:last-child){border-bottom:1px solid var(--border)}
+  .home-overview .event-date{width:48px;height:62px}
+  .home-overview .event-title{font-size:14px}
+  .home-overview .event-meta{font-size:10px;flex-wrap:nowrap}
+  .home-overview .event-meta-location{display:flex;flex-basis:auto;max-width:none;font-size:10px}
+  .home-overview .event-meta-location i{display:inline-block}
+  .home-overview .event-relationship{font-size:10px;margin-top:6px}
+  .home-overview .d-day{font-size:9px;padding:5px 7px}
+  .home-overview>.home-ai{display:block;margin:30px 0 0;padding:27px 0 0;border-top:1px solid var(--border);min-height:0}
+  .home-overview .home-ai>.page-heading{margin:0 0 19px}
+  .home-overview .home-ai>.page-heading h2{font-size:24px}
+  .home-overview .home-ai .ai-chat-card{display:block;min-height:0}
+  .home-overview .ai-chat-header{padding:21px 26px}
+  .home-overview .ai-chat-brand strong{font-size:12px}
+  .home-overview .ai-person-selector>span{display:inline;font-size:10px}
+  .home-overview .home-ai .ai-conversation{min-height:280px;max-height:450px;padding:25px 32px 15px}
+  .home-overview .ai-assistant-message{gap:12px;margin-bottom:24px}
+  .home-overview .ai-assistant-avatar{width:32px;height:34px}
+  .home-overview .ai-assistant-content>h3{font-size:14px;margin-bottom:10px}
+  .home-overview .ai-assistant-content>p{font-size:12px;line-height:2;margin-bottom:17px}
+  .home-overview .ai-service-options{gap:10px}
+  .home-overview .ai-service-option{padding:15px;gap:11px}
+  .home-overview .ai-service-icon{width:35px;height:37px}
+  .home-overview .ai-service-option strong{font-size:12px}
+  .home-overview .ai-service-option small{font-size:9px;margin-top:6px}
+  .home-overview .ai-composer-wrap{padding:18px 25px 14px}
+  .home-overview .ai-suggestion-chips{margin-bottom:13px;gap:8px}
+  .home-overview .ai-suggestion-chips>button{font-size:9px;padding:7px 10px}
+  .home-overview .ai-composer{padding:10px 12px 10px 15px}
+  .home-overview .ai-composer>input{font-size:12px}
+  .home-overview .ai-disclaimer{font-size:8px;margin-top:11px}
+  .home-overview .ai-privacy-note{font-size:8px;margin-top:16px}
+}
+@media(min-width:761px) and (max-width:1000px){.home-main{padding:25px 25px 28px}.sidebar-header{gap:5px}.sidebar-header .brand-mark{width:30px;height:34px}.sidebar-header .brand>span:last-child{font-size:21px}.sidebar-header .brand small{font-size:6px}.sidebar-header .brand{gap:6px}.home-overview>.upcoming-card{padding-left:23px;padding-right:23px}}
