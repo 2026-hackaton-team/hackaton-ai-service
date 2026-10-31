@@ -302,7 +302,7 @@ class ChatService:
                     explanation = answer["answer"]
                     # 행사 당사자에 대한 모델의 단정은 검증할 수 없으므로 노출하지 않는다.
                     unsupported_owner = history["transactions"] and re.search(
-                        r"(?:본인|상대(?:방)?|지인)(?:의|이|가)?\\s*(?:결혼식|장례식|돌잔치|행사|경조사|부고)",
+                        r"(?:본인|상대(?:방)?|지인)(?:의|이|가)?\s*(?:결혼식|장례식|돌잔치|행사|경조사|부고)",
                         explanation,
                     )
                     if unsupported_owner:
