@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31-v3",
+  "version": "2026-10-31-special-v1",
   "notice": "모든 직업·직무관계는 원본 JSON 밖에서 추가한 합성 시연 데이터이며 실제 인물 신분의 근거가 아니다.",
   "profiles": {
     "P001": {
@@ -41,6 +41,54 @@
       "conflict": "high",
       "provenance": "synthetic_demo",
       "description": "가상 계약심사 이해관계·예외 미성립"
+    },
+    "V4P001": {
+      "covered": "yes",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 현직 담임교사, 학부모와 평가·지도 관계"
+    },
+    "V4P002": {
+      "covered": "no",
+      "duty_related": "no",
+      "exception_confirmed": "unknown",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 민간 거래처 직원"
+    },
+    "V4P003": {
+      "covered": "unknown",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_unknown",
+      "description": "직업정보 공개 동의 없는 가상 지인"
+    },
+    "V4P004": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "yes",
+      "conflict": "none",
+      "provenance": "synthetic_demo",
+      "description": "가상 공직자·부조 예외 성립 가정"
+    },
+    "V4P005": {
+      "covered": "yes",
+      "duty_related": "yes",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 직무 관련 공직자 자녀 돌잔치"
+    },
+    "V4P006": {
+      "covered": "yes",
+      "duty_related": "unknown",
+      "exception_confirmed": "unknown",
+      "conflict": "unknown",
+      "provenance": "synthetic_demo",
+      "description": "가상 과거 계약 상대방·현재 업무 관계 미확인"
     }
   },
   "scenarios": {
@@ -118,6 +166,30 @@
         "conflict": "high",
         "provenance": "synthetic_scenario",
         "description": "가상 계약심사 이해관계·예외 미성립"
+      }
+    },
+    "chat_sender_public": {
+      "label": "채팅 가정: 제공자가 공무원인 현재 계약 관계",
+      "person_id": "V4P002",
+      "profile": {
+        "covered": "no",
+        "duty_related": "no",
+        "exception_confirmed": "unknown",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 민간 거래처 직원"
+      }
+    },
+    "chat_cash_and_wreath": {
+      "label": "채팅 가정: 직무 관련 부조 예외 성립 및 현금·조화",
+      "person_id": "V4P004",
+      "profile": {
+        "covered": "yes",
+        "duty_related": "yes",
+        "exception_confirmed": "yes",
+        "conflict": "none",
+        "provenance": "synthetic_scenario",
+        "description": "가상 공직자·부조 예외 성립 가정"
       }
     }
   }
