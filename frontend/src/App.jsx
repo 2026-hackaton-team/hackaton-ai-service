@@ -12,6 +12,7 @@ import Notifications, { useSharedNoticeInbox, sharedNoticeId } from './Notificat
 import { materializeImport } from './ledgerCsv.js';
 import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './services/workspaceStorage.js';
 import { normalizePerson } from './relationships.js';
+import { demoApi } from './services/demoApi.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js';
 
@@ -38,9 +39,12 @@ function useStored(key, initial, normalize = value => value) {
 }
 
 export default function App() {
-  const [people, setPeople] = useStored(STORAGE_KEYS.people, initialPeople, items => items.map(normalizePerson));
-  const [events, setEvents] = useStored(STORAGE_KEYS.events, initialEvents, items => items.map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
-  const [records, setRecords] = useStored(STORAGE_KEYS.records, initialRecords);
+  const localPeople = () => readStored(STORAGE_KEYS.people, initialPeople, items => items.map(normalizePerson));
+  const localEvents = () => readStored(STORAGE_KEYS.events, initialEvents, items => ({ ...items }).map(event => ({ ...event, attendance: normalizeAttendance(event.attendance) })));
+  const localRecords = () => readStored(STORAGE_KEYS.records, initialRecords);
+  const [people, setPeople] = useState(localPeople);
+  const [events, setEvents] = useState(localEvents);
+  const [records, setRecords] = useState(localRecords);
   const [themeMode, setThemeMode] = useStored(STORAGE_KEYS.theme, 'auto');
   const [user, setUser] = useStored(STORAGE_KEYS.session, null);
   const [readIds, setReadIds] = useStored(STORAGE_KEYS.readIds, []);
@@ -48,6 +52,32 @@ export default function App() {
   const [notificationSettings, setNotificationSettings] = useStored(STORAGE_KEYS.notifications, { browser: false });
   const [demoUserId, setDemoUserId] = useState(getDemoAccount);
   useEffect(() => { const sync = () => setDemoUserId(getDemoAccount()); window.addEventListener(DEMO_ACCOUNT_EVENT, sync); return () => window.removeEventListener(DEMO_ACCOUNT_EVENT, sync); }, []);
+  const [workspaceReady, setWorkspaceReady] = useState(!demoUserId);
+  const [workspaceInitialized, setWorkspaceInitialized] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const workspaceRevision = useRef(0);
+  const workspaceUser = useRef(demoUserId);
+  useEffect(() => {
+    workspaceUser.current = demoUserId;
+    if (!demoUserId) {
+      setPeople(localPeople()); setEvents(localEvents()); setRecords(localRecords());
+      workspaceRevision.current = 0;
+      setWorkspaceReady(true); setWorkspaceInitialized(false);
+      return;
+    }
+    const controller = new AbortController();
+    setWorkspaceReady(false); setWorkspaceInitialized(false);
+    setPeople([]); setEvents([]); setRecords([]);
+    demoApi('/workspace/personal', {userId:demoUserId, signal:controller.signal})
+      .then(result => {
+        if (controller.signal.aborted) return;
+        workspaceRevision.current = result.revision;
+        setPeople(result.people); setEvents(result.events); setRecords(result.records);
+        setWorkspaceInitialized(result.initialized); setWorkspaceReady(true);
+      })
+      .catch(error => { if (!controller.signal.aborted) { setWorkspaceReady(false); setToast(error.message); } });
+    return () => controller.abort();
+  }, [demoUserId]);
   const [page, setPage] = useState(() => navigation.some(item => item.id === location.hash.slice(1)) ? location.hash.slice(1) : 'home');
   const [aiPersonId, setAiPersonId] = useState('');
   const [modal, setModal] = useState(null);
