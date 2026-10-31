@@ -90,7 +90,7 @@ def test_account_separation_and_cas_conflict(client):
     assert client.get("/api/workspace/personal", headers=_headers()).json()["people"][0]["closeness_score"] == 2
 
 
-@pytest.mark.parametrize("closeness", [0, 6, -1])
+@pytest.mark.parametrize("closeness", [0, 6, -1, True, 3.5, "3"])
 def test_out_of_range_closeness_is_rejected(client, closeness):
     """잘못된 친밀도는 저장되지 않는다."""
     assert client.put("/api/workspace/personal", headers=_headers(),
