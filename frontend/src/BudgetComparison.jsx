@@ -7,7 +7,7 @@ export default function BudgetComparison({result, budget, compact=false}) {
   const comparison=compareBudget(result,budget)
   if(!comparison)return null
   const {amount,gap,baseline,adjustments}=comparison
-  return <section aria-label="추천 금액과 예산 비교" style={{margin:'8px 0',padding:10,border:'1px solid var(--border, #ddd)',borderRadius:8}}>
+  return <section aria-label="추천 금액과 예산 비교" className="ai-result-card">
     <strong>{comparison.title}</strong>
     {amount == null
       ? <p>예산 {money(comparison.budget)} · 금액 제안 보류</p>

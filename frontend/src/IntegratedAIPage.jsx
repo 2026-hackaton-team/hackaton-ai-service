@@ -1,8 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {Icon} from './ui.jsx'
-import HistoryStats from './HistoryStats.jsx'
 import BudgetComparison from './BudgetComparison.jsx'
-import { aiAnalysisStatusLabel } from './aiAnalysisStatus.js'
+import {extractAIInterpretation} from './aiResponseText.js'
 import { demoApi } from './services/demoApi.js'
 export { demoApi } from './services/demoApi.js'
 const QUICK_QUESTIONS = [
@@ -86,35 +85,20 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false,user
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'ai-user-bubble':'ai-assistant-content ai-answer-bubble'}>
+            {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&extractAIInterpretation(m.body)&&
+              <section className="ai-result-card" aria-label="AI 해석">
+                <p className="ai-interpretation">{extractAIInterpretation(m.body)}</p>
+              </section>}
             {m.role==='assistant'&&m.result?.v4_analysis?.amount_krw!=null&&
-              <p className="ai-recommended-amount">{m.result.v4_analysis.status==='NEEDS_FACTS'?'법률 확인 전 비교 참고액':'추천 참고액'}: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>}
+              <section className="ai-result-card" aria-label="추천 참고 금액">
+                <p className="ai-recommended-amount">{m.result.v4_analysis.status==='NEEDS_FACTS'?'법률 확인 전 비교 참고액':'추천 참고액'}: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>
+              </section>}
             {m.role==='assistant'&&!m.result?.v4_analysis&&m.result?.suggested_amount_krw!=null&&
-              <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>}
-            <p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>
-            {m.role==='assistant'&&m.result?.intent==='history'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
+              <section className="ai-result-card" aria-label="추천 참고 금액">
+                <p className="ai-recommended-amount">참고 금액: {m.result.suggested_amount_krw.toLocaleString('ko-KR')}원</p>
+              </section>}
+            {(m.role==='user'||m.result?.v4_analysis?.amount_krw==null)&&<p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>}
             {m.role==='assistant'&&m.result?.budget_analysis&&<BudgetComparison result={m.result} compact/>}
-            {m.role==='assistant'&&(m.result?.v4_analysis||m.result?.history_stats||m.result?.budget_analysis||m.result?.evidence?.length>0)&&<details className="ai-analysis-details"><summary>추천 계산·통계·근거 자세히 보기</summary>
-            {m.result?.v4_analysis&&<div className="ai-evidence">
-              <p><strong>개인화·법률 분석: {m.result.v4_analysis.status}</strong></p>
-              <p>{aiAnalysisStatusLabel(m.result.v4_analysis.ai_status, m.result.model)}</p>
-              {m.result.v4_analysis.status==='RELATIONSHIP_INSIGHT'
-                ? <p>관계 이력을 분석했습니다. 금액은 예산을 확인한 뒤 추천할 수 있습니다.</p>
-                : m.result.v4_analysis.amount_krw!=null
-                  ? <p>예산 안의 참고 금액: <strong>{m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</strong></p>
-                  : <p>송금 추천 금액: 보류</p>}
-              {m.result.v4_analysis.relationship_insights?.closeness_score!=null&&
-                <p>사용자가 기록한 친밀도: {m.result.v4_analysis.relationship_insights.closeness_score}/5</p>}
-              {m.result.v4_analysis.baseline_amount_krw!=null&&m.result.v4_analysis.amount_krw!=null&&m.result.v4_analysis.baseline_amount_krw!==m.result.v4_analysis.amount_krw&&
-                <p>기존 기록 기준: {m.result.v4_analysis.baseline_amount_krw.toLocaleString('ko-KR')}원 → 관계 반영: {m.result.v4_analysis.amount_krw.toLocaleString('ko-KR')}원</p>}
-              {m.result.v4_analysis.relationship_adjustments?.map((item,j)=><p key={j}>조정 근거: {item.reason}</p>)}
-              {m.result.v4_analysis.legal_assessment?.reason&&<p>{m.result.v4_analysis.legal_assessment.reason}</p>}
-              {m.result.v4_analysis.missing_questions?.map((item,j)=><p key={j}>추가 확인: {item}</p>)}
-              <small>시연용 합성 정보·공개 근거를 활용한 참고 분석이며 법률 자문이 아닙니다.</small>
-            </div>}
-            {m.result?.intent!=='history'&&m.result?.history_stats&&<HistoryStats stats={m.result.history_stats}/>}
-            {m.result?.budget_analysis&&<BudgetComparison result={m.result}/>}
-            {Array.isArray(m.result?.evidence)&&m.result.evidence.length>0&&<div>{m.result.evidence.map((e,j)=><p key={j}>{e.kind}: {e.text}{e.url&&<span> · <a href={e.url} target="_blank" rel="noopener noreferrer">원문</a></span>}</p>)}</div>}
-            </details>}
           </div>
         </div>)}
         {options.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:8,padding:12}}>
