@@ -5,6 +5,7 @@ import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
 import { demoApi } from './services/demoApi.js'
 import { findAccount, normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, publicProfile, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
+import { TEST_USERNAME } from './services/testAccountDemo.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const CUSTOM_TYPE = '__custom'
@@ -322,7 +323,10 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
   async function submit(event) {
     event.preventDefault()
     if (pending) return
-    if (signup) { const error = signupError(form); if (error) { setError(error); return } }
+    if (signup) {
+      if (normalizeUsername(form.username) === TEST_USERNAME) { setError('test1234는 시연 전용 계정입니다. 로그인 화면을 이용해 주세요.'); return }
+      const error = signupError(form); if (error) { setError(error); return }
+    }
     setPending(true)
     setError('')
     try {
@@ -336,7 +340,16 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
         localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
         onSuccess(publicProfile(account))
       } else {
-        const account = findAccount(accounts, form.username)
+        let account = findAccount(accounts, form.username)
+        if (!account && normalizeUsername(form.username) === TEST_USERNAME && form.password === TEST_USERNAME) {
+          const salt = crypto.getRandomValues(new Uint8Array(16))
+          account = { username: TEST_USERNAME, name: '테스트 사용자', phone: '',
+            email: 'test1234@example.invalid', workplace: '마음결 시연팀',
+            organization: '해커톤 시연', workType: '민간 기업 임직원', visibility: '전체 공개',
+            salt: bytesToBase64(salt), hash: await hashPassword(form.password, salt),
+            iterations: PBKDF2_ITERATIONS }
+          localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
+        }
         if (!account?.salt || !account?.hash) { setError('아이디와 비밀번호를 확인해 주세요. 처음이라면 회원가입을 해 주세요.'); return }
         const hash = await hashPassword(form.password, base64ToBytes(account.salt), account.iterations || PBKDF2_ITERATIONS)
         if (hash !== account.hash) { setError('아이디와 비밀번호를 확인해 주세요.'); return }
