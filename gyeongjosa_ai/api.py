@@ -84,7 +84,9 @@ def chat(request: ChatRequest, service: ChatService = Depends(get_service)):
     return service.chat_auto(request.model_dump())
 
 from .integration_api import router as integration_router
+from .account_api import router as account_router
 app.include_router(integration_router)
+app.include_router(account_router)
 
 from .demo_state import router as demo_state_router
 app.include_router(demo_state_router)

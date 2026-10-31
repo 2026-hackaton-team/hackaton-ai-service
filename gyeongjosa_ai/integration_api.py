@@ -4,7 +4,6 @@ This is NOT production authentication. Do not expose this application publicly.
 """
 import json
 import os
-import re
 import sqlite3
 import threading
 import uuid
@@ -14,13 +13,14 @@ from pathlib import Path
 from typing import Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+from .account_api import bearer_token, get_account_store
+from .account_store import WORKSPACE_PREFIX, workspace_owner
 from .dependencies import get_service
 from .data import public_legacy_candidate
 from .shared_events_store import SharedEventsStore
 from .relationship_priority import IMPORTANCE_OPTIONS, PriorityStore
 from .event_parser import parse_event_text
 from .workspace_store import WorkspaceInput, load_workspace, preview_workspace, save_workspace
-from .test_account_seed import test_workspace
 from .service import ChatService
 from .workspace_adapter import data_for_chat
 
@@ -59,19 +59,23 @@ def _connect():
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
-def _user(x_demo_user_id: str = Header(default=""), service=Depends(get_service)):
-    if x_demo_user_id not in service.data.users:
-        if not re.fullmatch(r"LOCAL_[A-Z0-9_]{4,20}", x_demo_user_id):
-            raise HTTPException(401, "로그인 계정의 서버 사용자 ID가 필요합니다.")
-        # 시연용 신규 로그인은 고정 사용자 ID로 빈 개인 작업공간을 사용한다.
-        username = x_demo_user_id.removeprefix("LOCAL_").lower()
-        user = {
-            "id": x_demo_user_id, "name": username, "login_id": username,
-            "demo_account": True, "fictional_affiliation": "마음결 시연 계정",
-            "preferred_region": "서울", "preferred_event_types": [],
-        }
-        service.data.users[x_demo_user_id] = user
-        service.data.dataset["users"].append(user)
+def _user(x_demo_user_id: str = Header(default=""), token: str = Depends(bearer_token),
+          service=Depends(get_service), accounts=Depends(get_account_store)):
+    """합성 시연 계정(U001 등), 또는 로그인한 회원 자신의 ID(ACC:아이디)만 허용한다."""
+    if x_demo_user_id.startswith(WORKSPACE_PREFIX):
+        profile = accounts.authenticate(token)
+        if profile is None or workspace_owner(profile["username"]) != x_demo_user_id:
+            raise HTTPException(401, "로그인한 계정의 기록만 사용할 수 있어요. 다시 로그인해 주세요.")
+        if x_demo_user_id not in service.data.users:
+            # 방금 가입한 회원은 AI 자료에 아직 없으므로 빈 사용자로 더한다. (기록은 작업공간 DB에서 읽는다)
+            user = {"id": x_demo_user_id, "name": profile["name"], "login_id": profile["username"],
+                    "demo_account": True, "fictional_affiliation": profile.get("organization") or "",
+                    "preferred_region": "서울", "preferred_event_types": []}
+            service.data.users[x_demo_user_id] = user
+            service.data.dataset["users"].append(user)
+        return x_demo_user_id
+    if not x_demo_user_id or x_demo_user_id not in service.data.users:
+        raise HTTPException(401, "로그인이 필요해요.")
     return x_demo_user_id
 
 def _conversation(db, cid, uid):
@@ -151,9 +155,7 @@ class SharedEventRevoke(BaseModel):
 def get_shared_store():
     """별도 가상 공유 소식 저장소를 반환한다."""
     default = Path(__file__).resolve().parents[1] / "data" / "demo_shared_events.sqlite3"
-    store = SharedEventsStore(os.environ.get("GYEONGJOSA_SHARED_EVENTS_DB", str(default)))
-    store.seed_test_events()
-    return store
+    return SharedEventsStore(os.environ.get("GYEONGJOSA_SHARED_EVENTS_DB", str(default)))
 
 
 def shared_today():
@@ -183,21 +185,6 @@ def own_shared_event(notice):
               "publisher_name_visible", "related_role", "related_user_recommendation_allowed", "recipient_user_ids",
               "recipient_group", "created_at", "updated_at")
     return {key: notice.get(key) for key in fields}
-
-class LoginIdentityInput(BaseModel):
-    username: str = Field(pattern=r"^[a-z0-9_]{4,20}$")
-
-
-@router.post("/demo/accounts/resolve")
-def resolve_login_identity(account: LoginIdentityInput, service=Depends(get_service)):
-    """일반 로그인 아이디를 서버의 합성 사용자 ID에 연결한다."""
-    if account.username == "kim_scenario" and "SCENARIO_KIM" in service.data.users:
-        return {"user_id": "SCENARIO_KIM"}
-    for user in service.data.users.values():
-        if (user.get("login_id") or "").lower() == account.username:
-            return {"user_id": user["id"]}
-    return {"user_id": "LOCAL_" + account.username.upper()}
-
 
 @router.get("/demo/users")
 def demo_users(service=Depends(get_service)):
@@ -237,11 +224,8 @@ def workspace(user_id: str = Depends(_user), service=Depends(get_service)):
 
 @router.get("/workspace/personal")
 def personal_workspace(user_id: str = Depends(_user)):
-    """새 시연 계정은 최초 한 번만 합성 인맥·장부를 SQLite에 시드한다."""
-    workspace = load_workspace(user_id)
-    if user_id.startswith("LOCAL_") and not workspace["initialized"]:
-        return save_workspace(user_id, WorkspaceInput.model_validate(test_workspace()))
-    return workspace
+    """현재 계정이 서버에 저장한 인맥·일정·장부를 반환한다. 새 계정은 빈 상태로 시작한다."""
+    return load_workspace(user_id)
 
 
 @router.post("/workspace/migrations/preview")

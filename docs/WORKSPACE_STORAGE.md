@@ -1,18 +1,19 @@
 # 인맥·일정·장부 SQLite 단일 원천
 
-> 해커톤 로컬 시연용 계약입니다. 일반 로그인 ID는 서버의 합성 사용자 ID에 자동 연결되며, React의 인맥·일정·장부와 AI 자유 상담은 같은 SQLite 작업공간을 참조합니다. 대화 이력·공유 소식·로그인 계정·친구 관계는 아직 별도 저장소에 남습니다.
+> 해커톤 로컬 시연용 계약입니다. 로그인한 계정은 하나의 서버 사용자 ID(회원은 `ACC:아이디`, `test1234`는 `TEST1234`)를 쓰며, React의 인맥·일정·장부와 AI 자유 상담은 같은 SQLite 작업공간을 참조합니다. 로그아웃 상태에서는 어떤 개인 기록도 화면에 보이지 않습니다.
 
 ## 사용 방법
 
-1. 서버와 프런트를 함께 실행하고 일반 계정으로 로그인합니다. `test1234` 계정은 기존 시드 데이터를 사용하며 새 계정은 서버에서 생성됩니다. 별도 AI 프로필 선택은 필요하지 않습니다.
-2. 신규 일반 계정은 최초 서버 조회 시 합성 인맥·경조사·거래를 SQLite에 한 번만 생성합니다. 기존 서버 기록은 다시 시드하거나 덮어쓰지 않습니다.
+1. 서버와 프런트를 함께 실행하고 회원가입하거나 로그인합니다. `test1234`는 첫 로그인 때 서버가 계정을 만듭니다. 별도 AI 프로필 선택은 필요하지 않습니다.
+2. `test1234`와 새 계정 모두 인맥·일정·장부·친구·공유 소식 없이 빈 상태로 시작합니다. 첫 조회 때 빈 작업공간을 자동으로 만듭니다.
 3. 인맥·일정·장부 저장은 버전 조건에 따른 하나의 SQLite 트랜잭션으로 완료됩니다. 충돌 시 다른 사용자의 기록을 덮어쓰지 않습니다.
 4. 초기화 이후 인맥·일정·장부 조회와 편집·CSV 가져오기·삭제는 서버를 기준으로 합니다. 서버 저장이 성공한 뒤에만 화면 상태가 갱신됩니다.
 5. 같은 로그인 계정으로 다시 접속하면 서버에 저장된 데이터를 읽습니다. 서버 충돌(HTTP 409) 시 최신 상태를 다시 조회하고 실패한 저장은 자동 재적용하지 않습니다.
 
 ## API와 계산 경로
 
-- `POST /api/demo/accounts/resolve`: 로그인 ID를 시연 사용자 ID로 연결 (`test1234` → `TEST1234`, 미등록 시 `LOCAL_` 접두 ID)
+- `POST /api/auth/signup`·`/login`·`/logout`, `GET·PUT /api/auth/me`: 계정과 HttpOnly 세션 쿠키. 응답의 `userId`가 서버 사용자 ID
+- `GET·PUT /api/account/social`, `GET·PATCH /api/account/preferences`, `POST /api/account/read`·`/delivered`: 친구·공유 일정·화면 설정·알림 기록 (로그인 필요)
 - `GET /api/workspace/personal`: 로그인 계정의 현재 서버 인맥·일정·장부 및 버전 조회
 - `POST /api/workspace/migrations/preview`: 이전 대상의 유효성·버전 확인, 저장하지 않음
 - `PUT /api/workspace/personal`: 동일 버전의 전체 자료를 원자적으로 교체
@@ -31,4 +32,4 @@
 
 ## 검증
 
-`python -m pytest -q tests/test_workspace_single_source.py tests/test_demo_login_identity.py`와 `cd frontend && corepack pnpm test && corepack pnpm build`를 실행합니다. 409 충돌, 다른 계정 접근, 잘못된 행사 연결, 1~5점 범위, 본인 행사, 거래 누락을 검사합니다. 최종 Windows/macOS 브라우저 E2E 및 실제 Codyssey LLM 호출은 별도로 확인해야 합니다.
+`python -m pytest -q tests/test_workspace_single_source.py tests/test_demo_login_identity.py tests/test_demo_server_state.py tests/test_accounts.py`와 `cd frontend && corepack pnpm test && corepack pnpm build`를 실행합니다. 409 충돌, 다른 계정 접근, 잘못된 행사 연결, 1~5점 범위, 본인 행사, 거래 누락을 검사합니다. 최종 Windows/macOS 브라우저 E2E 및 실제 Codyssey LLM 호출은 별도로 확인해야 합니다.

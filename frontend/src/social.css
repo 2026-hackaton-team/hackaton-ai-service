@@ -125,14 +125,6 @@
 .social-member-card .feature-member-actions { flex-wrap: wrap; }
 
 /* 일정 등록 › 한 줄 입력(AI) */
-.quick-parse { grid-column: 1 / -1; display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--primary-soft); }
-.quick-parse > span { font-size: 13px; font-weight: 600; color: var(--primary); display: inline-flex; align-items: center; gap: 6px; }
-.quick-parse-row { display: flex; gap: 8px; }
-.quick-parse-row .input { flex: 1; min-width: 0; }
-.quick-parse-row .button { white-space: nowrap; }
-.quick-parse small { font-size: 12px; color: var(--muted); }
-.quick-parse small.ok { color: var(--att-yes); }
-.quick-parse small.error { color: var(--accent); }
 
 /* 인맥 › 특별히 챙길 사람 */
 .people-special-field > span:first-child { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); }

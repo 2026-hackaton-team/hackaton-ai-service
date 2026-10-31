@@ -17,6 +17,7 @@ frontend/dist/
 data/demo_conversations.sqlite3*
 data/demo_workspace.sqlite3*
 data/demo_profiles.db*
+data/demo_accounts.sqlite3*
 
 # Local working notes
 /docs/LOCAL_DEMO_REVIEW.md
@@ -24,4 +25,6 @@ data/demo_profiles.db*
 /docs/NEXT_WORK_SPEC.md
 /docs/WORK_NOTES.md
 data/demo_relationship_priorities.sqlite3*
-data/demo_accounts.sqlite3*
+
+# Local runtime DB backups
+/data/runtime_backup_*/

@@ -51,45 +51,6 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
   const myName = user?.name || '나'
   const custom = form.type === CUSTOM_TYPE
   const type = custom ? form.customType.trim() : form.type
-  const [quick, setQuick] = useState('')
-  const [quickStatus, setQuickStatus] = useState({ state: 'idle', text: '' })
-
-  // 한 줄 문장을 AI(서버)로 해석해 입력칸을 채운다. 저장은 사용자가 확인한 뒤에만 한다.
-  async function fillFromText() {
-    const text = quick.trim()
-    if (!text || quickStatus.state === 'loading') return
-    setQuickStatus({ state: 'loading', text: '문장을 해석하고 있어요…' })
-    try {
-      const result = await demoApi('/events/parse', { method: 'POST', body: { text, today: todayInSeoul() } })
-      const s = result.suggestion || {}
-      let matched = false
-      setForm((prev) => {
-        const next = { ...prev }
-        if (s.type) {
-          if (EVENT_TYPES.includes(s.type)) next.type = s.type
-          else { next.type = CUSTOM_TYPE; next.customType = String(s.type).slice(0, 20) }
-        }
-        if (s.date) next.date = s.date
-        if (s.time) next.time = s.time
-        if (s.location) next.location = s.location
-        if (s.title) next.title = s.title
-        // 이름이 직접 나온 경우에만 인맥을 채운다. ('사촌'처럼 관계만 있으면 사용자가 고르게 둔다)
-        if (prev.owner !== 'me' && s.person_name) {
-          const match = people.find((person) => person.name === s.person_name)
-          if (match) { next.personId = match.id; matched = true }
-          else { next.personId = '__new'; next.personName = s.person_name }
-        }
-        return next
-      })
-      const filled = ['type', 'date', 'time', 'location'].filter((key) => s[key]).length
-      setQuickStatus({ state: filled ? 'ok' : 'error', text: filled
-        ? `${result.source === 'ai' ? 'AI가' : '문장에서'} ${filled}개 항목을 채웠어요.${matched ? ' 이름이 같은 인맥을 골라 두었어요.' : ''} 저장 전에 내용을 확인해 주세요.`
-        : '일정 정보를 찾지 못했어요. 날짜·행사·장소를 함께 적어 주세요.' })
-    } catch (error) {
-      setQuickStatus({ state: 'error', text: /Failed to fetch|NetworkError|서버 요청에 실패/.test(String(error?.message)) ? 'AI 서버에 연결할 수 없어요. 아래 칸에 직접 입력해 주세요.' : String(error?.message || '해석하지 못했어요.') })
-    }
-  }
-
   function submit(event) {
     event.preventDefault()
     if (custom && !type) { setError('행사 유형을 직접 입력해 주세요. 예) 칠순, 졸업'); return }
@@ -126,12 +87,6 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         <div className="owner-toggle" role="group" aria-label="누구의 경조사인가요?">
           <button type="button" aria-pressed={!mine} onMouseDown={event => event.preventDefault()} onClick={() => { update('owner', 'other'); setError('') }}><Icon name="UsersRound" size={16} />지인의 경조사</button>
           <button type="button" aria-pressed={mine} onMouseDown={event => event.preventDefault()} onClick={() => { update('owner', 'me'); setError('') }}><Icon name="Heart" size={16} />내 경조사</button>
-        </div>
-        <div className="quick-parse">
-          <span><Icon name="Sparkles" size={15} />한 줄로 입력하기</span>
-          <div className="quick-parse-row"><input className="input" aria-label="한 줄로 입력하기" value={quick} onChange={(event) => setQuick(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); fillFromText() } }} placeholder="예) 다음 주 토요일 1시 라온웨딩홀 사촌 결혼식" maxLength={300} />
-            <button type="button" className="button button-secondary" disabled={!quick.trim() || quickStatus.state === 'loading'} onClick={fillFromText}>{quickStatus.state === 'loading' ? '해석 중…' : 'AI로 채우기'}</button></div>
-          <small className={quickStatus.state} role="status">{quickStatus.text || '문장은 일정 해석에만 쓰이고 저장되지 않아요. 채운 내용은 저장 전에 직접 확인해 주세요.'}</small>
         </div>
         {!mine && <PersonSearch people={people} value={form.personId} onChange={value => update('personId', value)} />}
         {!mine && form.personId === '__new' && <Field label="이름" required full hint="새 인맥으로 함께 저장됩니다. 관계는 인맥 관리에서 수정할 수 있어요.">
@@ -299,15 +254,15 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
     setPending(true)
     setError('')
     try {
-      const result = await demoApi(signup ? '/account/signup' : '/account/login', {
+      const result = await demoApi(signup ? '/auth/signup' : '/auth/login', {
         method: 'POST',
         body: signup
-          ? { ...form, username: normalizeUsername(form.username), phone: normalizePhone(form.phone),
-              email: normalizeEmail(form.email), workplace: form.workplace.trim(),
-              organization: form.organization.trim() }
+          ? { username: normalizeUsername(form.username), name: form.name.trim(), password: form.password,
+              phone: normalizePhone(form.phone), email: normalizeEmail(form.email), workplace: form.workplace.trim(),
+              organization: form.organization.trim(), workType: form.workType, visibility: form.visibility }
           : { username: normalizeUsername(form.username), password: form.password },
       })
-      onSuccess(result.profile)
+      onSuccess(result.profile, result.userId)
     } catch (cause) {
       setError(cause.message || '서버 로그인에 실패했습니다.')
     } finally {
@@ -353,11 +308,13 @@ export function ProfileEditModal({ user, onClose, onSave }) {
     try {
       const error = profileUpdateError(form, [], user.username)
       if (error) { setError(error); return }
-      const result = await demoApi('/account/profile', {
+      const result = await demoApi('/auth/me', {
         method: 'PUT',
         body: {
-          ...form, phone: normalizePhone(form.phone), email: normalizeEmail(form.email),
+          phone: normalizePhone(form.phone), email: normalizeEmail(form.email),
           workplace: form.workplace.trim(), organization: form.organization.trim(),
+          workType: form.workType, visibility: form.visibility,
+          password: form.password, currentPassword: form.currentPassword,
         },
       })
       onSave(result.profile, Boolean(form.password))
