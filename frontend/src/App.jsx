@@ -239,7 +239,7 @@ export default function App() {
             <button type="button" className="button button-primary" disabled={workspaceBusy} onClick={() => initializeWorkspace(true)}>브라우저 기록을 서버로 이전</button>
             <button type="button" className="button" disabled={workspaceBusy} onClick={() => initializeWorkspace(false)}>빈 기록으로 시작</button>
           </div>
-        </section>
+        </section>}
         {page === 'home' && <HomePage people={people} events={events} records={records} upcoming={upcoming} today={today} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} navigate={navigate} notify={notify} />}
         {page === 'schedule' && <SchedulePage events={events} people={people} onAddEvent={() => setModal({ type: 'event' })} onOpenEvent={openEvent} onUpdateEvent={updateEvent} demoUserId={demoUserId} onDemoUserChange={setDemoAccount} />}
         {page === 'people' && <PeoplePage people={people} events={events} records={records} onAddPerson={() => setModal({ type: 'person' })} onUpdatePerson={updatePerson} onAddRecord={id => setModal({ type: 'record', personId: id })} />}
