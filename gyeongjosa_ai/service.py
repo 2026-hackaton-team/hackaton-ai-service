@@ -267,8 +267,7 @@ class ChatService:
                 model = answer.get("model")
                 cited_ids = answer.get("evidence_ids", [])
                 # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
-                if not history["transactions"]:
-                    message += " " + answer["answer"]
+                message += " " + answer["answer"]
             except ModelUnavailable:
                 message += " 추가 AI 설명 없이 검증된 계산 결과만 표시합니다."
 
