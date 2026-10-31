@@ -66,7 +66,7 @@ def scenarios(person_id: str = Query(min_length=1)):
     return [{'id':sid,'label':sc.get('label',sid),
              'description':sc.get('description') or sc.get('profile',{}).get('description') or sc.get('label',sid)}
             for sid,sc in PROFILES['scenarios'].items()
-            if sid=='default' or sc.get('person_id')==person_id]
+            if sid=='default' or (not sid.startswith('chat_') and sc.get('person_id')==person_id)]
 
 @app.get('/api/demo/me/profile')
 def my_profile(demo_user_id: str = Query(min_length=1)):
