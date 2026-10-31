@@ -5,7 +5,7 @@ import './forms.css'
 import PersonSearch from './PersonSearch.jsx'
 import { demoApi } from './services/demoApi.js'
 import { findAccount, normalizeUsername, normalizePhone, normalizeEmail, signupError, profileUpdateError, publicProfile, WORK_TYPES, VISIBILITY_OPTIONS } from './accountRules.js'
-import { TEST_USERNAME } from './services/testAccountDemo.js'
+import { TEST_USERNAME, matchesTestLogin } from './services/testAccountDemo.js'
 
 const EVENT_TYPES = ['결혼식', '돌잔치', '장례식', '생일']
 const CUSTOM_TYPE = '__custom'
@@ -341,11 +341,11 @@ export function AuthModal({ mode = 'login', onClose, onSuccess, onSwitch }) {
         onSuccess(publicProfile(account))
       } else {
         let account = findAccount(accounts, form.username)
-        if (!account && normalizeUsername(form.username) === TEST_USERNAME && form.password === TEST_USERNAME) {
+        if (!account && matchesTestLogin(form.username, form.password)) {
           const salt = crypto.getRandomValues(new Uint8Array(16))
           account = { username: TEST_USERNAME, name: '테스트 사용자', phone: '',
             email: 'test1234@example.invalid', workplace: '마음결 시연팀',
-            organization: '해커톤 시연', workType: '민간 기업 임직원', visibility: '전체 공개',
+            organization: '해커톤 시연', workType: '일반 회사원', visibility: '전체 공개',
             salt: bytesToBase64(salt), hash: await hashPassword(form.password, salt),
             iterations: PBKDF2_ITERATIONS }
           localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([...accounts, account]))
