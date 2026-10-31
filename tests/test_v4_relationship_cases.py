@@ -92,7 +92,8 @@ def test_closeness_attendance_support_and_time_are_user_recorded_not_guesses():
     support = chat(SCENARIOS["relation_nonmonetary"]["example_question"])
     drift = chat(SCENARIOS["relation_drift"]["example_question"])
     assert close["v4_analysis"]["relationship_insights"]["closeness_score"] == 5
-    assert "금액을 자동으로 올리는 근거" in close["message"]
+    assert close["v4_analysis"]["amount_krw"] > close["v4_analysis"]["baseline_amount_krw"]
+    assert any(row["signal"] == "closeness" for row in close["v4_analysis"]["relationship_adjustments"])
     assert "4/4회" in attendance["message"] and "0/4회" in attendance["message"]
     assert "이사할 때" in support["message"]
     assert "2025-04-30" in drift["message"]
