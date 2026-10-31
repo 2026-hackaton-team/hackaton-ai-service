@@ -446,11 +446,14 @@ class ChatService:
         if context.get("notice_id") and context["notice_id"] not in notice_ids:
             return error_result("선택한 부고를 이 계정에서 조회할 수 없습니다.")
 
-        # 추천 완료 뒤 숫자만 입력한 경우에는 분류 결과와 무관하게 예산을 갱신한다.
-        if (context.get("intent") == "amount" and not context.get("pending_field")
-                and isinstance(context.get("budget_krw"), int)
+        # 예산 확인 중이거나 추천 완료 후의 숫자 답변은 의도 분류 없이 다시 계산한다.
+        if (context.get("intent") == "amount"
+                and context.get("pending_field") in (None, "budget_krw", "budget_clarification")
+                and (context.get("pending_field") or isinstance(context.get("budget_krw"), int))
                 and re.fullmatch(r"\d[\d,]*", question)):
             context["budget_krw"] = int(question.replace(",", ""))
+            context.pop("budget_state", None)
+            context.pop("pending_field", None)
             result = self.chat({**context, "user_id": user_id, "question": question, "mode": "amount"})
             if result.get("pending_field"):
                 context["pending_field"] = result["pending_field"]
