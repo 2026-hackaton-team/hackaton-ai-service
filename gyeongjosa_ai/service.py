@@ -211,6 +211,9 @@ class ChatService:
                 message += " 법적 송금 가능 여부는 별도로 확인해야 합니다."
         else:
             message = result.get("message", "확인 가능한 근거와 조건에서 금액 제안을 보류합니다.")
+        if amount is None and history["transactions"]:
+            message += (f" 개인 기록상 받은 금액 {history['received_total_krw']:,}원, "
+                        f"낸 금액 {history['paid_total_krw']:,}원, 예산 {budget:,}원을 확인했습니다.")
         model = None
         cited_ids = []
         if amount is not None:
