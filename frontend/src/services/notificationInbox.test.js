@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSharedNotices, sharedNoticeId } from './noticeInbox.js';
+import { buildReceivedItems } from './receivedItems.js';
+import { normalizeSocial } from './socialStore.js';
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './demoAccount.js';
 
 test('no account never queries a shared inbox', async () => {
@@ -49,6 +51,15 @@ test('2촌 공유 추천 API 결과가 받은 일정의 함께 아는 사람 목
   assert.equal(items[0].notice.id, 'DSE-2HOP');
   assert.equal(items[0].notice.category, '결혼');
   assert.equal(items[0].publisher_name, '테스트 사용자');
+  const received = buildReceivedItems({
+    social: normalizeSocial(null), me: 'test12345', notices: items,
+    profileId: 'ACC:test12345', today: '2026-11-01',
+  });
+  assert.equal(received.length, 1);
+  assert.equal(received[0].kind, 'mutual');
+  assert.equal(received[0].title, '합성 시연 결혼식');
+  assert.equal(received[0].type, '결혼식');
+  assert.equal(received[0].status, 'new');
 });
 
 test('서버 공유 소식 응답이 올바르지 않으면 빈 목록 성공으로 처리하지 않는다', async () => {
