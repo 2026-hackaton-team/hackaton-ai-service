@@ -61,7 +61,7 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
 
   return <div className={`schedule-page ${type === '장례식' ? 'mood-somber' : ''}`}>
     <div className="schedule-page-heading">
-      <div><span className="schedule-eyebrow">SCHEDULE</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p></div>
+      <div><span className="schedule-eyebrow">함께할 날들</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p></div>
       <div className="schedule-heading-actions"><button type="button" className="button button-secondary" onClick={() => onOpenReceived?.()}><Icon name="Mail" size={17} />받은 일정{receivedCount > 0 && <span className="received-count" aria-label={`새 일정 ${receivedCount}건`}>{receivedCount}</span>}</button><button className="button button-primary" onClick={onAddEvent}><Icon name="plus" size={17} />일정 등록</button></div>
     </div>
 
@@ -91,7 +91,7 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
       </section>
       <aside className="schedule-agenda">
         <section className="card schedule-agenda-card">
-          <div className="schedule-agenda-heading"><div><span className="schedule-agenda-eyebrow">A DAY TO REMEMBER</span><h2>{selectedDay ? `${Number(selectedDay.slice(5, 7))}월 ${Number(selectedDay.slice(8))}일의 일정` : '이번 달, 챙길 마음'}<span>{listedEvents.length}</span></h2></div>{selectedDay && <button className="schedule-clear-selection" title="날짜 선택 해제" aria-label="날짜 선택 해제" onClick={() => setSelectedDay(null)}><Icon name="x" size={15} /></button>}</div>
+          <div className="schedule-agenda-heading"><div><span className="schedule-agenda-eyebrow">기억할 날</span><h2>{selectedDay ? `${Number(selectedDay.slice(5, 7))}월 ${Number(selectedDay.slice(8))}일의 일정` : '이번 달, 챙길 마음'}<span>{listedEvents.length}</span></h2></div>{selectedDay && <button className="schedule-clear-selection" title="날짜 선택 해제" aria-label="날짜 선택 해제" onClick={() => setSelectedDay(null)}><Icon name="x" size={15} /></button>}</div>
           <div className="schedule-agenda-list">
             {listedEvents.length ? listedEvents.map((event) => {
               const person = people.find((entry) => entry.id === event.personId)

@@ -17,6 +17,7 @@ import { STORAGE_KEYS, readStored, writeStored, commitWorkspace } from './servic
 import { normalizePerson } from './relationships.js';
 import { occasionClass, attendanceClass } from './occasion.js';
 
+const PROFILE_LINKS_KEY = 'maeum-profile-links-v1';
 const navigation = [
   { id: 'home', label: '홈', icon: 'LayoutGrid' },
   { id: 'schedule', label: '일정 관리', icon: 'CalendarDays' },
@@ -149,6 +150,24 @@ export default function App() {
       return true;
     } catch (error) { notify(error.message || 'CSV를 다시 확인해 주세요.'); return false; }
   }
+  // 로그인 계정마다 마지막으로 고른 AI 프로필을 기억했다가 로그인하면 자동으로 선택한다.
+  const profileSync = useRef({ user: '', target: null });
+  useEffect(() => {
+    const name = user?.username || '';
+    const previous = profileSync.current.user;
+    const linked = name ? (readStored(PROFILE_LINKS_KEY, {})[name] || '') : '';
+    profileSync.current = { user: name, target: name ? linked : null };
+    if (name && linked !== sharedInbox.userId) sharedInbox.selectUser(linked);
+    if (!name && previous && sharedInbox.userId) sharedInbox.selectUser('');
+  }, [user?.username]);
+  useEffect(() => {
+    const { user: name, target } = profileSync.current;
+    if (!name || name !== user?.username) return;
+    if (target !== null && sharedInbox.userId !== target) return; // 전환 중
+    profileSync.current.target = null;
+    if (!sharedInbox.userId) return;
+    try { const links = readStored(PROFILE_LINKS_KEY, {}); if (links[name] !== sharedInbox.userId) writeStored(PROFILE_LINKS_KEY, { ...links, [name]: sharedInbox.userId }); } catch { /* 저장 공간이 없으면 연결만 생략 */ }
+  }, [sharedInbox.userId, user?.username]);
   // ---- 마음결 친구 · 일정 공유 ----
   const [social, setSocial] = useState(loadSocial);
   const [members, setMembers] = useState(readMembers);
@@ -202,7 +221,7 @@ export default function App() {
     {menuOpen && <div className="sidebar-scrim" onClick={() => setMenuOpen(false)} />}
     <aside id="main-sidebar" className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`} inert={isMobile && !menuOpen ? true : undefined}>
       <div className="sidebar-header"><button className="brand" onClick={() => navigate('home')} aria-label="마음결 홈"><span className="brand-mark"><Icon name="HeartHandshake" size={24} /></span><span>마음결<small>마음과 마음을 잇다</small></span></button><button className="icon-button desktop-sidebar-toggle" aria-label={sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"} aria-controls="main-sidebar" aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)}><Icon name="Menu" /></button><button className="icon-button sidebar-mobile-close" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)}><Icon name="X" size={18} /></button></div>
-      <div className="sidebar-label">MY SPACE</div>
+      <div className="sidebar-label">나의 공간</div>
       <nav className="main-nav" aria-label="주 메뉴">{navigation.filter(item => item.id !== 'ai').map(renderNavigationItem)}</nav>
       <div className="sidebar-bottom"><nav className="ai-nav-group" aria-label="AI 메뉴">{navigation.filter(item => item.id === 'ai').map(renderNavigationItem)}</nav><div className="sidebar-footer">기록으로 이어지는 우리 사이</div></div>
     </aside>

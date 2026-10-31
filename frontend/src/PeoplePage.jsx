@@ -33,7 +33,7 @@ export default function PeoplePage({ people, events, records, onAddPerson, onUpd
 
   return <div className="people-page">
     <div className="pl-page-heading">
-      <div><span className="pl-eyebrow">RELATIONSHIPS</span><h1>오래 이어갈 인연</h1><p>가까운 사람부터, 함께한 순간까지 기억해요.</p></div>
+      <div><span className="pl-eyebrow">소중한 사람들</span><h1>오래 이어갈 인연</h1><p>가까운 사람부터, 함께한 순간까지 기억해요.</p></div>
     </div>
     <div className="feature-toolbar">
       <SectionTabs prefix="people-main" label="인맥 관리 화면" value={activeTab} onChange={setActiveTab} tabs={[

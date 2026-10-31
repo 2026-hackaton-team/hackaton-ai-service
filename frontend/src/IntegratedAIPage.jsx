@@ -5,6 +5,16 @@ import { demoApi } from './services/demoApi.js'
 import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js'
 export { demoApi } from './services/demoApi.js'
 const stored=()=>getDemoAccount()
+const QUICK_QUESTIONS = [
+  '친구 결혼식인데 축의금은 얼마가 적당할까?',
+  '회사 동료 부친상, 조의금과 조문 예절이 궁금해',
+  '거래처 담당자 결혼식, 청탁금지법상 괜찮을까?',
+  '조카 돌잔치에 현금과 선물 중 뭐가 좋을까?',
+]
+// 서버가 꺼져 있을 때 나오는 기술적인 오류를 사용자가 이해할 수 있는 문장으로 바꾼다.
+const friendlyError = error => /Failed to fetch|NetworkError|Load failed|서버 요청에 실패/.test(String(error?.message || error))
+  ? 'AI 서버에 연결할 수 없어요. 서버가 켜져 있는지 확인한 뒤 다시 시도해 주세요.'
+  : String(error?.message || error)
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const [users,setUsers]=useState([])
   const [scenarioExamples,setScenarioExamples]=useState([])
@@ -21,22 +31,22 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   activeUser.current=userId
   useEffect(()=>{const sync=()=>setUserId(getDemoAccount());window.addEventListener(DEMO_ACCOUNT_EVENT,sync);return()=>window.removeEventListener(DEMO_ACCOUNT_EVENT,sync)},[])
   useEffect(()=>()=>controller.current?.abort(),[])
-  useEffect(()=>{demoApi('/demo/users').then(r=>setUsers(r.items||[])).catch(e=>setError(e.message))},[])
+  useEffect(()=>{demoApi('/demo/users').then(r=>setUsers(r.items||[])).catch(e=>setError(friendlyError(e)))},[])
   useEffect(()=>{
     controller.current?.abort()
     setMessages([]);setCid('');setConversations([]);setScenarioExamples([]);setError('')
     setDemoAccount(userId)
     if(!userId)return
     const ac=new AbortController()
-    demoApi('/conversations',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setConversations(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(e.message)})
-    demoApi('/demo/v4-scenarios',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setScenarioExamples(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(e.message)})
+    demoApi('/conversations',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setConversations(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
+    demoApi('/demo/v4-scenarios',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setScenarioExamples(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(friendlyError(e))})
     return ()=>ac.abort()
   },[userId])
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end',behavior:'smooth'})},[messages])
   async function openConversation(id) {
     if(!userId||busy)return
     try{const r=await demoApi('/conversations/'+encodeURIComponent(id),{userId});if(activeUser.current!==userId)return;setCid(id);setMessages(r.messages||[]);setError('')}
-    catch(e){if(activeUser.current===userId)setError(e.message)}
+    catch(e){if(activeUser.current===userId)setError(friendlyError(e))}
   }
   function newConversation(){if(busy)return;setCid('');setMessages([]);setError('')}
   async function send(text, selection=null){
@@ -58,7 +68,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       if(ac.signal.aborted||activeUser.current!==userId)return
       setMessages(prev=>[...prev,{role:'user',body:prompt},{role:'assistant',body:response.message,result:response}])
       setQuestion('')
-    } catch(e){if(e.name!=='AbortError'&&activeUser.current===userId)setError(e.message)}
+    } catch(e){if(e.name!=='AbortError'&&activeUser.current===userId)setError(friendlyError(e))}
     finally{setBusy(false);controller.current=null}
   }
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null
@@ -78,7 +88,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       </div>
       <div className="ai-conversation" aria-busy={busy}>
         <div className="ai-assistant-message"><span className="ai-assistant-avatar"><Icon name="Sparkles" size={17}/></span><div className="ai-assistant-content"><h3>어떤 경조사 고민이 있으세요?</h3><p>인맥을 먼저 선택하지 않아도 됩니다. 필요한 사항은 AI가 추가로 물어봅니다.</p></div></div>
-        {scenarioExamples.length>0&&!messages.length&&<div aria-label="가상 분석 시연 선택" style={{padding:12}}>
+        {scenarioExamples.length>0&&!messages.length&&<div aria-label="분석 예시 선택" style={{padding:12}}>
           {[{category:'safety',title:'법률·직무 10개'},{category:'relationship',title:'감정·관계 10개'}].map(group=>
             <details key={group.category} open={group.category==='relationship'}>
               <summary>{group.title}</summary>
@@ -87,6 +97,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
                   <button type="button" key={example.id} disabled={busy} onClick={()=>send(example.question)} title={example.question}>{example.title}</button>)}
               </div>
             </details>)}
+        </div>}
+        {scenarioExamples.length===0&&!messages.length&&<div className="ai-quick-questions" aria-label="예시 질문">
+          {!userId&&<p className="ai-quick-hint">위에서 프로필을 고르면 내 기록을 바탕으로 답해 드려요.</p>}
+          <div className="ai-suggestion-chips">{QUICK_QUESTIONS.map(item=><button type="button" key={item} disabled={busy} onClick={()=>userId?send(item):setQuestion(item)}>{item}</button>)}</div>
         </div>}
         {messages.map((m,i)=><div key={i} className={m.role==='user'?'ai-user-message':'ai-assistant-message'}>
           <div className={m.role==='user'?'':'ai-assistant-content'}>
