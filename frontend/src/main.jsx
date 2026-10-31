@@ -9,5 +9,6 @@ import './warm-theme.css';
 import './sidebar-layout.css';
 import './occasion-theme.css';
 import './mobile.css';
+import './account-status.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
