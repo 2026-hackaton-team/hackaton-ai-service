@@ -60,7 +60,7 @@ def test_amount_requires_budget_and_respects_context(service):
     assert missing["status"] == "need_more_info" and missing["pending_field"] == "budget_krw"
     result = service.chat({**base, "question": "최대 8만 원이야"})
     assert result["status"] == "answer"
-    assert result["suggested_amount_krw"] is None
+    assert result["suggested_amount_krw"] == 50000
     assert result["v4_analysis"]["legal_assessment"]
     assert {item["id"] for item in result["evidence"] if item["kind"] == "개인 거래"} == {"T001", "T002"}
 
