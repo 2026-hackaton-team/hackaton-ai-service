@@ -16,21 +16,26 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const [error,setError]=useState('')
   const controller=useRef(null)
   const bottom=useRef(null)
+  const activeUser=useRef(userId)
+  activeUser.current=userId
   useEffect(()=>{const sync=()=>setUserId(getDemoAccount());window.addEventListener(DEMO_ACCOUNT_EVENT,sync);return()=>window.removeEventListener(DEMO_ACCOUNT_EVENT,sync)},[])
+  useEffect(()=>()=>controller.current?.abort(),[])
   useEffect(()=>{demoApi('/demo/users').then(r=>setUsers(r.items||[])).catch(e=>setError(e.message))},[])
   useEffect(()=>{
     controller.current?.abort()
-    setMessages([]);setCid('');setConversations([]);setError('')
+    setMessages([]);setCid('');setConversations([]);setScenarioExamples([]);setError('')
     setDemoAccount(userId)
-    if(!userId){setScenarioExamples([]);return}
-    demoApi('/conversations',{userId}).then(r=>setConversations(r.items||[])).catch(e=>setError(e.message))
-    demoApi('/demo/v4-scenarios',{userId}).then(r=>setScenarioExamples(r.items||[])).catch(e=>setError(e.message))
+    if(!userId)return
+    const ac=new AbortController()
+    demoApi('/conversations',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setConversations(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(e.message)})
+    demoApi('/demo/v4-scenarios',{userId,signal:ac.signal}).then(r=>{if(!ac.signal.aborted)setScenarioExamples(r.items||[])}).catch(e=>{if(e.name!=='AbortError')setError(e.message)})
+    return ()=>ac.abort()
   },[userId])
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end',behavior:'smooth'})},[messages])
   async function openConversation(id) {
     if(!userId||busy)return
-    try{const r=await demoApi('/conversations/'+encodeURIComponent(id),{userId});setCid(id);setMessages(r.messages||[]);setError('')}
-    catch(e){setError(e.message)}
+    try{const r=await demoApi('/conversations/'+encodeURIComponent(id),{userId});if(activeUser.current!==userId)return;setCid(id);setMessages(r.messages||[]);setError('')}
+    catch(e){if(activeUser.current===userId)setError(e.message)}
   }
   function newConversation(){if(busy)return;setCid('');setMessages([]);setError('')}
   async function send(text, selection=null){
@@ -42,15 +47,17 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       let current=cid
       if(!current){
         const r=await demoApi('/conversations',{userId,method:'POST',signal:ac.signal})
+        if(ac.signal.aborted||activeUser.current!==userId)return
         current=r.id;setCid(current);setConversations(prev=>[{id:current,created_at:r.createdAt},...prev])
       }
       const response=await demoApi('/conversations/'+encodeURIComponent(current)+'/messages',{
         userId,method:'POST',signal:ac.signal,
         body:{requestId:crypto.randomUUID(),text:prompt,selection}
       })
+      if(ac.signal.aborted||activeUser.current!==userId)return
       setMessages(prev=>[...prev,{role:'user',body:prompt},{role:'assistant',body:response.message,result:response}])
       setQuestion('')
-    } catch(e){if(e.name!=='AbortError')setError(e.message)}
+    } catch(e){if(e.name!=='AbortError'&&activeUser.current===userId)setError(e.message)}
     finally{setBusy(false);controller.current=null}
   }
   const latest=messages.at(-1)?.role==='assistant'?messages.at(-1).result:null

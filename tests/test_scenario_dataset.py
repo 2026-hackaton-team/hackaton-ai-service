@@ -40,7 +40,7 @@ def test_fixture_additions_preserve_the_entire_existing_dataset():
 def test_fixture_references_and_owner_boundaries():
     fixtures = read_json("scenario_fixtures.json")
     assert len(fixtures["users"]) == 6
-    assert len(fixtures["people"]) == 18
+    assert len(fixtures["people"]) == 19
     assert len(fixtures["private_events"]) == 32
     assert len(fixtures["transactions"]) == 24
     assert len(fixtures["shared_notices"]) == 12
@@ -52,7 +52,9 @@ def test_fixture_references_and_owner_boundaries():
     people = {person["id"]: person for person in fixtures["people"]}
     events = {event["id"]: event for event in fixtures["private_events"]}
     users = {user["id"] for user in fixtures["users"]}
-    assert Counter(person["owner_user_id"] for person in people.values()) == {user: 3 for user in users}
+    assert Counter(person["owner_user_id"] for person in people.values()) == {
+        user: 4 if user == "SCU001" else 3 for user in users
+    }
     assert all(item["user_a_id"] in users and item["user_b_id"] in users for item in fixtures["friendships"])
     assert all(item["publisher_user_id"] in users for item in fixtures["shared_notices"])
     for event in events.values():
