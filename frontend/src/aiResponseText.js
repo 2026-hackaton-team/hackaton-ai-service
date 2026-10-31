@@ -13,3 +13,7 @@ export function extractAILead(message) {
   if(index>=0)return text.slice(0,index).trim()
   return text.startsWith('AI 해석: ') ? '' : text
 }
+
+export function visibleAIMessage(message, amount) {
+  return amount == null ? String(message||'') : extractAILead(message)
+}
