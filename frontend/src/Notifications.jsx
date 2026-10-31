@@ -1,33 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Icon, Modal, EmptyState } from './ui.jsx';
-import { demoApi } from './services/demoApi.js';
-import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js';
 import { loadSharedNotices, sharedNoticeId } from './services/noticeInbox.js';
 import './notice-inbox.css';
 import { occasionClass } from './occasion.js';
 
 export { sharedNoticeId };
 
-export function useSharedNoticeInbox() {
-  const [userId, setUserId] = useState(() => getDemoAccount());
-  const [users, setUsers] = useState([]);
-  const [usersError, setUsersError] = useState('');
+export function useSharedNoticeInbox(userId = '') {
   const [reload, setReload] = useState(0);
   const [snapshot, setSnapshot] = useState({ userId: '', items: [], status: 'idle', error: '' });
-  useEffect(() => {
-    const sync = () => setUserId(getDemoAccount());
-    window.addEventListener(DEMO_ACCOUNT_EVENT, sync);
-    return () => window.removeEventListener(DEMO_ACCOUNT_EVENT, sync);
-  }, []);
-  useEffect(() => {
-    const controller = new AbortController();
-    setUsersError('');
-    demoApi('/demo/users', { signal: controller.signal }).then(result => {
-      if (!Array.isArray(result.items)) throw new Error('프로필 목록을 불러오지 못했어요.');
-      if (!controller.signal.aborted) setUsers(result.items);
-    }).catch(error => { if (!controller.signal.aborted) setUsersError(error.message); });
-    return () => controller.abort();
-  }, [reload]);
   useEffect(() => {
     if (!userId) { setSnapshot({ userId: '', items: [], status: 'idle', error: '' }); return; }
     const controller = new AbortController();
@@ -40,10 +21,7 @@ export function useSharedNoticeInbox() {
     return () => controller.abort();
   }, [userId, reload]);
   const current = snapshot.userId === userId ? snapshot : { items: [], status: userId ? 'loading' : 'idle', error: '' };
-  return { ...current, userId, users, usersError,
-    selectUser: id => { setDemoAccount(id); setUserId(id); },
-    refresh: () => setReload(value => value + 1),
-  };
+  return { ...current, userId, refresh: () => setReload(value => value + 1) };
 }
 
 const dateLabel = value => value ? String(value).replaceAll('-', '.') : '날짜 확인 필요';
@@ -86,7 +64,7 @@ export default function Notifications({ notices, sharedInbox, receivedItems = []
           </div>
         </article>
       </> : <>
-        {loggedIn && sharedInbox.users.length > 0 && <div className="notice-account"><label>프로필<select className="input" aria-label="소식을 받을 프로필" value={sharedInbox.userId} onChange={event => sharedInbox.selectUser(event.target.value)}><option value="">프로필 선택</option>{sharedInbox.users.map(user => <option key={user.id} value={user.id}>{user.name} · {user.affiliation || user.id}</option>)}</select></label><button type="button" className="button button-secondary" onClick={sharedInbox.refresh}><Icon name="RefreshCw" size={16} />새로고침</button></div>}
+        {loggedIn && <div className="notice-account"><button type="button" className="button button-secondary" onClick={sharedInbox.refresh}><Icon name="RefreshCw" size={16} />새로고침</button></div>}
         <div className="notification-toolbar"><div className="notification-tabs">{['전체', '받은 일정', '읽지 않음'].map(item => <button type="button" aria-pressed={tab === item} className={tab === item ? 'active' : ''} key={item} onClick={() => setTab(item)}>{item}{item === '읽지 않음' && <span>{unreadCount}</span>}</button>)}</div><button type="button" className="text-button" disabled={!unreadCount} onClick={onReadAll}><Icon name="CheckCheck" size={16} />모두 읽음</button></div>
         {sharedInbox.status === 'loading' && <p className="notice-status" role="status">받은 일정을 불러오고 있어요.</p>}
         {sharedInbox.error && <p className="notice-status notice-error" role="alert">{sharedInbox.error} <button type="button" className="text-button" onClick={sharedInbox.refresh}>다시 시도</button></p>}

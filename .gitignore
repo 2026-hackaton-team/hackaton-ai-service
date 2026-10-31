@@ -24,3 +24,4 @@ data/demo_profiles.db*
 /docs/NEXT_WORK_SPEC.md
 /docs/WORK_NOTES.md
 data/demo_relationship_priorities.sqlite3*
+data/demo_accounts.sqlite3*

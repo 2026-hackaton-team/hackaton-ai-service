@@ -86,3 +86,6 @@ def chat(request: ChatRequest, service: ChatService = Depends(get_service)):
 from .integration_api import router as integration_router
 app.include_router(integration_router)
 
+from .demo_state import router as demo_state_router
+app.include_router(demo_state_router)
+
