@@ -204,6 +204,9 @@ class ChatService:
             if not history["transactions"]:
                 message = "선택한 지인과의 금전 이력은 0건입니다. " + message
             message += why
+            if history["transactions"]:
+                message += (f" 기록상 받은 금액 {history['received_total_krw']:,}원, "
+                            f"낸 금액 {history['paid_total_krw']:,}원, 예산 {budget:,}원을 확인했습니다.")
             if provisional:
                 message += " 법적 송금 가능 여부는 별도로 확인해야 합니다."
         else:
@@ -246,7 +249,8 @@ class ChatService:
                 model = answer.get("model")
                 cited_ids = answer.get("evidence_ids", [])
                 # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
-                message += " " + answer["answer"]
+                if not history["transactions"]:
+                    message += " " + answer["answer"]
             except ModelUnavailable:
                 message += " 추가 AI 설명 없이 검증된 계산 결과만 표시합니다."
 
@@ -544,7 +548,9 @@ class ChatService:
         if mode == "attendance" and not request.get("availability"):
             return question_result("행사 기간에 시간을 낼 수 있는지 알려 주시겠어요?", "availability")
 
-        event_type = request.get("event_type") or next((category for category in CATEGORIES if category in question), None)
+        event_type = (request.get("event_type")
+                      or (candidate["notice"]["category"] if candidate else None)
+                      or next((category for category in CATEGORIES if category in question), None))
         if event_type == "부고":
             event_type = "장례"
         if mode in {"amount", "message"} and not candidate and not event_type:
