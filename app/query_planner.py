@@ -11,7 +11,7 @@ def plan(event_type: str, relationship: str, attendance_with_meal: bool | None,
     }
     # LLM은 추가 검색어 제안만 허용. 공식 법률 검색은 항상 고정한다.
     if mode == "offline" or not os.getenv("OPENAI_API_KEY"):
-        return {"mode": "deterministic", "queries": queries}
+        return {"mode": "deterministic", "llm_used": False, "queries": queries}
     try:
         from openai import OpenAI
         response = OpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=12, max_retries=0).responses.create(
@@ -26,7 +26,7 @@ def plan(event_type: str, relationship: str, attendance_with_meal: bool | None,
         q = obj.get("statistical")
         if isinstance(q, str) and 5 <= len(q) <= 120:
             queries["statistical"] = q
-            return {"mode": "llm_assisted", "queries": queries}
+            return {"mode": "llm_assisted", "llm_used": True, "queries": queries}
     except Exception:
         pass
-    return {"mode": "deterministic_fallback", "queries": queries}
+    return {"mode": "deterministic_fallback", "llm_used": False, "queries": queries}
