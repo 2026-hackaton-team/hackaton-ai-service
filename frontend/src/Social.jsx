@@ -177,7 +177,7 @@ function ReceivedCard({ item }) {
   const added = item.status === 'added';
   const via = item.kind === 'friend'
     ? item.group === 'family' ? `${item.senderName}님이 가족에게 보낸 일정` : item.designated ? `${item.senderName}님이 나를 지정해 보낸 소식` : `${item.senderName}님이 보낸 일정`
-    : item.mutualNames.length ? `${item.mutualNames.slice(0, 2).join(', ')}님을 통해 알게 된 소식` : `함께 아는 친구 ${item.mutualCount}명`;
+    : item.mutualNames.length ? `${item.mutualNames.slice(0, 2).join(', ')}님을 통해 알게 된 소식` : item.mutualCount ? `함께 아는 친구 ${item.mutualCount}명` : '친구의 친구가 공유한 소식';
   return <article className={`social-received-card ${occasionClass(item.type)} ${added ? 'added' : ''}`}>
     <span className={`feature-invitation-icon social-received-icon ${occasionClass(item.type)}`}><Icon name={iconFor(item.type)} size={22} /></span>
     <div className="social-received-body">
