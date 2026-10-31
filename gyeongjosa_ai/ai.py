@@ -203,7 +203,7 @@ def parse_intent(content, people_ids, notice_ids):
 
 
 class ModelGateway:
-    """Opus를 우선 호출하고 실패하면 GPT로 전환한다."""
+    """분류는 GPT·Gemini, 답변은 Opus·GPT 순서로 호출한다."""
 
     def __init__(self, api_key=None, base_url=None, transport=None, timeout=TOTAL_TIMEOUT_SECONDS):
         load_dotenv(ROOT / ".env", override=False)
