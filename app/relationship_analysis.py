@@ -45,7 +45,8 @@ def _llm_hint(text: str) -> tuple[str|None, str]:
 
 def analyze(*, sender:dict, recipient:dict, relationship_text:str='',
             duty_context:str='unknown', exception_context:str='unknown',
-            facts_confirmed:bool=False, allow_llm_analysis:bool=False) -> dict:
+            facts_confirmed:bool=False, allow_llm_analysis:bool=False,
+            semantic_hint:str|None=None) -> dict:
     text = relationship_text.strip()
     # Ignore prompt instructions when classifying; only well-delimited, bounded signals.
     negated = bool(NO_DUTY.search(text))
@@ -58,6 +59,18 @@ def analyze(*, sender:dict, recipient:dict, relationship_text:str='',
     possible = 'contract_active' if high_signal else ('duty_related' if general_signal else ('none' if negated else 'unknown'))
     if negated and (high_signal or general_signal):
         possible='unknown'  # contradictions must be clarified
+    # LLM의 명시적 부정 판단은 가설을 미확인으로 낮출 수 있지만 허용 사실을 확정하지 않는다.
+    compact = ''.join(text.split())
+    explicit_negation = negated or any(phrase in compact for phrase in (
+        '계약관계없', '계약관계는없', '계약관계가없', '계약관련성없',
+        '계약관련성은없', '거래처가아니', '거래처는아니',
+        '심사관련성없', '심사관련성은없',
+    ))
+    if (semantic_hint=='negated' and duty_context=='unknown' and high_signal
+            and explicit_negation):
+        possible='unknown'
+    elif semantic_hint=='possible' and possible=='unknown' and not negated:
+        possible='duty_related'
     local_possible=possible
     used_llm=False
     warning=None

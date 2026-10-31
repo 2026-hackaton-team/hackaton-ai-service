@@ -538,3 +538,67 @@ def test_numeric_budget_revision_does_not_rerun_intent_classification():
     assert result["context"]["budget_krw"] == 99999
     assert result["budget_analysis"]["budget_krw"] == 99999
     assert gateway.classifications == []
+
+class SemanticGateway(AutoGateway):
+    """맥락 의미와 관계값을 돌려주는 의도 분류 모델 대역이다."""
+
+    def __init__(self, **semantics):
+        super().__init__(intent="amount", person_id="P001")
+        self.semantics = semantics
+
+    def classify(self, context, people_ids, notice_ids):
+        return {**super().classify(context, people_ids, notice_ids),
+                **self.semantics}
+
+
+def test_current_closeness_from_llm_precedes_old_first_match():
+    """과거 점수보다 문맥상 현재 점수를 추천 상태에 저장한다."""
+    gateway = SemanticGateway(relationship_closeness=2)
+    service = ChatService(load_data(), gateway)
+    result = service.chat_auto({
+        "user_id": "U001",
+        "question": "친밀도 5점이었지만 지금은 2점이에요. 장례 예산은 10만원",
+        "context": {"person_id": "P001"},
+    })
+    assert result["context"]["relationship_closeness"] == 2
+
+
+@pytest.mark.parametrize(("amount", "expected"), [
+    (200000, 200000), (900000, 200000),
+])
+def test_model_received_amount_must_appear_in_question(amount, expected):
+    """모델의 허구 숫자를 버리고 명시된 20만원의 기존 추출만 유지한다."""
+    gateway = SemanticGateway(recent_received_amount_krw=amount)
+    result = ChatService(load_data(), gateway).chat_auto({
+        "user_id": "U001",
+        "question": "최근 20만원을 받았어. 장례 예산은 10만원",
+        "context": {"person_id": "P001"},
+    })
+    assert result["context"].get("recent_received_override") == expected
+
+
+def test_model_negation_can_lower_unconfirmed_work_risk_but_not_confirm_legality():
+    """LLM의 부정 해석은 확인 전 위험 가설만 바꾸고 법률 허용을 확정하지 않는다."""
+    from app.relationship_analysis import analyze
+    sender = {"occupation": "civil_servant", "duty_role": "procurement"}
+    recipient = {"covered": "unknown"}
+    text = "계약 관련성은 없어"
+    legacy = analyze(sender=sender, recipient=recipient, relationship_text=text)
+    checked = analyze(sender=sender, recipient=recipient,
+                      relationship_text=text, semantic_hint="negated")
+    assert legacy["high_risk_hint"] is True
+    assert checked["high_risk_hint"] is False
+    assert checked["duty_context"] == "unknown"
+    assert checked["status"] == "insufficient_facts"
+
+
+def test_unrelated_negation_does_not_dismiss_work_risk():
+    """계약·심사 상대라는 단서를 돈이 없다는 표현만으로 지우지 않는다."""
+    from app.relationship_analysis import analyze
+    sender = {"occupation": "civil_servant", "duty_role": "procurement"}
+    recipient = {"covered": "unknown"}
+    result = analyze(sender=sender, recipient=recipient,
+                     relationship_text="계약 심사관에게 돈이 없어",
+                     semantic_hint="negated")
+    assert result["high_risk_hint"] is True
+    assert result["sender_ethics_risk"] is True
