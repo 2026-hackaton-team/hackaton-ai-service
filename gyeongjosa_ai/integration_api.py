@@ -407,7 +407,7 @@ def send_message(conversation_id: str, data: MessageInput, user_id: str = Depend
         old = db.execute("SELECT payload FROM messages WHERE conversation_id=? AND request_id=?", (conversation_id, data.requestId)).fetchone()
         if old is not None:
             return json.loads(old["payload"])
-        previous = db.execute("SELECT role,body FROM messages WHERE conversation_id=? ORDER BY created_at,rowid DESC LIMIT 8", (conversation_id,)).fetchall()
+        previous = db.execute("SELECT role,body FROM messages WHERE conversation_id=? ORDER BY created_at DESC,rowid DESC LIMIT 8", (conversation_id,)).fetchall()
         context = json.loads(row["state"])
         if data.selection:
             field, value = data.selection.get("field"), data.selection.get("value")

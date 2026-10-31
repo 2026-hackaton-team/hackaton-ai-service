@@ -12,6 +12,31 @@ test('custom relationship drafts round trip and an empty other label uses 기타
   assert.equal(matchesRelation('가족', '기타'), false);
 });
 
+test('spaced coworker records appear in the coworker filter and edit as a standard relation', () => {
+  for (const value of ['직장동료', '직장 동료', ' 직장 동료 ']) {
+    assert.deepEqual(relationDraft(value), { relation:'직장동료', customRelation:'' });
+    assert.equal(matchesRelation(value, '직장동료'), true);
+    assert.equal(matchesRelation(value, '직장 동료'), true);
+    assert.equal(matchesRelation(value, '기타'), false);
+    const draft = relationDraft(value);
+    assert.equal(resolveRelation(draft.relation, draft.customRelation), '직장동료');
+  }
+});
+
+test('coworker aliases do not absorb custom relationship names or rewrite stored records', () => {
+  for (const value of ['직장 동료의 지인', '동호회 선배']) {
+    assert.deepEqual(relationDraft(value), { relation:'기타', customRelation:value });
+    assert.equal(matchesRelation(value, '직장동료'), false);
+    assert.equal(matchesRelation(value, '기타'), true);
+    assert.equal(resolveRelation('기타', value), value);
+  }
+  const original = {id:'p1', relation:'직장 동료', memo:'사용자 메모'};
+  assert.equal(normalizePerson(original).relation, '직장 동료');
+  assert.deepEqual(original, {id:'p1', relation:'직장 동료', memo:'사용자 메모'});
+  assert.equal(matchesRelation('동호회 선배', undefined), false);
+  assert.equal(matchesRelation('동호회 선배', ''), false);
+});
+
 test('three importance levels preserve legacy very-important spelling and ordering', () => {
   assert.equal(normalizeImportance('매우중요'), '매우 중요');
   assert.equal(normalizeImportance('매우 중요'), '매우 중요');
