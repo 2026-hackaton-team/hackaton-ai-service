@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {evaluateScenario, summarizeScenarios} from './scenarioEvaluation.js'
+import {compareBudget} from './budgetComparison.js'
 
 const item={id:'KIM-01',person_id:'KIMP001',focus:'reciprocity_up',budget_krw:120000}
 const valid={
@@ -66,4 +67,50 @@ test('최근 큰 수령과 최근 큰 지급의 급증 신호를 별도로 검�
     ...base,history_stats:{paid:{recent_spike:true},received:{recent_spike:false}},
   }})
   assert.equal(paid.status,'PASS')
+})
+
+test('예산 여유와 상한 제한 작용을 별도 판단한다',()=>{
+  const ordinary=compareBudget({
+    ...valid,context:{person_id:'KIMP001',budget_krw:120000},
+    budget_analysis:{budget_krw:120000,budget_limited:false,unrestricted_amount_krw:100000,reference_only:true},
+  })
+  assert.equal(ordinary.kind,'below')
+  assert.equal(ordinary.gap,20000)
+  assert.equal(ordinary.usagePercent,83)
+  assert.equal(ordinary.budgetLimited,false)
+  assert.equal(ordinary.referenceOnly,true)
+  const limited=compareBudget({
+    ...valid,context:{person_id:'KIMP001',budget_krw:120000},
+    budget_analysis:{budget_krw:120000,budget_limited:true,unrestricted_amount_krw:150000},
+  })
+  assert.equal(limited.kind,'below')
+  assert.equal(limited.gap,20000)
+  assert.equal(limited.budgetLimited,true)
+  assert.equal(limited.unrestricted,150000)
+})
+
+test('예산 일치가 상한 제한의 증거인 것은 아니다',()=>{
+  const matched=compareBudget({
+    ...valid,budget_analysis:{budget_krw:100000,budget_limited:false,unrestricted_amount_krw:100000},
+  })
+  assert.equal(matched.kind,'equal')
+  assert.equal(matched.budgetLimited,false)
+  const capped=compareBudget({
+    ...valid,suggested_amount_krw:30000,
+    budget_analysis:{budget_krw:30000,budget_limited:true,unrestricted_amount_krw:100000},
+  })
+  assert.equal(capped.kind,'equal')
+  assert.equal(capped.budgetLimited,true)
+  assert.equal(capped.gap,0)
+})
+
+test('법률 보류·예산 누락·잘못된 추천 금액을 구분한다',()=>{
+  const withheld=compareBudget({
+    ...valid,suggested_amount_krw:null,
+    budget_analysis:{budget_krw:100000,budget_limited:null},
+  })
+  assert.equal(withheld.kind,'withheld')
+  assert.equal(withheld.gap,null)
+  assert.equal(compareBudget({suggested_amount_krw:50000}),null)
+  assert.equal(compareBudget({...valid,suggested_amount_krw:110000},100000).kind,'over')
 })
