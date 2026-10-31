@@ -113,4 +113,5 @@ test('법률 보류·예산 누락·잘못된 추천 금액을 구분한다',()=
   assert.equal(withheld.gap,null)
   assert.equal(compareBudget({suggested_amount_krw:50000}),null)
   assert.equal(compareBudget({...valid,suggested_amount_krw:110000},100000).kind,'over')
+  assert.equal(compareBudget({status:'error',suggested_amount_krw:null},100000),null)
 })
