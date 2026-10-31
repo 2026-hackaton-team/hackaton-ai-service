@@ -417,8 +417,8 @@ def test_funeral_etiquette_only_does_not_require_person_or_budget():
     })
     assert result["status"] == "answer"
     assert result.get("pending_field") is None
-    assert result["context"]["requested_aspects"] == ["funeral_etiquette"]
-    assert gateway.answers[0][0]["requested_aspects"] == ["funeral_etiquette"]
+    assert result["context"]["requested_aspects"] == ["funeral_etiquette", "clothing"]
+    assert gateway.answers[0][0]["requested_aspects"] == ["funeral_etiquette", "clothing"]
     assert "조문 예절" in result["message"]
 
 
