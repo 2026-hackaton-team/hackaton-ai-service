@@ -14,14 +14,13 @@
 
 ## 1. 실행 (Windows 로컬)
 
-**조건:** Python 3.12, Node.js, `pnpm`, **`develop` 브랜치 소스**. 정식 로컬 작업 폴더는 `C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai`입니다. 기존 `Documents\Codex\proto_rag_llm` 단독 v4 폴더는 현재 통합 작업 폴더가 아닙니다. 동기화 폴더 안에 가상환경을 만들지 않도록 Python 환경은 별도로 둡니다.
+**조건:** Python 3.12, Node.js, Corepack, **`develop` 브랜치 소스**. 명령어는 별도 안내가 없다면 **이 저장소 루트**에서 실행합니다. 프론트엔드의 패키지 관리자 버전은 `frontend/package.json`에 선언된 `pnpm@11.25.0`을 사용합니다. 기존 `proto_rag_llm` 단독 v4 폴더는 통합 작업 폴더가 아닙니다. Python 가상환경은 저장소 밖에 둡니다.
 
 **주의:** 로컬에 커밋하지 않은 작업이 있다면 먼저 보관하세요. `git status --short`에서 변경이 보이는 상태로 강제 리셋·정리하지 않습니다.
 
 **터미널 1 — 실제 로컬 저장소 루트:**
 
 ```powershell
-Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai'
 git status --short --branch   # 로컬 변경사항 확인. 있다면 먼저 보관
 git fetch origin
 git switch develop
@@ -39,13 +38,15 @@ if (-not (Test-Path -LiteralPath $python)) { py -3.12 -m venv $venv }
 **터미널 2 — 같은 로컬 저장소의 `frontend/` 폴더:**
 
 ```powershell
-Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai\frontend'
-corepack enable
-pnpm install --frozen-lockfile
-pnpm dev
+Set-Location .\frontend
+node --version
+corepack --version
+corepack pnpm --version
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
 ```
 
-실행에 필요한 `pnpm`이 없다면 Node.js의 Corepack 사용 가능 여부를 확인하세요. 서버와 프론트엔드는 **서로 다른 터미널에서 함께 실행**합니다.
+별도 `pnpm` 전역 설치나 `corepack enable`은 필요하지 않습니다. Windows에서 `corepack enable` 실행 시 Node.js 설치 폴더의 `yarn` 파일에 `EPERM`이 발생할 수 있으므로, 관리자 권한으로 재실행하기보다 위처럼 `corepack pnpm`을 사용하세요. `pnpm` 명령이 인식되지 않는 오류도 같은 방법으로 피할 수 있습니다. `corepack pnpm --version`부터 실패한다면 Node.js·Corepack 버전과 네트워크 접근 여부를 확인하세요. 서버와 프론트엔드는 **서로 다른 터미널에서 함께 실행**합니다.
 
 브라우저 **http://127.0.0.1:5173** → **마음 AI** 메뉴 → `AI 자유 상담` 또는 `v4 직무·법적 위험 분석` 선택.
 
@@ -57,7 +58,7 @@ pnpm dev
 | `http://127.0.0.1:8000/v4/api/docs` | v4 API 문서 |
 | `http://127.0.0.1:5173` | 최종 통합 React UI |
 
-**주의:** `pnpm dev:demo`는 별도의 프론트 모의 백엔드를 실행합니다. 통합 시연에는 `pnpm dev`만 사용하세요. 이미 8000 포트를 쓰는 다른 서버가 있으면 먼저 해당 서버를 정상 종료하세요.
+**주의:** `dev:demo`는 별도의 프론트 모의 백엔드를 실행합니다. 통합 시연에는 `corepack pnpm dev`만 사용하세요. 이미 8000 포트를 쓰는 다른 서버가 있으면 먼저 해당 서버를 정상 종료하세요.
 
 Codyssey 모델이 필요한 경우 **서버 프로세스의 `CODYSSEY_API_KEY`** 설정이 필요합니다. v4의 선택형 외부 관계 분석은 별도 `OPENAI_API_KEY`와 명시 동의가 있어야 호출합니다. 두 키는 목적과 API가 다릅니다. 키를 GitHub·화면·로그에 노출하지 마세요. **v4 오프라인 시연에는 키가 필요 없습니다.**
 
