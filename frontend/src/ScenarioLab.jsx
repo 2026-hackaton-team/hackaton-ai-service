@@ -2,12 +2,15 @@ import React, {useEffect, useRef, useState} from 'react'
 import {demoApi} from './services/demoApi.js'
 import {evaluateScenario, summarizeScenarios} from './scenarioEvaluation.js'
 import HistoryStats from './HistoryStats.jsx'
+import BudgetComparison from './BudgetComparison.jsx'
+import {compareBudget} from './budgetComparison.js'
 
 const money = value => value == null ? '보류 또는 미제시' : value.toLocaleString('ko-KR') + '원'
 
 export default function ScenarioLab({userId, onQuestion}) {
   const [cases,setCases] = useState([])
   const [selected,setSelected] = useState('')
+  const [budgetFilter,setBudgetFilter] = useState('all')
   const [results,setResults] = useState({})
   const [running,setRunning] = useState(false)
   const [progress,setProgress] = useState('')
@@ -52,6 +55,10 @@ export default function ScenarioLab({userId, onQuestion}) {
 
   const totals=summarizeScenarios(cases,results)
   const completed=Object.keys(results).length
+  const visible=cases.filter(item=>results[item.id]&&(
+    budgetFilter==='all'||(budgetFilter==='limited'
+      ? compareBudget(results[item.id].result,item.budget_krw)?.budgetLimited===true
+      : compareBudget(results[item.id].result,item.budget_krw)?.kind===budgetFilter)))
   function downloadReport() {
     const report={
       schemaVersion:1, generatedAt:new Date().toISOString(), userId,
@@ -59,6 +66,7 @@ export default function ScenarioLab({userId, onQuestion}) {
         scenarioId:item.id,personId:item.person_id,question:item.question,
         budgetKrw:item.budget_krw,focus:item.focus,
         assessment:evaluateScenario(item,results[item.id]),
+        budgetComparison:compareBudget(results[item.id].result,item.budget_krw),
         ...results[item.id],
       })),
     }
@@ -87,18 +95,29 @@ export default function ScenarioLab({userId, onQuestion}) {
       <span>통과 {totals.PASS} · 검토 {totals.REVIEW} · 실패 {totals.FAIL}</span>
       <button type="button" className="button" onClick={downloadReport}>결과 JSON 저장</button>
     </div>}
+    {completed>0&&<label style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>예산 비교 사례
+      <select className="input" value={budgetFilter} onChange={e=>setBudgetFilter(e.target.value)} aria-label="예산 비교 사례 필터">
+        <option value="all">전체</option>
+        <option value="below">예산보다 적게 추천</option>
+        <option value="equal">예산과 동일</option>
+        <option value="limited">예산 제한으로 높은 후보 제외</option>
+        <option value="withheld">금액 보류</option>
+      </select>
+      <small>{visible.length}건</small>
+    </label>}
     {error&&<p role="alert">{error}</p>}
     <p style={{fontSize:12}}>PASS는 입력·엔진·근거 계약 검증이며 금액의 사회적 정답이나 법적 적법성 인증이 아닙니다. REVIEW는 추가 확인이 필요한 사례입니다. 실제 모델이 연결되지 않으면 오류로 기록합니다. 20건 실행에는 모델 사용량이 발생할 수 있습니다.</p>
     {Object.keys(results).length>0&&<div style={{overflowX:'auto'}}>
       <table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}>
         <thead><tr><th>인물·상황</th><th>추천액</th><th>평가·엔진/AI</th><th>결과·근거</th></tr></thead>
-        <tbody>{cases.filter(item=>results[item.id]).map(item=>{
+        <tbody>{visible.map(item=>{
           const entry=results[item.id], result=entry.result
           const amount=result?.suggested_amount_krw
           const assessment=evaluateScenario(item,entry)
           return <tr key={item.id} style={{borderTop:'1px solid var(--border, #ddd)',verticalAlign:'top'}}>
             <td style={{padding:'8px 6px'}}><strong>{item.name}</strong><p>{item.title}</p><small>예산 {money(item.budget_krw)}</small></td>
             <td style={{padding:'8px 6px'}}><strong>{entry.error?'실패':money(amount)}</strong><p>{result?.status||''}</p>
+              {result&&<BudgetComparison result={result} budget={item.budget_krw} compact/>}
               {result?.history_stats&&<div style={{fontSize:12}}>
                 <p>낸 평균: {money(result.history_stats.paid?.average_krw)}</p>
                 <p>받은 평균: {money(result.history_stats.received?.average_krw)}</p>
@@ -115,6 +134,7 @@ export default function ScenarioLab({userId, onQuestion}) {
               {entry.error?<span role="alert">{entry.error}</span>:<details>
                 <summary>AI 답변과 근거 {result?.evidence?.length||0}건 보기</summary>
                 <HistoryStats stats={result?.history_stats}/>
+                <BudgetComparison result={result} budget={item.budget_krw}/>
                 <p style={{whiteSpace:'pre-wrap'}}>{result?.message}</p>
                 {result?.v4_analysis?.relationship_adjustments?.map((adj,index)=><p key={index}>관계 조정: {adj.reason}</p>)}
                 {result?.evidence?.map((ev,index)=><p key={index}>{ev.kind}: {ev.text}{ev.url&&<> · <a href={ev.url} target="_blank" rel="noopener noreferrer">출처</a></>}</p>)}
