@@ -336,3 +336,33 @@ def test_multiple_aspects_and_legacy_intent_are_both_accepted():
     base["requested_aspects"] = ["amount", "funeral_etiquette"]
     combined = parse_intent(json.dumps(base), set(), set())
     assert combined["requested_aspects"] == ["amount", "funeral_etiquette"]
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("relationship_closeness", 0), ("relationship_closeness", 6),
+    ("relationship_closeness", True), ("recent_received_amount_krw", -1),
+    ("recent_received_amount_krw", 10000001), ("recent_received_amount_krw", "200000"),
+    ("special_care", "true"), ("work_risk_hint", "safe"),
+])
+def test_invalid_semantic_classifier_values_are_rejected(field, value):
+    """LLM 구조화 결과가 허용 범위를 벗어나면 서버가 거부한다."""
+    payload = {"intent": "amount", "person_id": None, "notice_id": None,
+               "event_type": "장례", field: value}
+    with pytest.raises(ValueError):
+        parse_intent(json.dumps(payload), set(), set())
+
+
+def test_semantic_classifier_fields_and_legacy_response():
+    """명시된 관계 정보만 받되 기존 모델 반환 형식도 수용한다."""
+    payload = {"intent": "amount", "person_id": None, "notice_id": None,
+               "event_type": "장례", "relationship_closeness": 2,
+               "recent_received_amount_krw": 200000, "special_care": True,
+               "work_risk_hint": "negated"}
+    parsed = parse_intent(json.dumps(payload), set(), set())
+    assert parsed["relationship_closeness"] == 2
+    assert parsed["recent_received_amount_krw"] == 200000
+    assert parsed["special_care"] is True
+    assert parsed["work_risk_hint"] == "negated"
+    for field in ("relationship_closeness", "recent_received_amount_krw",
+                  "special_care", "work_risk_hint"):
+        assert parse_intent(json.dumps({"intent": "amount"}), set(), set())[field] is None
