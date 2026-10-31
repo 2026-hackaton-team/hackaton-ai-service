@@ -299,11 +299,21 @@ class ChatService:
                                                        preferred_model=preferred)
                     else:
                         answer = self.gateway.generate(context, set(context["allowed_evidence_ids"]))
-                    model = answer.get("model")
-                    cited_ids = answer.get("evidence_ids", [])
-                    ai_status = "generated"
-                    # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
-                    message += "\n\nAI 해석: " + answer["answer"]
+                    explanation = answer["answer"]
+                    # 행사 당사자에 대한 모델의 단정은 검증할 수 없으므로 노출하지 않는다.
+                    unsupported_owner = history["transactions"] and re.search(
+                        r"(?:본인|상대(?:방)?|지인)(?:의|이|가)?\\s*(?:결혼식|장례식|돌잔치|행사|경조사|부고)",
+                        explanation,
+                    )
+                    if unsupported_owner:
+                        ai_status = "unavailable"
+                        message += " 확인되지 않은 AI의 행사 당사자 설명은 제외했습니다."
+                    else:
+                        model = answer.get("model")
+                        cited_ids = answer.get("evidence_ids", [])
+                        ai_status = "generated"
+                        # 모델이 출력한 금액은 서버 확정값을 덮어쓸 수 없다.
+                        message += "\n\nAI 해석: " + explanation
                 except ModelUnavailable:
                     ai_status = "unavailable"
                     message += " 추가 AI 설명 없이 검증된 계산 결과만 표시합니다."
