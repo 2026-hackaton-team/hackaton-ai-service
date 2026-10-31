@@ -1,12 +1,11 @@
 """가상 감정·관계 시나리오 10개의 거래 해석·예산·개인정보 경계를 검증한다."""
-import json
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from gyeongjosa_ai.ai import ModelUnavailable
 from gyeongjosa_ai.api import app
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.relationship_insights import analyze_relationship_case
 from gyeongjosa_ai.service import ChatService
@@ -157,9 +156,8 @@ def test_original_dashboard_is_not_inflated_by_relationship_fixtures():
 
 
 def test_existing_dataset_bytes_remain_unmodified():
-    root = Path(__file__).resolve().parents[1] / "data"
-    original = json.loads((root / "original_demo.json").read_text(encoding="utf-8"))
-    generated = json.loads((root / "demo.json").read_text(encoding="utf-8"))
+    original = seed_db.load("original_demo")
+    generated = seed_db.load("demo")
     for dataset in (original, generated):
         assert not any(p["id"].startswith("V4P") for p in dataset["people"])
         assert not any(t["id"].startswith("V4T") for t in dataset["transactions"])

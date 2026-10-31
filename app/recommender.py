@@ -3,17 +3,15 @@
 가중치와 관계 조정률은 학습되지 않은 실험값이며 적정 금액을 보증하지 않는다.
 """
 from __future__ import annotations
-import json
 from decimal import Decimal, ROUND_HALF_UP
-from pathlib import Path
 from statistics import median
 from .knowledge import KB, KnowledgeBase
 from .inflation import DATA as CPI_DATA, adjust_amount
 
-DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "original_demo.json"
+from gyeongjosa_ai import seed_db
 from gyeongjosa_ai.special_fixtures import merge_special_fixtures
 
-DEMO = merge_special_fixtures(json.loads(DATA_FILE.read_text(encoding="utf-8")))
+DEMO = merge_special_fixtures(seed_db.load("original_demo"))
 AMOUNT_UNIT = 10000
 RAW_WEIGHTS = {"matched_survey": 0.55, "same_type_paid": 0.20, "paid_to_person": 0.15, "received_from_person": 0.10}
 

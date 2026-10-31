@@ -2,17 +2,16 @@
 from __future__ import annotations
 
 import copy
-import json
-from pathlib import Path
 
-SPECIAL = Path(__file__).resolve().parents[1] / "data" / "v4_special_fixtures.json"
+from . import seed_db
+
 COLLECTIONS = ("users", "friendships", "people", "private_events", "transactions", "shared_notices")
 
 
 def merge_special_fixtures(original: dict) -> dict:
     """원본을 수정하지 않고 추가 자료의 ID·소유자·연결을 검사한다."""
     result = copy.deepcopy(original)
-    fixtures = json.loads(SPECIAL.read_text(encoding="utf-8"))
+    fixtures = seed_db.load("v4_special_fixtures")
     for field in COLLECTIONS:
         existing = {row["id"] for row in result[field]}
         ids = [row["id"] for row in fixtures[field]]

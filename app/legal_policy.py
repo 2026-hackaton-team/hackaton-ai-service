@@ -1,13 +1,11 @@
 """가상 인물의 확인된 속성과 공식 RAG 근거를 결합하는 보수적 정책 판정기."""
 from __future__ import annotations
-import json
 import hashlib
-from pathlib import Path
+from gyeongjosa_ai import seed_db
 from .knowledge import KB
 
-ROOT = Path(__file__).resolve().parents[1]
-PROFILES = json.loads((ROOT / 'data' / 'person_policy_profiles.json').read_text(encoding='utf-8'))
-RULEBOOK = json.loads((ROOT / 'data' / 'legal_rules.json').read_text(encoding='utf-8'))
+PROFILES = seed_db.load('person_policy_profiles')
+RULEBOOK = seed_db.load('legal_rules')
 RULES = RULEBOOK['rules']
 
 

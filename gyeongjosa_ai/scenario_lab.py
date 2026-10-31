@@ -1,8 +1,6 @@
 """김시나리오의 합성 인맥을 실제 SQLite 작업공간에 최초 1회 등록한다."""
 
-import json
-from pathlib import Path
-
+from . import seed_db
 from .data import DemoData
 from .workspace_store import WorkspaceInput, load_workspace, save_workspace
 
@@ -13,12 +11,11 @@ USER = {
     "demo_account": True, "fictional_affiliation": "AI 추천 검증용 가상 계정",
     "preferred_region": "서울", "preferred_event_types": ["결혼", "장례"],
 }
-CASES_PATH = Path(__file__).resolve().parents[1] / "data" / "kim_scenario_cases.json"
 
 
 def cases():
     """금액 결과를 저장하지 않는 질문·인물 테스트 명세를 읽는다."""
-    return json.loads(CASES_PATH.read_text(encoding="utf-8"))["cases"]
+    return seed_db.load("kim_scenario_cases")["cases"]
 
 
 def with_scenario_user(base: DemoData) -> DemoData:
