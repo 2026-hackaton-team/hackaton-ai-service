@@ -33,3 +33,26 @@
 ## 보안
 
 가상 계정 선택 헤더는 실제 인증이 아닙니다. 로컬 시연에서만 사용하며 외부에 서버를 공개하지 마세요. 본 통합 브랜치에 실사용 개인정보를 적재하지 마세요.
+
+## 2026-10-31 v4 실소스 추가 반영
+
+- 원본: Windows 브리지 `Documents/Codex/proto_rag_llm`. GitHub `app/` 모듈 10개는 이 원본에서 이식됨
+- 원본 데이터: `data/knowledge_base.json`, `legal_rules.json`, `original_demo.json`, `person_policy_profiles.json`
+- 기존 v4 테스트 5개 파일을 `tests/`에 이식함
+- 기존 서버 `gyeongjosa_ai.api:app`에서 `/v4`에 v4 FastAPI 앱을 마운트함
+- React AI 페이지에서 **AI 자유 상담** / **v4 직무·법적 위험 분석** 전환 버튼 제공. 후자는 프레임에 `/v4/` 별도 화면을 표시하므로 React CSS와 독립적임
+- Vite는 `/v4`와 `/api` 모두 127.0.0.1:8000에 프록시함
+- v4 공개 화면/API: `/v4/`, `/v4/api/health`, `/v4/api/recommend`, `/v4/api/demo/onboarding`
+- 실행: `python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000`, 별도 터미널 `cd frontend && pnpm install && pnpm dev`
+
+### 통합 시연 게이트
+
+1. Python: `python -m unittest discover -s tests -v` 및 `python -m pytest -q`
+2. React: `cd frontend && pnpm install && pnpm test && pnpm build`
+3. 브라우저: AI 자유 상담과 v4 정책 화면 모두 열림, `/v4/api/health.policy_engine=v4`
+4. 합성 시나리오: 30,000원 예산 상한, 공직자/계약 심사 위험 보류, 비동의 직업 차단, 동명이인 확인, 공유 부고 권한 분리
+5. 실모델 키 없는 실패 시 가짜 법적 판정 금지, 프라이버시 Opt-in 강제
+
+**미검증:** 원격 GitHub write 및 코드 소스 비교는 확인했으나, 이 실행 환경에서는 실제 Windows 브라우저·Python/Node 프로젝트 실행 검증을 수행하지 못했다. Windows 브리지 테스트는 `PINNED_DOCKER_IMAGE_MISSING`으로 실패했다. `80/80`은 과거 보고이며 현재 소스는 테스트 메서드 84개가 정의되어 있다. 본 PR을 검증 완료로 간주하지 말 것.
+
+**기술 부채:** /v4의 원본 데모 데이터와 채팅/React 워크스페이스의 합성 자료가 아직 단일 CRUD 원천으로 합쳐지지 않았다. v4 화면은 React 네이티브 컴포넌트가 아닌 별도 프레임이다. 프로덕션 인증/법적 적법성 검증이 없다. 질문 원문 저장은 채팅 기능에 적용되며, 직무 관계 자유서술의 원문 비저장 정책과 별도로 개인정보 고지 및 서버 필터가 필요하다.
