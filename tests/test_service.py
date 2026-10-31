@@ -76,7 +76,7 @@ def test_empty_history_and_missing_availability_are_questions(service):
     assert no_history["status"] == "answer"
     assert "금전 이력은 0건" in no_history["message"] and "50,000원" in no_history["message"]
     assert no_history["suggested_amount_krw"] == 50000
-    assert no_history["recommendation_basis"] == "heuristic"
+    assert no_history["recommendation_basis"] == "history"
     assert no_history["evidence_level"] == "low"
     assert service.gateway.calls[-1][0]["history"]["transactions"] == []
 
@@ -216,3 +216,24 @@ def test_other_person_same_event_history_is_used_instead_of_heuristic():
     assert result["recommendation_basis"] == "history"
     assert result["weights_used"]["same_type_paid"] == 1.0
     assert result["amount_krw"] == 100000
+
+
+def test_cold_start_uses_heuristic_only_when_no_amount_anchor_exists():
+    from app.recommender import recommend
+
+    dataset = {
+        "people": [{"id": "P1", "owner_user_id": "U", "relationship": "지인"}],
+        "event_categories": ["팔순"],
+        "private_events": [],
+        "transactions": [],
+    }
+    result = recommend(
+        user_id="U", person_id="P1", identity_confirmed=True,
+        event_type="팔순", attendance_with_meal=None,
+        budget_krw=80000, dataset=dataset,
+    )
+    assert result["status"] == "RECOMMENDED"
+    assert result["amount_krw"] == 50000
+    assert result["recommendation_basis"] == "heuristic"
+    assert result["weights_used"] == {}
+    assert result["evidence_level"] == "low"
