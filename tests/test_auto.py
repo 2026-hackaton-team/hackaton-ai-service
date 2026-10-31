@@ -590,3 +590,15 @@ def test_model_negation_can_lower_unconfirmed_work_risk_but_not_confirm_legality
     assert checked["high_risk_hint"] is False
     assert checked["duty_context"] == "unknown"
     assert checked["status"] == "insufficient_facts"
+
+
+def test_unrelated_negation_does_not_dismiss_work_risk():
+    """계약·심사 상대라는 단서를 돈이 없다는 표현만으로 지우지 않는다."""
+    from app.relationship_analysis import analyze
+    sender = {"occupation": "civil_servant", "duty_role": "procurement"}
+    recipient = {"covered": "unknown"}
+    result = analyze(sender=sender, recipient=recipient,
+                     relationship_text="계약 심사관에게 돈이 없어",
+                     semantic_hint="negated")
+    assert result["high_risk_hint"] is True
+    assert result["sender_ethics_risk"] is True
