@@ -143,7 +143,8 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
         key: value for key, value in old_context.items()
         if key in {"v4_scenario", "budget_krw", "v4_attendance", "event_type",
                    "pending_field", "cash_krw", "wreath_krw", "v4_person",
-                   "relationship_closeness", "relationship_special_care"}
+                   "relationship_closeness", "relationship_special_care",
+                   "recent_received_override"}
     }
     if current is None:
         if not marker and state.get("v4_scenario") not in SCENARIOS:
@@ -176,6 +177,11 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             state["relationship_closeness"] = int(closeness_match.group(1))
         if re.search(r"특별히\s*챙기|더\s*챙기|특별하게\s*보답", text):
             state["relationship_special_care"] = True
+        recent = re.search(r"(?:최근|지난번)[^\\n]{0,35}?(\\d[\\d,]*)\\s*(만\\s*원?|원)(?:을|이나)?\\s*받", text)
+        if recent:
+            claimed = int(recent.group(1).replace(",", "")) * (10000 if recent.group(2).startswith("만") else 1)
+            if claimed <= 10000000:
+                state["recent_received_override"] = claimed
         scenario = SCENARIOS[current]
         person_id = scenario["person_id"]
         insights = analyze_relationship_case(
@@ -192,6 +198,7 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
                 allow_llm_analysis=False,
                 closeness_override=state.get("relationship_closeness"),
                 special_care=bool(state.get("relationship_special_care")),
+                recent_received_override=state.get("recent_received_override"),
             )
             report = recommendation(request)
             result = report["result"]
@@ -217,6 +224,10 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
              "decision_role": "personal_history"}
             for row in insights["history"]
         ]
+        if state.get("recent_received_override") is not None:
+            evidence.append({"id": "claim:" + person_id, "kind": "사용자 자기신고 수령액",
+                             "text": f"직접 말한 최근 수령액 {state['recent_received_override']:,}원(기록 미확인)",
+                             "decision_role": "user_reported"})
         if insights["relationship_note"]:
             evidence.append({
                 "id": "note:" + person_id, "kind": "사용자 입력 관계 메모",
