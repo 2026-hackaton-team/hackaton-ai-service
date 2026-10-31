@@ -10,12 +10,26 @@ CATEGORIES = ("결혼", "장례", "부고", "백일", "돌", "생일", "환갑",
 
 
 def parse_budget(text):
-    """한국어 금액 표현에서 명시된 예산을 읽는다."""
-    match = re.search(r"(\d[\d,]*)\s*만\s*원?", text)
-    if match:
-        return int(match.group(1).replace(",", "")) * 10000
-    match = re.search(r"(\d[\d,]*)\s*원", text)
-    return int(match.group(1).replace(",", "")) if match else None
+    """예산 표현을 우선 인식하고 과거 수령·지급액을 예산으로 오인하지 않는다."""
+    money = list(re.finditer(r"(?<!\\d)(\\d[\\d,]*)\\s*(만\\s*원?|원)", text))
+    if not money:
+        return None
+
+    def amount(match):
+        return int(match.group(1).replace(",", "")) * (10000 if match.group(2).startswith("만") else 1)
+
+    markers = list(re.finditer(r"예산|최대|상한|지출\\s*가능|낼\\s*수\\s*있는", text))
+    for marker in markers:
+        following = [match for match in money if 0 <= match.start() - marker.end() <= 30]
+        if following:
+            return amount(min(following, key=lambda match: match.start() - marker.end()))
+        preceding = [match for match in money if 0 <= marker.start() - match.end() <= 12]
+        if preceding:
+            return amount(min(preceding, key=lambda match: marker.start() - match.end()))
+
+    if len(money) != 1 or re.search(r"받|줬|주었|보냈|냈|이전|과거|지난|저번", text):
+        return None
+    return amount(money[0])
 
 
 def interpret_budget_reply(text):
