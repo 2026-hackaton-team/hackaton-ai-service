@@ -33,6 +33,9 @@ def data_for_chat(base: DemoData, user_id: str) -> DemoData:
         closeness = row.get("closeness_score")
         if type(closeness) is int and 1 <= closeness <= 5:
             person["relationship_context"] = {"closeness_score": closeness}
+            for key in ("closeness_history", "non_monetary_support"):
+                if row.get(key):
+                    person["relationship_context"][key] = row[key]
         people.append(person)
 
     events = []
