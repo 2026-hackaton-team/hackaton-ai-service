@@ -394,3 +394,49 @@ def mark_delivered(values: DeliveredNotice, maeum_session: str | None = Cookie(d
         cursor = db.execute("INSERT OR IGNORE INTO delivered VALUES (?,?)",
                             (account["username"], values.key))
         return {"send": cursor.rowcount == 1}
+
+
+def with_server_accounts_and_social(base):
+    """서버 사용자 계정과 친구 수락 내역을 AI 추천 관계 그래프에 반영한다."""
+    if not _path().exists():
+        return base
+    from .data import DemoData
+    with _db() as db:
+        rows = db.execute("SELECT username,profile FROM accounts").fetchall()
+        account_profiles = {row["username"]: json.loads(row["profile"]) for row in rows}
+        if not account_profiles:
+            return base
+        raw = db.execute("SELECT payload FROM social_state WHERE id=1").fetchone()
+        friendships = json.loads(raw["payload"])["friendships"]
+    source = dict(base.dataset)
+    users = list(source["users"])
+    existing = {user["id"] for user in users}
+    for username, profile in account_profiles.items():
+        user_id = _identity(username)
+        if user_id in existing:
+            continue
+        users.append({
+            "id": user_id, "name": profile["name"], "login_id": username,
+            "demo_account": True, "fictional_affiliation": profile.get("organization") or "",
+            "preferred_region": "서울", "preferred_event_types": [],
+        })
+        existing.add(user_id)
+    graph = list(source["friendships"])
+    known = {frozenset((link["user_a_id"], link["user_b_id"])) for link in graph
+             if link.get("status") == "accepted"}
+    for link in friendships:
+        if link.get("status") != "accepted":
+            continue
+        left, right = link.get("from"), link.get("to")
+        if left not in account_profiles or right not in account_profiles:
+            continue
+        pair = frozenset((_identity(left), _identity(right)))
+        if len(pair) != 2 or pair in known:
+            continue
+        graph.append({
+            "id": "ACCOUNT-" + link["id"],
+            "user_a_id": _identity(left), "user_b_id": _identity(right),
+            "status": "accepted", "allow_connection_for_recommendation": True,
+        })
+        known.add(pair)
+    return DemoData({**source, "users": users, "friendships": graph})

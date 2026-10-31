@@ -87,3 +87,15 @@ def test_cannot_read_or_mutate_without_login(client):
     }).status_code == 401
     assert client.patch("/api/account/preferences", json={"theme": "dark"}).status_code == 401
     assert client.post("/api/account/read", json={"keys": ["n"]}).status_code == 401
+
+
+def test_saved_friendships_feed_ai_relation_graph(client):
+    """서버에서 수락된 친구 연결이 AI 관계 그래프에 직접 반영된다."""
+    from gyeongjosa_ai.dependencies import get_service
+
+    assert client.post("/api/account/login", json={
+        "username": "test1234", "password": "test1234",
+    }).status_code == 200
+    service = get_service()
+    assert "LOCAL_TEST_FRIEND01" in service.data.graph["TEST1234"]
+    assert "TEST1234" in service.data.graph["LOCAL_TEST_FRIEND01"]
