@@ -78,6 +78,7 @@ def test_legal_conditional_cash_limit_keeps_ten_thousand_units():
             "covered": "yes", "duty_related": "yes",
             "exception_confirmed": "yes", "conflict": "none",
             "provenance": "self_reported_context",
+            "description": "직무 관련 부조 예외 성립을 가정한 회귀 테스트",
         },
         closeness_override=5, special_care=True,
     )["result"]
