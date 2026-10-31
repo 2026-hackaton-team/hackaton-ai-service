@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from gyeongjosa_ai.ai import ModelGateway, ModelUnavailable, parse_response
+from gyeongjosa_ai.ai import ModelGateway, ModelUnavailable, parse_intent, parse_response
 
 
 def response(answer="기록을 참고해 직접 결정해 주세요.", ids=None, suggested=None):
@@ -137,3 +137,59 @@ def test_scenario_explanation_rejects_invalid_model_output():
     ))
     with pytest.raises(ModelUnavailable):
         gateway.explain_scenario({"question": "어떤 의미일까요?", "known_amounts_krw": [50000]})
+
+
+@pytest.mark.parametrize(("meal", "expected"), [(False, False), (True, True), (None, None)])
+def test_meal_intent_accepts_optional_structured_answer(meal, expected):
+    """모델의 명시적인 식사 판단만 허용하고 누락된 구형 응답은 유지한다."""
+    payload = json.dumps({"intent": "amount", "person_id": None, "notice_id": None,
+                          "event_type": "결혼", "attendance_with_meal": meal})
+    assert parse_intent(payload, set(), set())["attendance_with_meal"] is expected
+    old = '{"intent":"amount","person_id":null,"notice_id":null,"event_type":"결혼"}'
+    assert parse_intent(old, set(), set())["attendance_with_meal"] is None
+
+
+@pytest.mark.parametrize("meal", ["아니요", 0, 1, [], {}])
+def test_meal_intent_rejects_invalid_type(meal):
+    """의미 판단값이 불명확하면 잘못된 형식을 조용히 적용하지 않는다."""
+    payload = json.dumps({"intent": "amount", "person_id": None, "notice_id": None,
+                          "event_type": "결혼", "attendance_with_meal": meal}, ensure_ascii=False)
+    with pytest.raises(ValueError, match="식사 여부"):
+        parse_intent(payload, set(), set())
+
+
+def test_model_request_timeout_for_demo():
+    """모델당 과도한 재시도 대신 기존 기본 제한시간을 공유하며 설정을 유지한다."""
+    assert ModelGateway(api_key="test").timeout == 60
+    assert ModelGateway(api_key="test", timeout=42).timeout == 42
+
+
+def test_internal_field_names_never_pass_response_validation():
+    """생성형 답변에 내부 자료 필드가 나오면 외부 노출 전에 차단한다."""
+    context = {"mode": "history", "history": {"transactions": []}}
+    for key in ("subject_relation", "suggested_amount_krw", "person_id"):
+        payload = json.dumps({"answer": f"내부 정보 {key}를 확인하세요.",
+                              "evidence_ids": [], "suggested_amount_krw": None},
+                             ensure_ascii=False)
+        with pytest.raises(ValueError, match="내부 필드"):
+            parse_response(payload, context, set())
+
+
+def test_model_fallback_shares_one_timeout_budget():
+    """두 모델 재시도가 각각 제한시간 전체를 새로 받지 않는다."""
+    import time
+
+    calls = []
+
+    class DelayedGateway(ModelGateway):
+        def generate_for_model(self, context, allowed_ids, model, timeout=None):
+            calls.append((model, timeout))
+            if model == "claude-opus-4-8":
+                time.sleep(0.02)
+                raise ModelUnavailable("첫 모델 오류")
+            return {"answer": "확인했습니다.", "evidence_ids": [], "model": model}
+
+    gateway = DelayedGateway(api_key="test", timeout=1)
+    assert gateway.generate({}, set())["model"] == "gpt-5.4"
+    assert len(calls) == 2
+    assert 0 < calls[1][1] < calls[0][1] <= 1

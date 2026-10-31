@@ -456,7 +456,12 @@ class ChatService:
 
         intent = classified["intent"]
         pending = context.get("pending_field")
-        if pending == "attendance_with_meal":
+        # 식사 의미 판단은 실제 모델의 구조화된 결과를 우선하고, 이전 분류기와의 호환을 유지한다.
+        if classified.get("attendance_with_meal") is not None and (
+            re.search(r"식사|먹|밥|뷔페", question) or pending == "attendance_with_meal"
+        ):
+            context["attendance_with_meal"] = classified["attendance_with_meal"]
+        if pending == "attendance_with_meal" and classified.get("attendance_with_meal") is None:
             if meal_attendance is False or "불참" in question:
                 context["attendance_with_meal"] = False
             elif re.search(r"식사|먹|참석|네|예", question):
