@@ -1,6 +1,6 @@
 # 온마음 — 경조사 AI 추천 · 직무 관련성 검토 (통합 발표 시연)
 
-> **48시간 해커톤 로컬 시연 프로젝트.** 이 문서는 GitHub `feat/integrate-rag-react` 브랜치의 **React + FastAPI + 온마음 v4 RAG 통합 버전**을 설명합니다. `main`/기존 `develop`의 출시 상태와 다릅니다.
+> **48시간 해커톤 로컬 시연 프로젝트.** 이 문서는 **GitHub `develop`에 병합된 React + FastAPI + 온마음 v4 RAG 통합 버전**을 설명합니다. [통합 PR #3](https://github.com/2026-hackaton-team/hackaton-ai-service/pull/3)은 병합 완료되었으며, **`main` 배포·실서비스 인증·최종 브라우저 E2E 완료를 뜻하지는 않습니다.**
 
 **한 줄 소개:** 경조사 금액만 답하는 AI가 아니라 **예산·관계 이력·공개 근거를 분리해 추천하고, 직업·계약·심사 이해관계가 의심되면 금액 추천을 보류하며 추가 사실을 확인하는 도우미**입니다.
 
@@ -14,25 +14,38 @@
 
 ## 1. 실행 (Windows 로컬)
 
-**조건:** Python 3.12, Node.js, `pnpm`, 통합 브랜치 소스. Windows의 `Documents\Codex\proto_rag_llm` **단독 v4** 폴더와 이 GitHub 통합 저장소는 별개입니다.
+**조건:** Python 3.12, Node.js, `pnpm`, **`develop` 브랜치 소스**. 정식 로컬 작업 폴더는 `C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai`입니다. 기존 `Documents\Codex\proto_rag_llm` 단독 v4 폴더는 현재 통합 작업 폴더가 아닙니다. 동기화 폴더 안에 가상환경을 만들지 않도록 Python 환경은 별도로 둡니다.
 
-**터미널 1 — 저장소 루트:**
+**주의:** 로컬에 커밋하지 않은 작업이 있다면 먼저 보관하세요. `git status --short`에서 변경이 보이는 상태로 강제 리셋·정리하지 않습니다.
+
+**터미널 1 — 실제 로컬 저장소 루트:**
 
 ```powershell
-git switch feat/integrate-rag-react
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt "openai>=1.75,<3"
-.\.venv\Scripts\python.exe -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
+Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai'
+git status --short --branch   # 로컬 변경사항 확인. 있다면 먼저 보관
+git fetch origin
+git switch develop
+git pull --ff-only origin develop
+
+$venv = Join-Path $env:USERPROFILE 'Documents\Codex\venvs\onmaeum-integration'
+$python = Join-Path $venv 'Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $python)) { py -3.12 -m venv $venv }
+& $python -m pip install -r requirements.txt 'openai>=1.75,<3'
+& $python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000
 ```
 
-**터미널 2 — 같은 저장소의 `frontend/` 폴더:**
+기존 `develop`에 로컬 변경이나 분기 이력이 있다면 위 명령의 `switch`/`pull`이 거부될 수 있습니다. **강제 덮어쓰지 말고 변경사항과 충돌을 먼저 해결**하세요.
+
+**터미널 2 — 같은 로컬 저장소의 `frontend/` 폴더:**
 
 ```powershell
-cd frontend
+Set-Location -LiteralPath 'C:\Users\sktlrkan\내 드라이브\codyssey\project_B\hackaton\gyeongjosa_ai\frontend'
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+실행에 필요한 `pnpm`이 없다면 Node.js의 Corepack 사용 가능 여부를 확인하세요. 서버와 프론트엔드는 **서로 다른 터미널에서 함께 실행**합니다.
 
 브라우저 **http://127.0.0.1:5173** → **마음 AI** 메뉴 → `AI 자유 상담` 또는 `v4 직무·법적 위험 분석` 선택.
 
@@ -84,7 +97,7 @@ React (frontend/) ── /api/* ─── FastAPI (gyeongjosa_ai) ── 가상 
 
 ## 4. 테스트 결과 (근거가 확인된 범위)
 
-- GitHub Actions `c75d0c519633a9c8112cdd70663beae81a0ea596`: **Python 155개 PASS**, 추가 subtest 7개 PASS, 경고 1건; React 테스트·빌드 PASS. [검증 실행 기록](https://github.com/2026-hackaton-team/hackaton-ai-service/actions/runs/41157833020).
+- 병합 직전 최신 통합 코드 GitHub Actions: **Python 161개 PASS**, 경고 1건; React 단위 테스트와 빌드 PASS. [검증 실행 기록](https://github.com/2026-hackaton-team/hackaton-ai-service/actions/runs/41158428848). 해당 성공 실행은 통합 PR의 마지막 HEAD에 대한 결과이며, 발표자 Windows 브라우저 E2E를 대체하지 않습니다.
 - Windows 브리지의 제한된 Docker에서 오프라인 소스 무결성 테스트 **8/8 PASS**.
 - **미검증/미완료:** 발표자 PC 실브라우저 E2E, 실제 Codyssey/OpenAI 모델 품질, React의 모든 CRUD와 v4 프로필 데이터 일원화, 운영용 로그인·인가, 최신 법령 자동 갱신.
 - 테스트가 통과했다는 사실이 법적 적합성, 추천 금액의 객관적 정답, 운영용 보안성을 보증하지 않습니다.
@@ -99,6 +112,6 @@ React (frontend/) ── /api/* ─── FastAPI (gyeongjosa_ai) ── 가상 
 - [통합 상태/미완료 범위](INTEGRATION_STATUS.md)
 - [v4 정책 원본 및 데이터 계약](app/main.py)
 - [v4 회귀 테스트](tests/test_v4.py)
-- [GitHub Draft 통합 PR](https://github.com/2026-hackaton-team/hackaton-ai-service/pull/3)
+- [병합 완료된 통합 PR #3](https://github.com/2026-hackaton-team/hackaton-ai-service/pull/3)
 
-발표 전에 [최종 리허설 체크리스트](docs/PRESENTATION_DEMO.md#6-발표-직전-최종-게이트)를 **실제 화면에서 확인한 항목만 체크**하세요. 이 프로젝트는 **최종 시연 준비 중인 프로토타입**입니다.
+발표 전에 [최종 리허설 체크리스트](docs/PRESENTATION_DEMO.md#6-발표-직전-최종-게이트)를 **실제 화면에서 확인한 항목만 체크**하세요. 이 프로젝트는 **`develop` 병합 완료, 로컬 최종 시연 검증 대기 중인 프로토타입**입니다.
