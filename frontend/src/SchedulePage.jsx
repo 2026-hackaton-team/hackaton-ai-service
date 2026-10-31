@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react'
 import { Icon, EmptyState } from './ui.jsx'
 import { daysUntil } from './domain.js'
 import './schedule.css'
-import { ReceivedScheduleDialog } from './FeaturePreview.jsx'
-import SharedEventsPanel from './SharedEventsPanel.jsx'
 
 const TYPES = ['전체', '결혼식', '장례식', '돌잔치', '생일']
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -25,9 +23,8 @@ function readDate(date) {
   return new Date(year, month - 1, day)
 }
 
-export default function SchedulePage({ events = [], people = [], onAddEvent, onOpenEvent, onUpdateEvent, demoUserId, onDemoUserChange }) {
+export default function SchedulePage({ events = [], people = [], onAddEvent, onOpenEvent, onUpdateEvent, onOpenReceived, receivedCount = 0 }) {
   const today = seoulToday()
-  const [receivedOpen, setReceivedOpen] = useState(false)
   const [month, setMonth] = useState(() => {
     const upcoming = [...events].filter((event) => event.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0]
     const date = readDate(upcoming?.date || today)
@@ -65,11 +62,9 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
   return <div className={`schedule-page ${type === '장례식' ? 'mood-somber' : ''}`}>
     <div className="schedule-page-heading">
       <div><span className="schedule-eyebrow">SCHEDULE</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p></div>
-      <div className="schedule-heading-actions"><button type="button" className="button button-secondary" onClick={() => setReceivedOpen(true)}><Icon name="Mail" size={17} />받은 일정</button><button className="button button-primary" onClick={onAddEvent}><Icon name="plus" size={17} />일정 등록</button></div>
+      <div className="schedule-heading-actions"><button type="button" className="button button-secondary" onClick={() => onOpenReceived?.()}><Icon name="Mail" size={17} />받은 일정{receivedCount > 0 && <span className="received-count" aria-label={`새 일정 ${receivedCount}건`}>{receivedCount}</span>}</button><button className="button button-primary" onClick={onAddEvent}><Icon name="plus" size={17} />일정 등록</button></div>
     </div>
-    {receivedOpen && <ReceivedScheduleDialog today={today} onClose={() => setReceivedOpen(false)} />}
 
-    <SharedEventsPanel userId={demoUserId} onUserIdChange={onDemoUserChange} today={today} />
     <div className="schedule-layout">
       <section className="card schedule-calendar" aria-label="경조사 달력">
         <div className="schedule-calendar-header">
@@ -105,7 +100,7 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
               return <article className={`schedule-agenda-event ${TYPE_CLASS[event.type] || 'other'}`} key={event.id}>
                 <button className="schedule-agenda-event-main" onClick={() => onOpenEvent(event)}>
                   <div className="schedule-agenda-date"><span>{month.month + 1}월</span><strong>{date.getDate()}</strong><small>{WEEKDAYS[date.getDay()]}</small></div>
-                  <div className="schedule-agenda-event-info"><div><span className="schedule-agenda-type"><Icon name={TYPE_ICON[event.type] || 'calendar'} size={12} />{event.type}</span>{days !== null && days >= 0 && <span className={`schedule-dday ${days <= 3 ? 'soon' : ''}`}>{days === 0 ? 'D-DAY' : `D-${days}`}</span>}</div><h3>{event.title}</h3><p>{person ? `${person.relation} · ${person.group || '그룹 없음'}` : '관계 미등록'}</p><span className="schedule-agenda-time"><Icon name="clock" size={12} />{event.time || '시간 미정'}</span></div>
+                  <div className="schedule-agenda-event-info"><div><span className="schedule-agenda-type"><Icon name={TYPE_ICON[event.type] || 'calendar'} size={12} />{event.type}</span>{days !== null && days >= 0 && <span className={`schedule-dday ${days <= 3 ? 'soon' : ''}`}>{days === 0 ? 'D-DAY' : `D-${days}`}</span>}</div><h3>{event.title}</h3><p>{event.owner === 'me' ? '내 경조사' : person ? `${person.relation} · ${person.group || '그룹 없음'}` : '관계 미등록'}{event.source?.from ? ` · ${event.source.from}님이 보낸 일정` : ''}</p><span className="schedule-agenda-time"><Icon name="clock" size={12} />{event.time || '시간 미정'}</span></div>
                 </button>
                 {event.location && <p className="schedule-agenda-location"><Icon name="map-pin" size={12} /><span>{event.location}</span></p>}
                 <div className="schedule-agenda-event-bottom"><label><span className="schedule-attendance-label">참석 여부</span><select value={event.attendance || ''} aria-label={`${event.title} 참석 여부`} onChange={(change) => onUpdateEvent(event.id, { attendance: change.target.value })}><option value="" disabled>참석 여부 선택</option><option>참석</option><option>불참</option></select></label><span><Icon name="bell" size={11} />{Number(event.reminderDays) === 0 ? '당일 알림' : `${event.reminderDays || 1}일 전`}</span></div>

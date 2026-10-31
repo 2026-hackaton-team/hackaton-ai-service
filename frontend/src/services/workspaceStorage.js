@@ -21,11 +21,11 @@ export function writeStored(key, value, storage) {
 }
 
 /** Best-effort local rollback; server imports must use an actual DB transaction. */
-export function commitWorkspace(patch, storage) {
+export function commitWorkspace(patch, storage, keys = STORAGE_KEYS) {
   storage ??= globalThis.localStorage;
   const entries = ['people', 'events', 'records', 'readIds', 'notifications']
     .filter(field => Object.hasOwn(patch, field))
-    .map(field => [STORAGE_KEYS[field], JSON.stringify(patch[field])]);
+    .map(field => [keys[field] || STORAGE_KEYS[field], JSON.stringify(patch[field])]);
   if (entries.some(([, json]) => json === undefined)) throw new TypeError('저장할 값이 없어요.');
   // Read every backup before writing anything, including quota/security errors.
   const before = new Map(entries.map(([key]) => [key, storage.getItem(key)]));

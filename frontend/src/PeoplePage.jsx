@@ -3,7 +3,9 @@ import { Icon, Modal, EmptyState } from './ui.jsx';
 import { formatMoney } from './domain.js';
 import { RELATION_OPTIONS, IMPORTANCE_OPTIONS, relationDraft, resolveRelation, matchesRelation, normalizeImportance, importanceRank } from './relationships.js';
 import './people-ledger.css';
-import { SectionTabs, FriendPreview } from './FeaturePreview.jsx';
+import { SectionTabs } from './FeaturePreview.jsx';
+import { FriendFinder, FriendRequests, useSocial } from './Social.jsx';
+import { incomingRequests } from './services/socialStore.js';
 import { occasionClass } from './occasion.js';
 
 const relations = ['전체', ...RELATION_OPTIONS];
@@ -14,8 +16,10 @@ const todayString = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-export default function PeoplePage({ people, events, records, onAddPerson, onUpdatePerson, onAddRecord }) {
-  const [activeTab, setActiveTab] = useState('people');
+export default function PeoplePage({ people, events, records, onAddPerson, onUpdatePerson, onAddRecord, initialTab = 'people' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const social = useSocial();
+  const requestCount = social?.user ? incomingRequests(social.social, social.user.username).length : 0;
   const [query, setQuery] = useState('');
   const [relation, setRelation] = useState('전체');
   const [selectedId, setSelectedId] = useState(null);
@@ -35,7 +39,7 @@ export default function PeoplePage({ people, events, records, onAddPerson, onUpd
       <SectionTabs prefix="people-main" label="인맥 관리 화면" value={activeTab} onChange={setActiveTab} tabs={[
         { id: 'people', label: '내 인맥', icon: 'UsersRound' },
         { id: 'find', label: '친구 찾기', icon: 'Search' },
-        { id: 'requests', label: '받은 요청', icon: 'Mail' },
+        { id: 'requests', label: requestCount ? `받은 요청 ${requestCount}` : '받은 요청', icon: 'Mail' },
       ]} />
       <button className="button button-primary" onClick={onAddPerson}><Icon name="UserPlus" size={17} />인맥 추가</button>
     </div>
@@ -66,8 +70,8 @@ export default function PeoplePage({ people, events, records, onAddPerson, onUpd
     </div>}
     <div className="people-gentle-note"><Icon name="heart" size={16} /><p>관계의 깊이는 금액으로 정해지지 않아요. 함께한 시간을 기억하는 작은 기록이에요.</p></div>
     </section>
-    <section id="people-main-find-panel" role="tabpanel" aria-labelledby="people-main-find-tab" hidden={activeTab !== 'find'}><FriendPreview kind="find" /></section>
-    <section id="people-main-requests-panel" role="tabpanel" aria-labelledby="people-main-requests-tab" hidden={activeTab !== 'requests'}><FriendPreview kind="requests" /></section>
+    <section id="people-main-find-panel" role="tabpanel" aria-labelledby="people-main-find-tab" hidden={activeTab !== 'find'}><FriendFinder /></section>
+    <section id="people-main-requests-panel" role="tabpanel" aria-labelledby="people-main-requests-tab" hidden={activeTab !== 'requests'}><FriendRequests /></section>
     {selected && <PersonDetail key={selected.id} person={selected} events={events.filter(event => event.personId === selected.id)} records={records.filter(record => record.personId === selected.id)} onUpdate={patch => onUpdatePerson(selected.id, patch)} onAddRecord={() => { setSelectedId(null); onAddRecord(selected.id); }} onClose={() => setSelectedId(null)} />}
   </div>;
 }
@@ -80,16 +84,18 @@ function PersonDetail({ person, events, records, onUpdate, onAddRecord, onClose 
   const sent = records.filter(record => record.direction === '보낸 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const received = records.filter(record => record.direction === '받은 마음').reduce((sum, record) => sum + Number(record.amount), 0);
   const interactions = [...(person.interactions || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  async function savePerson(event) {
+  function savePerson(event) {
     event.preventDefault();
     if (!draft.name.trim()) return;
     const { customRelation, ...values } = draft;
-    if (await onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() })) setEditing(false);
+    onUpdate({ ...values, relation:resolveRelation(draft.relation, customRelation), name: draft.name.trim(), group: draft.group.trim(), memo: draft.memo.trim() });
+    setEditing(false);
   }
-  async function addInteraction(event) {
+  function addInteraction(event) {
     event.preventDefault();
     if (!interaction.note.trim()) return;
-    if (await onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet })) setInteraction(current => ({ ...current, note: '' }));
+    onUpdate({ interactions: [...(person.interactions || []), { id: crypto.randomUUID(), date: interaction.date, note: interaction.note.trim() }], lastMet: !person.lastMet || interaction.date > person.lastMet ? interaction.date : person.lastMet });
+    setInteraction(current => ({ ...current, note: '' }));
   }
   return <Modal title={`${person.name}님의 관계 기록`} onClose={onClose} wide>
     <div className="person-detail-header"><div className="avatar people-avatar">{person.name.slice(0, 1)}</div><div><h2>{person.name}<span className="badge green">{person.relation}</span><span className="badge">{normalizeImportance(person.importance)}</span></h2><p>{person.group || '소속 그룹 없음'} · 마지막 만남 {displayDate(person.lastMet)}</p></div><button className="button button-secondary" onClick={() => { setDraft(personDraft(person)); setEditing(value => !value); }}><Icon name="pencil" size={15} />{editing ? '편집 닫기' : '관계 편집'}</button></div>

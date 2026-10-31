@@ -49,11 +49,9 @@ export function CsvImportModal({ people, events, records, onImport, onClose }) {
     } catch { if (request.current === token) setError('파일을 읽지 못했어요. UTF-8 또는 한글 CSV로 다시 저장해 주세요.'); }
     finally { if (request.current === token) setReading(false); }
   }
-  async function apply() {
-    if (!plan?.rows.length || plan.errors.length || reading) return;
-    setReading(true);
-    try { if (await onImport(plan)) onClose(); }
-    finally { setReading(false); }
+  function apply() {
+    if (!plan?.rows.length || plan.errors.length) return;
+    if (onImport(plan)) onClose();
   }
   return <Modal title="금액 기록 CSV 가져오기" subtitle="파일을 확인한 후 선택한 기록을 추가해요." onClose={onClose} wide>
     <div className="csv-import-guide"><p>필수 열: <strong>이름 · 행사유형 · 날짜 · 구분 · 금액</strong><br />같은 기록ID는 중복으로 제외하며, 기존 기록을 덮어쓰지 않아요. ID가 없는 행은 내용이 같은 기록을 제외해요.</p><button className="button button-secondary" onClick={() => download(csvTemplate(people, today()), '마음결_금액기록_양식.csv')}><Icon name="Download" size={15} />양식 다운로드</button></div>
