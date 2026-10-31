@@ -128,6 +128,56 @@ def test_amount_summary_uses_verified_facts_even_if_model_prose_is_wrong():
     assert "예산 80,000원" in result["message"]
 
 
+@pytest.mark.parametrize("advice", [
+    "지인의 돌잔치에서는 현금이 활용하기 편하고, 선물은 오래 기억에 남을 수 있습니다.",
+    "상대의 돌잔치라면 현금과 선물 모두 장단점이 있으니 필요한 물품을 먼저 물어보세요.",
+])
+def test_cash_and_gift_advice_is_not_removed_as_unverified_event_owner(advice):
+    """일반적인 돌잔치 선물 비교는 거래 당사자 단정으로 오탐하지 않는다."""
+    class AdviceGateway(FakeGateway):
+        """선물 비교 문장을 생성하는 모델 대역이다."""
+
+        def generate(self, context, allowed_ids):
+            return {"answer": advice, "evidence_ids": sorted(allowed_ids),
+                    "suggested_amount_krw": None, "model": "test-model"}
+
+    result = ChatService(load_data(), AdviceGateway()).chat({
+        "user_id": "U001", "mode": "amount", "person_id": "P001",
+        "event_type": "돌", "budget_krw": 11111,
+        "question": "조카 돌잔치에 현금과 선물 중 뭐가 좋을까?",
+        "requested_aspects": ["amount", "gift_comparison"],
+    })
+    assert result["status"] == "answer"
+    assert result["v4_analysis"]["ai_status"] == "generated"
+    assert "AI 해석: " + advice in result["message"]
+    assert "확인되지 않은 AI의 행사 당사자 설명" not in result["message"]
+
+
+def test_unsupported_history_owner_does_not_remove_independent_gift_advice():
+    """잘못된 과거 행사 단정만 제외하고 독립된 선물 비교 문장은 남긴다."""
+    class MixedGateway(FakeGateway):
+        """안전하지 않은 기록 단정과 정상 조언을 함께 반환하는 모델 대역이다."""
+
+        def generate(self, context, allowed_ids):
+            return {
+                "answer": ("김도윤 본인의 결혼식에서 받은 기록입니다. "
+                           "현금은 자유롭게 쓸 수 있고 선물은 실용적인 품목을 고를 수 있습니다."),
+                "evidence_ids": sorted(allowed_ids),
+                "suggested_amount_krw": None, "model": "test-model",
+            }
+
+    result = ChatService(load_data(), MixedGateway()).chat({
+        "user_id": "U001", "mode": "amount", "person_id": "P001",
+        "event_type": "돌", "budget_krw": 11111,
+        "question": "조카 돌잔치에 현금과 선물 중 뭐가 좋을까?",
+        "requested_aspects": ["amount", "gift_comparison"],
+    })
+    assert result["status"] == "answer"
+    assert result["v4_analysis"]["ai_status"] == "generated"
+    assert "김도윤 본인의 결혼식" not in result["message"]
+    assert "현금은 자유롭게 쓸 수 있고 선물은 실용적인" in result["message"]
+
+
 def test_history_associated_with_notice_requires_identity_confirmation(service):
     result = service.chat({"user_id": "U001", "mode": "history", "question": "이 부고와 관련된 이력", "person_id": "P001", "notice_id": "N001"})
     assert result["pending_field"] == "person_confirmed"
