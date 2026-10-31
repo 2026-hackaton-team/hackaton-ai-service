@@ -1,4 +1,4 @@
-# 온마음 v4 Windows 기능 회귀 검증
+# 마음결 v4 Windows 기능 회귀 검증
 # 반드시 본인 소유 합성 데이터 프로젝트에서만 실행
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent $PSScriptRoot)

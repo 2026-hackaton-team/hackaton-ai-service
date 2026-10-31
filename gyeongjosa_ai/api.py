@@ -14,7 +14,7 @@ from .service import ChatService
 
 
 ROOT = Path(__file__).resolve().parents[1]
-app = FastAPI(title="경조사 AI 가상 시연", version="0.1.0")
+app = FastAPI(title="마음결 AI 가상 시연", version="0.1.0")
 
 
 class ChatRequest(BaseModel):

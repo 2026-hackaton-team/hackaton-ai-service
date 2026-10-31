@@ -4,3 +4,11 @@ __pycache__/
 .pytest-tmp-*/
 *.py[cod]
 
+# Local unified launcher
+.venv/
+frontend/node_modules/
+frontend/dist/
+
+# Local demo runtime databases
+data/demo_conversations.sqlite3*
+data/demo_profiles.db*

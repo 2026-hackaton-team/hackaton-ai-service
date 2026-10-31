@@ -1,12 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react'
 import {Icon} from './ui.jsx'
-export async function demoApi(path,{userId,method='GET',body,signal}={}) {
-  const response=await fetch('/api'+path,{method,signal,headers:{...(userId?{'X-Demo-User-Id':userId}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})})
-  const result=await response.json().catch(()=>({}))
-  if(!response.ok) throw new Error(typeof result.detail==='string'?result.detail:'서버 요청에 실패했습니다.')
-  return result
-}
-const stored=()=>sessionStorage.getItem('rag-demo-user')||''
+import { demoApi } from './services/demoApi.js'
+import { DEMO_ACCOUNT_EVENT, getDemoAccount, setDemoAccount } from './services/demoAccount.js'
+export { demoApi } from './services/demoApi.js'
+const stored=()=>getDemoAccount()
 export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const [view,setView]=useState('chat')
   const [users,setUsers]=useState([])
@@ -20,12 +17,13 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const [error,setError]=useState('')
   const controller=useRef(null)
   const bottom=useRef(null)
+  useEffect(()=>{const sync=()=>setUserId(getDemoAccount());window.addEventListener(DEMO_ACCOUNT_EVENT,sync);return()=>window.removeEventListener(DEMO_ACCOUNT_EVENT,sync)},[])
   useEffect(()=>{demoApi('/demo/users').then(r=>setUsers(r.items||[])).catch(e=>setError(e.message))},[])
   useEffect(()=>{
     controller.current?.abort()
     setMessages([]);setCid('');setConversations([]);setError('')
+    setDemoAccount(userId)
     if(!userId){setScenarioExamples([]);return}
-    sessionStorage.setItem('rag-demo-user',userId)
     demoApi('/conversations',{userId}).then(r=>setConversations(r.items||[])).catch(e=>setError(e.message))
     demoApi('/demo/v4-scenarios',{userId}).then(r=>setScenarioExamples(r.items||[])).catch(e=>setError(e.message))
   },[userId])
@@ -60,10 +58,10 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
   const options=latest?.status==='need_more_info' ? latest.options||[] : []
   return <div className={'ai-page '+(embedded?'home-ai':'')}>
     <div style={{display:'flex',gap:12,marginBottom:16}}><button type='button' className='button' aria-pressed={view==='chat'} onClick={()=>setView('chat')}>AI 자유 상담</button><button type='button' className='button' aria-pressed={view==='risk'} onClick={()=>setView('risk')}>v4 직무·법적 위험 분석</button></div>
-    {view==='risk' ? <section className='card' aria-label='온마음 v4 직무분석' style={{padding:0,overflow:'hidden'}}><iframe title='온마음 v4 양방향 직무관계 분석 및 RAG 추천' src='/v4/' style={{display:'block',border:0,width:'100%',height:'1300px'}}/></section> : <>
-    <div className="page-heading"><div><h1>내 기록을 아는, 마음 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
+    {view==='risk' ? <section className='card' aria-label='마음결 v4 직무분석' style={{padding:0,overflow:'hidden'}}><iframe title='마음결 v4 양방향 직무관계 분석 및 RAG 추천' src='/v4/' style={{display:'block',border:0,width:'100%',height:'1300px'}}/></section> : <>
+    <div className="page-heading"><div><h1>내 기록을 아는, 마음결 AI</h1><p>RAG 데이터 기반 가상 시연 · 입력 내용은 계정별로 서버에 저장됩니다.</p></div></div>
     <section className="card ai-chat-card">
-      <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음 AI</strong></span>
+      <div className="ai-chat-header"><span className="ai-chat-brand"><Icon name="Sparkles" size={19}/><strong>함께 고민하는 마음결 AI</strong></span>
         <label>가상 계정 <select className="input" aria-label="가상 계정" value={userId} onChange={e=>setUserId(e.target.value)}>
           <option value="">계정 선택</option>{users.map(u=><option key={u.id} value={u.id}>{u.name} · {u.affiliation||u.id}</option>)}
         </select></label>
@@ -113,7 +111,7 @@ export default function IntegratedAIPage({initialNoticeId='',embedded=false}) {
       </div>
       {error&&<div role="alert" className="ai-request-error">{error}<button type="button" className="text-button" onClick={()=>setError('')}>닫기</button></div>}
       <div className="ai-composer-wrap"><form className="ai-composer" onSubmit={e=>{e.preventDefault();send(question)}}>
-        <Icon name="Sparkles" size={18}/><input aria-label="마음 AI 질문" value={question} onChange={e=>setQuestion(e.target.value)}
+        <Icon name="Sparkles" size={18}/><input aria-label="마음결 AI 질문" value={question} onChange={e=>setQuestion(e.target.value)}
           placeholder="예: 친구 결혼식인데 예산은 3만원이야" maxLength={2000}/>
         <button type="submit" aria-label="질문 보내기" disabled={!userId||busy||!question.trim()}><Icon name="ArrowUp" size={19}/></button>
         {busy&&<button type="button" aria-label="중단" onClick={()=>controller.current?.abort()}><Icon name="X" size={17}/></button>}
