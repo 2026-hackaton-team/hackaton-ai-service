@@ -2,10 +2,12 @@
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from gyeongjosa_ai import integration_api
-from gyeongjosa_ai.api import app
+from gyeongjosa_ai.api import app, get_service
 from gyeongjosa_ai.data import load_data
 from gyeongjosa_ai.service import ChatService
 
@@ -143,3 +145,58 @@ def test_v4_scenario_choice_is_conversation_scoped_and_validated(monkeypatch):
             assert budget.json()["v4_analysis"]["amount_krw"] <= 30000
             assert client.get(f"/api/conversations/{cid}", headers=headers).json()["state"]["v4_scenario"] == "general"
             assert client.get(f"/api/conversations/{cid}", headers={"X-Demo-User-Id": "U002"}).status_code == 404
+
+
+@pytest.mark.parametrize(("scenario", "question"), [
+    ("general", "가상 시나리오: 직장 동료 김도윤 결혼식에 참석해 식사해요"),
+    ("public_exception", "가상 시나리오: 공직자 부조 예외 성립 가정, 장례식"),
+    ("procurement", "가상 시나리오: 계약 심사 거래처 직원의 부친상"),
+])
+@pytest.mark.parametrize("budget_text", ["100만", "100만원", "100만이요"])
+def test_short_budget_reply_stays_in_offline_scenario(scenario, question, budget_text):
+    """단위를 줄여 입력해도 시연 상태를 유지하고 외부 모델을 호출하지 않는다."""
+    first = chat(question)
+    result = chat(budget_text, first["context"])
+    assert result["status"] == "answer"
+    assert result["context"]["budget_krw"] == 1000000
+    assert result["v4_analysis"]["scenario"] == scenario
+    amount = result.get("suggested_amount_krw")
+    assert amount is None or amount <= 1000000
+
+
+def test_short_budget_reply_rejects_above_maximum():
+    """후속 예산도 기존 1,000만 원 상한을 적용한다."""
+    first = chat("가상 시나리오: 직장 동료 결혼식에 참석해 식사해요")
+    result = chat("1001만", first["context"])
+    assert result["status"] == "need_more_info"
+    assert result["pending_field"] == "budget_krw"
+    assert result["context"].get("budget_krw") is None
+
+
+def test_budget_followup_via_conversation_api_without_llm(monkeypatch):
+    """실제 대화 저장 API에서도 축약된 예산은 외부 모델 없이 처리한다."""
+    with tempfile.TemporaryDirectory() as directory:
+        monkeypatch.setattr(integration_api, "_DB", Path(directory) / "chat.sqlite3")
+        service = ChatService(load_data(), UnusedGateway())
+        app.dependency_overrides[get_service] = lambda: service
+        try:
+            with TestClient(app) as client:
+                headers = {"X-Demo-User-Id": "U001"}
+                cid = client.post("/api/conversations", headers=headers).json()["id"]
+                endpoint = f"/api/conversations/{cid}/messages"
+                first = client.post(endpoint, headers=headers, json={
+                    "requestId": "request-initial",
+                    "text": "가상 시나리오: 직장 동료 결혼식에 참석해 식사해요",
+                })
+                assert first.status_code == 200, first.text
+                assert first.json()["pending_field"] == "budget_krw"
+                result = client.post(endpoint, headers=headers, json={
+                    "requestId": "request-budget", "text": "100만",
+                })
+                assert result.status_code == 200, result.text
+                assert result.json()["context"]["budget_krw"] == 1000000
+                assert result.json()["v4_analysis"]["scenario"] == "general"
+                saved = client.get(f"/api/conversations/{cid}", headers=headers).json()
+                assert saved["state"]["budget_krw"] == 1000000
+        finally:
+            app.dependency_overrides.pop(get_service, None)

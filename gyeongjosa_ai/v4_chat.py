@@ -19,7 +19,8 @@ DEMO_MARKERS = ("가상", "시나리오", "시연", "데모")
 RISK_TERMS = ("계약", "입찰", "심사", "평가", "거래처", "발주", "이해충돌")
 PUBLIC_TERMS = ("공직자", "공무원", "부조 예외", "청탁금지법", "직무 관련")
 GENERAL_TERMS = ("직장 동료", "직장동료", "동료 결혼", "김도윤")
-MONEY = re.compile(r"(\d[\d,]*)\s*(만)?\s*원")
+MONEY = re.compile(r"(\d[\d,]*)\s*(만\s*원?|원)")
+BUDGET_REPLY = re.compile(r"\s*\d[\d,]*\s*(?:만\s*원?|원)(?:\s*(?:이요|이에요|입니다|정도))?\s*[.!?]?\s*")
 BUDGET = re.compile(r"예산|최대|상한|낼\s*수\s*있는|지출\s*가능|금액\s*수정")
 CHANGE = re.compile(r"바꿔|바꿀|수정|줄여|높여|올려|낮춰")
 TOPIC = re.compile(r"예산|원|참석|식사|부의|조의|조화|화환|결혼|장례|다시|근거|얼마|추천|상대|법적|부친상|돌잔치|계약|관계|서운|받|내|도움|친밀|친구|감사|보답|의미|부담|걱정|왜")
@@ -78,11 +79,11 @@ def _amount(text: str, *, followup: bool) -> int | None:
             if not before:
                 return None
             match = min(before, key=lambda item: item[0])[1]
-    elif followup and (CHANGE.search(text) or MONEY.fullmatch(text.strip())):
+    elif followup and (CHANGE.search(text) or BUDGET_REPLY.fullmatch(text)):
         match = amounts[-1]
     else:
         return None
-    return int(match.group(1).replace(",", "")) * (10000 if match.group(2) else 1)
+    return int(match.group(1).replace(",", "")) * (10000 if match.group(2).startswith("만") else 1)
 
 
 def _gift_amount(text: str, kinds: tuple[str, ...]) -> int | None:
@@ -119,7 +120,9 @@ def try_v4_chat(user_id: str, text: str, old_context: dict) -> dict | None:
             )
         current = None
         old_context = {}
-    if current and candidate is None and not TOPIC.search(text) and old_context.get("pending_field") not in ("v4_person", "v4_scenario"):
+    if (current and candidate is None and not TOPIC.search(text)
+            and not BUDGET_REPLY.fullmatch(text)
+            and old_context.get("pending_field") not in ("v4_person", "v4_scenario")):
         return None
     if not current and not candidate:
         return None
