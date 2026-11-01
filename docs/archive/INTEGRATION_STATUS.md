@@ -1,10 +1,10 @@
 # RAG + React 통합 (개발 중)
 
-현재 원격 **`develop`에는 PR #3이 병합되었으며**, v4 백엔드 이식과 자동 테스트까지 완료된 부분 통합 상태입니다. 최종 Windows 실브라우저 E2E와 전체 DB 일원화는 아직 완료되지 않았습니다. 발표 운영서는 [docs/PRESENTATION_DEMO.md](docs/PRESENTATION_DEMO.md)를 참고하세요.
+현재 원격 **`develop`에는 PR #3이 병합되었으며**, v4 백엔드 이식과 자동 테스트까지 완료된 부분 통합 상태입니다. 최종 Windows 실브라우저 E2E와 전체 DB 일원화는 아직 완료되지 않았습니다. 발표 운영서는 [docs/PRESENTATION_DEMO.md](../PRESENTATION_DEMO.md)를 참고하세요.
 
 ## 로컬 실행
 
-1. 저장소 루트에서 `develop` 최신 코드를 사용합니다. 가상환경은 저장소 밖에 만들고 의존성을 설치합니다. Windows/macOS 별 실행 명령은 [README.md](README.md)를 참조하세요.
+1. 저장소 루트에서 `develop` 최신 코드를 사용합니다. 가상환경은 저장소 밖에 만들고 의존성을 설치합니다. Windows/macOS 별 실행 명령은 [README.md](../../README.md)를 참조하세요.
 2. 서버: `python -m uvicorn gyeongjosa_ai.api:app --host 127.0.0.1 --port 8000`.
 3. `frontend/`에서 `pnpm install` 후 `pnpm dev` 실행.
 4. 브라우저: http://127.0.0.1:5173 ; AI 메뉴에서 가상 계정 선택.
