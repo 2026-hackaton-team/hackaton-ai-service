@@ -2,7 +2,7 @@
 
 ## 브랜치
 
-- `main`에서 작업 브랜치를 만들고, 변경 사항은 PR로 병합합니다.
+- 일반 개발·문서 작업은 `develop`을 기준으로 작업 브랜치를 만들고 `develop`에 PR을 보냅니다. `main` 반영은 별도 통합·배포 PR로 진행합니다.
 - 브랜치 이름은 `type/short-description` 형식으로 작성합니다. 예: `feat/add-chat-api`
 
 ## 커밋

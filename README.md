@@ -137,6 +137,7 @@ CI는 Python 테스트와 React 단위 테스트·빌드를 실행합니다. 실
 
 ## 문서와 제한사항
 
+- [현재 문서·구버전 보관 안내](docs/DOCUMENT_INDEX.md)
 - [발표 시연 운영서](docs/PRESENTATION_DEMO.md)
 - [작업 공간 SQLite 데이터 계약](docs/WORKSPACE_STORAGE.md)
 - [기여 안내](CONTRIBUTING.md)
