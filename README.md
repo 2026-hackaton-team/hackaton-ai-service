@@ -22,6 +22,17 @@
 | 프런트 패키지 관리자 | Corepack 및 pnpm 11.25.0 |
 | 로컬 셸 | Windows PowerShell 또는 macOS 터미널 |
 
+### 저장소 클론 (Windows PowerShell / macOS 터미널)
+
+처음 실행하는 경우 Git을 설치하고 아래 명령으로 현재 개발 버전인 `develop` 브랜치를 받습니다. 두 운영체제에서 동일한 명령을 사용합니다.
+
+~~~sh
+git clone --branch develop https://github.com/2026-hackaton-team/hackaton-ai-service.git
+cd hackaton-ai-service
+~~~
+
+이미 저장소를 복제한 경우 기존 미커밋 변경을 확인한 뒤 `develop`의 최신 상태를 반영합니다.
+
 ### 모델 키 설정
 
 모델 기반 자유 상담에는 Codyssey API 키와 네트워크 연결이 필요합니다. 저장소 루트의 `.env.example`을 복사해 `.env`를 만든 뒤 `CODYSSEY_API_KEY`를 설정하세요. 기존 `.env`가 있으면 덮어쓰지 않습니다.
