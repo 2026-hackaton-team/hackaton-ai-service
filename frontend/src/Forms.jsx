@@ -73,9 +73,9 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
   const type = custom ? form.customType.trim() : form.type
   function submit(event) {
     event.preventDefault()
-    if (custom && !type) { setError('행사 유형을 직접 입력해 주세요. 예) 칠순, 졸업'); return }
+    if (custom && !type) { setError('경조사 유형을 직접 입력해 주세요. 예) 칠순, 졸업'); return }
     if (!type || !form.date || !form.time || !form.location.trim()) {
-      setError('행사 유형, 날짜, 시간, 장소를 모두 확인해 주세요.')
+      setError('경조사 유형, 날짜, 시간, 장소를 모두 확인해 주세요.')
       return
     }
     if (mine) {
@@ -111,12 +111,12 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         {!mine && form.personId === '__new' && <Field label="이름" required full hint="새 인맥으로 함께 저장됩니다. 관계는 인맥 관리에서 수정할 수 있어요.">
           <input className="input" value={form.personName} onChange={(event) => update('personName', event.target.value)} placeholder="이름을 입력해 주세요" maxLength={40} required />
         </Field>}
-        <Field label="행사 유형" required full={mine}>
+        <Field label="경조사 유형" required full={mine}>
           <select className="input" value={form.type} onChange={(event) => update('type', event.target.value)} required>
             <option value="" disabled>유형 선택</option>{EVENT_TYPES.map((item) => <option key={item}>{item}</option>)}<option value={CUSTOM_TYPE}>직접 입력</option>
           </select>
         </Field>
-        {custom && <Field label="행사 유형 직접 입력" required full hint="환갑·칠순·팔순, 졸업, 집들이처럼 목록에 없는 행사를 적어 주세요.">
+        {custom && <Field label="경조사 유형 직접 입력" required full hint="환갑·칠순·팔순, 졸업, 집들이처럼 목록에 없는 경조사를 적어 주세요.">
           <input className="input" value={form.customType} onChange={(event) => update('customType', event.target.value)} placeholder="예) 칠순" maxLength={20} autoFocus required />
           <span className="custom-type-chips">{CUSTOM_TYPE_SUGGESTIONS.map((item) => <button type="button" key={item} className={`filter-chip ${form.customType === item ? 'active' : ''}`} onClick={() => update('customType', item)}>{item}</button>)}</span>
         </Field>}
@@ -128,7 +128,7 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
         <Field label="날짜" required><input className="input" type="date" value={form.date} onChange={(event) => update('date', event.target.value)} min="1900-01-01" max="2099-12-31" required /></Field>
         <Field label="시간" required><input className="input" type="time" value={form.time} onChange={(event) => update('time', event.target.value)} required /></Field>
         <Field label="장소" required full><input className="input" value={form.location} onChange={(event) => update('location', event.target.value)} placeholder={mine && type === '장례식' ? '예) 서울 마음빛 장례식장 1호실' : '예) 그린 웨딩홀 3층 그랜드홀'} maxLength={150} required /></Field>
-        <Field label="일정 이름" full hint={mine ? '비워 두면 내 이름과 행사 유형으로 만들어 드려요.' : '비워 두면 이름과 행사 유형으로 만들어 드려요.'}><input className="input" value={form.title} onChange={(event) => update('title', event.target.value)} placeholder={mine ? `${myName}의 ${type || '결혼식'}` : `${selectedPerson?.name || form.personName || '김도윤'} ${type || '결혼식'}`} maxLength={80} /></Field>
+        <Field label="경조사 일정 이름" full hint={mine ? '비워 두면 내 이름과 경조사 유형으로 만들어 드려요.' : '비워 두면 이름과 경조사 유형으로 만들어 드려요.'}><input className="input" value={form.title} onChange={(event) => update('title', event.target.value)} placeholder={mine ? `${myName}의 ${type || '결혼식'}` : `${selectedPerson?.name || form.personName || '김도윤'} ${type || '결혼식'}`} maxLength={80} /></Field>
         {mine && <>
           <Field label="친구에게 알리기" full hint={!user ? '로그인하면 마음결 친구에게 일정을 보낼 수 있어요.' : form.shareScope === 'friends_of_friends' ? '등록하면 친구의 친구에게 자동으로 알립니다. 직접 친구에게 보내려면 일정 상세에서 선택하세요.' : form.shareScope === 'friends' ? '등록 후 일정을 받을 친구를 고를 수 있어요.' : '나만 볼 수 있어요. 나중에 일정 상세에서 보낼 수도 있어요.'}>
             <select className="input" value={form.shareScope} onChange={(event) => update('shareScope', event.target.value)} disabled={!user}>
@@ -138,9 +138,9 @@ export function EventForm({ people = [], onSave, onClose, user = null }) {
           {form.shareScope !== 'private' && <Field label="전할 말" full><textarea className="input" rows={2} maxLength={300} value={form.shareMessage} onChange={(event) => update('shareMessage', event.target.value)} placeholder={type === '장례식' ? '예) 갑작스러운 소식 전합니다. 마음으로 함께해 주세요.' : '예) 소중한 날에 함께해 주시면 기쁘겠습니다.'} /></Field>}
           {form.shareScope !== 'private' && type === '장례식' && <label className="social-consent field-full"><input type="checkbox" checked={form.consent} onChange={(event) => update('consent', event.target.checked)} /><span>유족(가족)에게 소식 공유 동의를 받았어요.</span></label>}
         </>}
-        <Field label="행사 전 알림" full hint="알림함에서 확인할 수 있어요. 브라우저 알림은 알림 설정에서 켤 수 있습니다.">
+        <Field label="경조사 전 알림" full hint="알림함에서 확인할 수 있어요. 브라우저 알림은 알림 설정에서 켤 수 있습니다.">
           <select className="input" value={form.reminderDays} onChange={(event) => update('reminderDays', event.target.value)}>
-            <option value={0}>행사 당일</option><option value={1}>1일 전</option><option value={3}>3일 전</option><option value={7}>7일 전</option>
+            <option value={0}>경조사 당일</option><option value={1}>1일 전</option><option value={3}>3일 전</option><option value={7}>7일 전</option>
           </select>
         </Field>
       </div>
