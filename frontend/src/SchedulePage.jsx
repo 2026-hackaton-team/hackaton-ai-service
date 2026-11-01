@@ -63,7 +63,7 @@ export default function SchedulePage({ events = [], people = [], onAddEvent, onO
 
   return <div className={`schedule-page ${type === '장례식' ? 'mood-somber' : ''}`}>
     <div className="schedule-page-heading">
-      <div><span className="schedule-eyebrow">함께할 날들</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p>{showSyntheticNotice && <p>시연용 가상 데이터가 포함되어 있습니다.</p>}</div>
+      <div><span className="schedule-eyebrow">경조사 일정</span><h1>잊지 않고, 마음 전하기</h1><p>함께할 날을 기억하고, 전할 마음을 미리 준비해요.</p>{showSyntheticNotice && <p>시연용 가상 데이터가 포함되어 있습니다.</p>}</div>
       <div className="schedule-heading-actions"><button type="button" className="button button-secondary" onClick={() => onOpenReceived?.()}><Icon name="Mail" size={17} />받은 일정{receivedCount > 0 && <span className="received-count" aria-label={`새 일정 ${receivedCount}건`}>{receivedCount}</span>}</button><button className="button button-primary" onClick={onAddEvent}><Icon name="plus" size={17} />일정 등록</button></div>
     </div>
 
